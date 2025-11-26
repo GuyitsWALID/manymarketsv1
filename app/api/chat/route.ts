@@ -13,8 +13,7 @@ export async function POST(req: Request) {
     messages,
     tools: researchTools,
     system: SYSTEM_PROMPTS.chatbot,
-    maxToolRoundtrips: 5,
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }
