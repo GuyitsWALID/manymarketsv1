@@ -152,7 +152,7 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section className="container mt-28 px-2 py-2 md:py-32">
+        <section className="container mt-28 mx-auto px-2 py-2 md:py-32">
             <div className="max-w-5xl mx-auto text-center space-y-2 relative">
             {/* Floating hand-drawn icons - Top side */}
             <motion.div
