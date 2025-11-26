@@ -132,25 +132,27 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-black font-sans overflow-hidden">
       {/* Header */}
-      <header className="container mx-auto  flex justify-between items-center">
-        <img src="logo.svg" alt="UVZ Logo" className="h-80 w-100"  />
-        <nav className="space-x-6 font-bold text-base flex items-center">
-          <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
-          <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
-          <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Login</Link>
-          <Link href="/login" className="bg-uvz-orange text-black px-6 py-2 border-2 border-black hover:bg-white hover:text-black transition-all shadow-brutal active:translate-x-1 active:translate-y-1 active:shadow-none text-base">
-        Get Started
-          </Link>
-        </nav>
+      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur ">
+        <div className="flex items-center justify-between container mx-auto px-6 py-2">
+          <img src="3-Photoroom.png" alt="UVZ Logo" className="h-18 w-auto pt-6" />
+        
+          <nav className="space-x-6 font-bold text-base flex items-center">
+        <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
+        <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
+        <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Login</Link>
+        <Link href="/login" className="bg-uvz-orange text-black px-6 py-2 border-2 border-black hover:bg-white hover:text-black transition-all shadow-brutal active:translate-x-1 active:translate-y-1 active:shadow-none text-base">
+          Get Started
+        </Link>
+          </nav>
+        </div>
       </header>
-
-      
-
-
+        
+        
+        
 
       <main>
         {/* Hero Section */}
-        <section className="container mx-auto px-2 py-2 md:py-32">
+        <section className="container mt-28 px-2 py-2 md:py-32">
             <div className="max-w-5xl mx-auto text-center space-y-2 relative">
             {/* Floating hand-drawn icons - Top side */}
             <motion.div
@@ -449,7 +451,7 @@ export default function Home() {
               Join thousands of creators who have discovered their profitable niche and launched successful digital product businesses with ManyMarkets.
             </p>
             <Link 
-              href="/signup" 
+              href="/login" 
               className="inline-flex items-center gap-3 bg-black text-white text-2xl font-bold px-12 py-6 border-4 border-black hover:bg-uvz-orange hover:scale-105 transition-all shadow-brutal"
             >
               Start Free Today <Rocket className="w-8 h-8" />
