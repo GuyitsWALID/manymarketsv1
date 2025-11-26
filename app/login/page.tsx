@@ -148,9 +148,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-block">
-              <div className="w-20 h-20 bg-uvz-orange border-4 border-black mx-auto mb-4 flex items-center justify-center">
-                <Sparkles className="w-10 h-10 text-white" />
-              </div>
+                <img src="3-Photoroom.png" alt="manymarkets logo" className='h-12 w-auto' />
             </div>
             <h1 className="text-4xl font-black mb-2">
               {isLogin ? 'Welcome Back!' : 'Join UVZ'}
