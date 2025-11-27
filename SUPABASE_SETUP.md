@@ -47,8 +47,11 @@ GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
 In Supabase > Authentication > URL Configuration:
 - Site URL: `http://localhost:3000` (for development) or your production URL
 - Redirect URLs: Add both:
-  - `http://localhost:3000/auth/callback`
-  - `http://localhost:3000/**` (wildcard for local dev)
+ - Redirect URLs: Add these (exact paths, avoid wildcards):
+  - `http://localhost:3000/auth/callback` (local dev)
+  - `http://localhost:3000` (local dev fallback)
+  - `https://your-production-domain.com/auth/callback` (production)
+  - `https://your-production-domain.com` (production fallback)
 
 ### 5. Database Schema (Optional)
 The authentication tables are automatically created by Supabase. If you need additional user profile data:
@@ -137,8 +140,31 @@ npm run dev
 
 2. Navigate to http://localhost:3000/login
 3. Try signing up with email or OAuth providers
-4. Verify you're redirected to the home page after authentication
+4. Verify you're redirected to the chat page (`/chat`) after authentication
 5. Test accessing protected routes
+
+## Notes for Developers
+
+- When calling `supabase.auth.signInWithOAuth`, include a `redirectTo` that points to your app callback and a `next` query string with the final path:
+
+```ts
+supabase.auth.signInWithOAuth({
+  provider: 'google',
+  options: { redirectTo: `${window.location.origin}/auth/callback?next=/chat` }
+});
+```
+
+- For email sign ups, include `emailRedirectTo` similarly:
+
+```ts
+supabase.auth.signUp({
+  email,
+  password,
+  options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/chat` }
+});
+```
+
+- Ensure your app has a route at `/auth/callback` that exchanges the `code` for a session and then redirects to the `next` query param (defaulting to `/chat`).
 
 ## Troubleshooting
 

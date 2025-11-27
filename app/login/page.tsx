@@ -29,18 +29,19 @@ export default function LoginPage() {
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({
+            const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+                emailRedirectTo: `${window.location.origin}/auth/callback?next=/chat`,
           },
         });
         if (error) throw error;
         setError('Check your email for the confirmation link!');
         return;
       }
-      router.push('/');
+          // After successful email/password sign in, route users to the chat page.
+          router.push('/chat');
       router.refresh();
     } catch (error: any) {
       setError(error.message || 'An error occurred');
@@ -54,10 +55,11 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+          const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+              // Include the next path so the callback can redirect users to /chat
+              redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
         },
       });
       if (error) throw error;
