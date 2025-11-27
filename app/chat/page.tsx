@@ -21,7 +21,7 @@ export default function ChatPage() {
       {/* Sidebar */}
       <aside className="w-64 bg-gray-50 border-r-4 border-black p-4">
         <div className="mb-6">
-          <Link href="/" className="text-2xl font-black">UVZ AI</Link>
+          <Link href="/" className="text-2xl font-black">manymarket research tool</Link>
         </div>
         <button className="w-full bg-uvz-orange text-white py-3 px-4 border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all font-bold flex items-center justify-center gap-2">
           <Plus className="w-5 h-5" />
