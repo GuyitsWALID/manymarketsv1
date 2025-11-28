@@ -18,3 +18,23 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
 }
+
+/* Mobile menu hamburger transition rules (moved from page.tsx to avoid hydration mismatches) */
+#menu-toggle + div label[for="menu-toggle"] span {
+  transition: transform .2s ease, opacity .18s ease;
+  transform-origin: center;
+}
+#menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+#menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(2) {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+#menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+#menu-toggle + div label[for="menu-toggle"]:hover span:nth-child(1),
+#menu-toggle + div label[for="menu-toggle"]:hover span:nth-child(3) {
+  transform: translateY(0) rotate(0);
+}

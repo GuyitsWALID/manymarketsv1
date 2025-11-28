@@ -26,6 +26,38 @@ const HandDrawnBox = ({ children, delay = 0 }: { children: React.ReactNode; dela
 
 export default function Home() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+  
+  // Accessibility: keep the accessible label updated for the menu toggle
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkbox = document.getElementById('menu-toggle') as HTMLInputElement | null;
+    const label = document.querySelector('label[for="menu-toggle"]') as HTMLLabelElement | null;
+    if (!checkbox || !label) return;
+
+    function updateAria() {
+      // checkbox and label are non-null because we returned earlier if they were falsy
+      label!.setAttribute('aria-label', checkbox!.checked ? 'Close menu' : 'Open menu');
+    }
+
+    updateAria();
+    function onChange() {
+      updateAria();
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && checkbox!.checked) {
+        checkbox!.checked = false;
+        updateAria();
+      }
+    }
+
+    checkbox.addEventListener('change', onChange);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      checkbox.removeEventListener('change', onChange);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   // If the OAuth provider redirects back to the app root with a `code` query param (e.g. /?code=...),
   // forward the request to our auth callback route so we can exchange the code for a session.
@@ -161,60 +193,9 @@ export default function Home() {
         </Link>
           </nav>
           {/* Toggle hamburger -> X animation + aria update for accessibility */}
-          <style jsx global>{`
-            /* Smooth transforms for hamburger lines */
-            #menu-toggle + div label[for="menu-toggle"] span {
-              transition: transform .2s ease, opacity .18s ease;
-              transform-origin: center;
-            }
+          {/* Moved mobile menu hamburger css to `app/globals.css` to avoid hydration mismatches */}
 
-            /* When checkbox is checked: morph first/last lines into an X and hide middle line */
-            #menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(1) {
-              transform: translateY(6px) rotate(45deg);
-            }
-            #menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(2) {
-              opacity: 0;
-              transform: translateX(-8px);
-            }
-            #menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(3) {
-              transform: translateY(-6px) rotate(-45deg);
-            }
-
-            /* Slight hover/active tweaks */
-            #menu-toggle + div label[for="menu-toggle"]:hover span:nth-child(1),
-            #menu-toggle + div label[for="menu-toggle"]:hover span:nth-child(3) {
-              transform: translateY(0) rotate(0);
-            }
-          `}</style>
-
-          {/* JS to keep the accessible label updated and ensure user sees "Close menu" when opened */}
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-          (function () {
-            const checkbox = document.getElementById('menu-toggle');
-            const label = document.querySelector('label[for="menu-toggle"]');
-            if (!checkbox || !label) return;
-
-            function updateAria() {
-              label.setAttribute('aria-label', checkbox.checked ? 'Close menu' : 'Open menu');
-            }
-
-            // initialize and keep in sync
-            updateAria();
-            checkbox.addEventListener('change', updateAria);
-
-            // (Optional) Close the menu if ESC is pressed while open
-            document.addEventListener('keydown', function (e) {
-              if (e.key === 'Escape' && checkbox.checked) {
-                checkbox.checked = false;
-                updateAria();
-              }
-            });
-          })();
-          `,
-            }}
-          />
+          {/* Client-only JS to keep the accessible label updated and ensure user sees "Close menu" when opened */}
           {/* Mobile Menu Toggle and Hidden Checkbox */}
         <input id="menu-toggle" type="checkbox" className="peer hidden" aria-hidden="true" />
           <div className="md:hidden flex items-center">
