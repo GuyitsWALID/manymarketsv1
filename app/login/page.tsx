@@ -23,24 +23,41 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        // If we get a session back from the client sign-in, set it on the server via API
+        const session = data?.session;
+        if (session?.access_token && session?.refresh_token) {
+          const res = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+            }),
+          });
+
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body?.error || 'Failed to set server session');
+          }
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback/chat`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/chat`,
           },
         });
         if (error) throw error;
         setError('Check your email for the confirmation link!');
         return;
       }
-      router.push('/');
+      router.push('/chat');
       router.refresh();
     } catch (error: any) {
       setError(error.message || 'An error occurred');
@@ -57,7 +74,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback/chat`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
         },
       });
       if (error) throw error;
