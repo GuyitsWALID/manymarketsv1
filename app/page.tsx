@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
 import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Twitter, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 
 const HandDrawnCircle = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
@@ -26,6 +26,21 @@ const HandDrawnBox = ({ children, delay = 0 }: { children: React.ReactNode; dela
 
 export default function Home() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+
+  // If the OAuth provider redirects back to the app root with a `code` query param (e.g. /?code=...),
+  // forward the request to our auth callback route so we can exchange the code for a session.
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code && !window.location.pathname.startsWith('/auth/callback')) {
+        window.location.replace(`/auth/callback${window.location.search}`);
+      }
+    } catch (err) {
+      // swallow — nothing to do here
+    }
+  }, []);
 
   const features = [
     { 
@@ -132,11 +147,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-black font-sans overflow-hidden">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur ">
-        <div className="flex items-center justify-between container mx-auto px-6 py-2">
-          <img src="3-Photoroom.png" alt="UVZ Logo" className="h-18 w-auto pt-6" />
-        
-          <nav className="space-x-6 font-bold text-base flex items-center">
+      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-sm ">
+        <div className="flex items-center justify-between container mx-auto px-6 py-3">
+          <img src="3-Photoroom.png" alt="UVZ Logo" className="h-10 md:h-18 w-auto pt-1 md:pt-6" />
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-6 font-bold text-base">
         <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
         <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Login</Link>
@@ -144,9 +160,132 @@ export default function Home() {
           Get Started
         </Link>
           </nav>
+          {/* Toggle hamburger -> X animation + aria update for accessibility */}
+          <style jsx global>{`
+            /* Smooth transforms for hamburger lines */
+            #menu-toggle + div label[for="menu-toggle"] span {
+              transition: transform .2s ease, opacity .18s ease;
+              transform-origin: center;
+            }
+
+            /* When checkbox is checked: morph first/last lines into an X and hide middle line */
+            #menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(1) {
+              transform: translateY(6px) rotate(45deg);
+            }
+            #menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(2) {
+              opacity: 0;
+              transform: translateX(-8px);
+            }
+            #menu-toggle:checked + div label[for="menu-toggle"] span:nth-child(3) {
+              transform: translateY(-6px) rotate(-45deg);
+            }
+
+            /* Slight hover/active tweaks */
+            #menu-toggle + div label[for="menu-toggle"]:hover span:nth-child(1),
+            #menu-toggle + div label[for="menu-toggle"]:hover span:nth-child(3) {
+              transform: translateY(0) rotate(0);
+            }
+          `}</style>
+
+          {/* JS to keep the accessible label updated and ensure user sees "Close menu" when opened */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+          (function () {
+            const checkbox = document.getElementById('menu-toggle');
+            const label = document.querySelector('label[for="menu-toggle"]');
+            if (!checkbox || !label) return;
+
+            function updateAria() {
+              label.setAttribute('aria-label', checkbox.checked ? 'Close menu' : 'Open menu');
+            }
+
+            // initialize and keep in sync
+            updateAria();
+            checkbox.addEventListener('change', updateAria);
+
+            // (Optional) Close the menu if ESC is pressed while open
+            document.addEventListener('keydown', function (e) {
+              if (e.key === 'Escape' && checkbox.checked) {
+                checkbox.checked = false;
+                updateAria();
+              }
+            });
+          })();
+          `,
+            }}
+          />
+          {/* Mobile Menu Toggle and Hidden Checkbox */}
+        <input id="menu-toggle" type="checkbox" className="peer hidden" aria-hidden="true" />
+          <div className="md:hidden flex items-center">
+        <label
+          htmlFor="menu-toggle"
+          className="cursor-pointer p-2 border-2 border-black rounded-md bg-white shadow-brutal flex flex-col gap-1 justify-center w-10 h-10"
+          aria-label="Toggle menu"
+          aria-controls="mobile-menu"
+        >
+          <span className="block w-6 h-0.5 bg-black" />
+          <span className="block w-6 h-0.5 bg-black" />
+          <span className="block w-6 h-0.5 bg-black" />
+        </label>
+          </div>
+
+          {/* Mobile Nav Panel (checkbox controlled) */}
+          <div
+        id="mobile-menu"
+        className="peer-checked:block hidden absolute top-full left-0 w-full bg-white border-t-4 border-black shadow-brutal z-40"
+        aria-hidden="false"
+          >
+        <div className="container mx-auto px-6 py-6">
+          
+
+          <nav className="flex flex-col gap-3 text-lg font-bold">
+            <Link
+          href="#features"
+          className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
+          onClick={() => {
+            const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
+            if (el) el.checked = false;
+          }}
+            >
+          Features
+            </Link>
+            <Link
+          href="#pricing"
+          className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
+          onClick={() => {
+            const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
+            if (el) el.checked = false;
+          }}
+            >
+          Pricing
+            </Link>
+            <Link
+          href="/login"
+          className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
+          onClick={() => {
+            const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
+            if (el) el.checked = false;
+          }}
+            >
+          Login
+            </Link>
+
+            <Link
+          href="/login"
+          className="block mt-2 px-4 py-3 bg-uvz-orange text-black border-2 border-black text-center font-bold shadow-brutal"
+          onClick={() => {
+            const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
+            if (el) el.checked = false;
+          }}
+            >
+          Get Started
+            </Link>
+          </nav>
+        </div>
+          </div>
         </div>
       </header>
-        
         
         
 
