@@ -20,6 +20,10 @@ export default function ChatPage() {
     transport,
   });
 
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null);
+  const supabase = createClient();
+
   useEffect(() => {
     // Close mobile drawers when escape is pressed
     function onKey(e: KeyboardEvent) {
@@ -31,16 +35,28 @@ export default function ChatPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        // v2 returns { data: { user } } — adapt for your Supabase client version:
+        const user = (data && (data.user || data)) ?? null;
+        setCurrentUser(user as any);
+      } catch (err) {
+        setCurrentUser(null);
+      }
+    }
+    loadUser();
+  }, []);
+
   const createNewChat = () => {
     // Reset chat session by generating a new session id
     setIsSidebarOpen(false);
     setChatSessionId(`uvz-chat-${Date.now()}`);
     setInput('');
   };
-
   // Logout modal state
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const supabase = createClient();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -60,11 +76,12 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-white">
+      
       {/* Sidebar */}
       {/* Left Sidebar - hidden on small screens, toggled via menu */}
-      <aside className={`hidden md:block w-64 bg-gray-50 border-r-4 border-black p-4`}> 
-        <div className="mb-6">
-          <Link href="/" className="text-2xl font-black">manymarket research tool</Link>
+      <aside className={`hidden md:block w-64 bg-gray-50 border-r-2 border-black p-4`}> 
+        <div className="mb-6 border-b-2 border-black pb-4 flex justify-center">
+          <Link href="/chat" className="text-2xl font-black"><img src="2-photoroom.png" alt="manymarkets" className='h-12 w-auto' /></Link>
         </div>
         <button onClick={createNewChat} className="w-full bg-uvz-orange text-white py-3 px-4 border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all font-bold flex items-center justify-center gap-2">
           <Plus className="w-5 h-5" />
@@ -155,43 +172,34 @@ export default function ChatPage() {
             )}
           </div>
           <div onClick={() => setIsSidebarOpen(false)} className="flex-1 bg-black/30" />
-        </div>
-      )}
-
-      {/* Main Chat */}
-      <main className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="border-b-4 border-black p-4 bg-white flex items-center justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex  gap-3 justify-between">
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                aria-label="Toggle menu"
-                className="md:hidden p-2  bg-uvz-orange shadow-brutal border-2 border-black rounded mr-3"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
-              <div className="w-12 h-12 bg-uvz-white border-4 rounded-full border-black flex items-center justify-center">
-                <Bot className="w-6 h-6 text-black" />
-              </div>
-              <div>
-                <h1 className="font-black text-xl">Discovery Assistant</h1>
-                <p className="text-sm font-medium text-gray-600">Finding your Unique Value Zone</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Create New Chat (Plus) */}
-              <button onClick={() => createNewChat()} aria-label="New chat" className="p-2 bg-uvz-orange text-white border-2 border-black rounded">
-                <Plus className="w-5 h-5" />
-              </button>
+              {currentUser ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className="flex items-center gap-2 p-2 border-2 border-black rounded bg-white"
+                    aria-label="Profile menu"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="font-bold text-sm">{(currentUser as any)?.email ?? 'Profile'}</span>
+                  </button>
+                  {profileMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border-2 border-black p-2 z-50">
+                      <button onClick={() => { setProfileMenuOpen(false); setIsLogoutOpen(true); }} className="w-full text-left px-2 py-1">Log out</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link href="/login" className="px-3 py-2 border-2 border-black bg-white">Login</Link>
+              )}
               
-            </div>
           </div>
-        </div>
-
+        )}
+      {/* Main Chat Area */}
+        
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 flex flex-col pt-20">
+          
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -201,24 +209,26 @@ export default function ChatPage() {
               <div className="w-20 h-20 bg-yellow-300 border-4 border-black mx-auto mb-6 flex items-center justify-center">
                 <Sparkles className="w-10 h-10" />
               </div>
-              <h2 className="text-3xl font-black mb-4">Welcome to UVZ Discovery!</h2>
-              <p className="text-lg font-medium text-gray-700 mb-8">
-                I'll guide you through finding your Unique Value Zone—a profitable niche that matches your skills and market demand.
-              </p>
-              <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
-                {['Find niches in health tech', 'Discover AI tool opportunities', 'Explore digital product ideas'].map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      sendMessage({ text: prompt });
-                    }}
-                    className="bg-white border-4 border-black p-4 font-bold text-left hover:-translate-y-1 hover:shadow-brutal transition-all"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
+          <p className="text-lg font-medium text-gray-700 mb-8">
+            I'll guide you through finding your Unique Value Zone—a profitable niche that matches your skills and market demand.
+          </p>
+          <div className="flex-1 flex flex-col">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {['Find niches in health tech', 'Discover AI tool opportunities', 'Explore digital product ideas'].map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    sendMessage({ text: prompt });
+                  }}
+                  className="bg-white border-4 border-black p-4 font-bold text-left hover:-translate-y-1 hover:shadow-brutal transition-all"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        </motion.div>
           )}
 
           {messages.map((message: UIMessage) => {
