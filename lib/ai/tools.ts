@@ -10,7 +10,6 @@ async function generateAnalysis(prompt: string): Promise<string> {
   const { text } = await generateText({
     model: getModel(),
     prompt,
-    maxTokens: 4000,
   });
   return text;
 }
