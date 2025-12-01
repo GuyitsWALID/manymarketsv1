@@ -16,11 +16,12 @@ async function generateAnalysis(prompt: string): Promise<string> {
 // Tool 1: Identify Industry Niches
 const identify_industry_niches = tool({
   description: 'Analyze an industry and identify 3-5 specific niches with unique value opportunities. Call this when the user mentions an industry they want to explore.',
-  parameters: z.object({
+  inputSchema: z.object({
     industry: z.string().describe('The industry to analyze'),
     depth: z.number().default(3).describe('Number of niches to identify (1-5)'),
   }),
-  execute: async function({ industry, depth }: { industry: string; depth: number }) {
+  execute: async (args) => {
+    const { industry, depth } = args;
     const searchQueries = [
       `${industry} emerging trends 2024`,
       `${industry} underserved markets`,
@@ -79,11 +80,12 @@ Return ONLY valid JSON in this exact format:
 // Tool 2: Drill into UVZ
 const drill_uvz = tool({
   description: 'Deep dive into a specific niche to identify the exact Unique Value Zone (UVZ). Call this after a niche has been selected.',
-  parameters: z.object({
+  inputSchema: z.object({
     niche: z.string().describe('The niche to drill into'),
     focus_area: z.string().optional().describe('Specific focus area within the niche'),
   }),
-  execute: async function({ niche, focus_area }: { niche: string; focus_area?: string }) {
+  execute: async (args) => {
+    const { niche, focus_area } = args;
     const focusQuery = focus_area ? ` ${focus_area}` : '';
     
     const searchQueries = [
@@ -155,10 +157,11 @@ Return ONLY valid JSON:
 // Tool 3: Validate UVZ Demand
 const validate_uvz_demand = tool({
   description: 'Validate market demand for a Unique Value Zone. Call this to check if a UVZ has real demand before building.',
-  parameters: z.object({
+  inputSchema: z.object({
     uvz_description: z.string().describe('Description of the UVZ to validate'),
   }),
-  execute: async function({ uvz_description }: { uvz_description: string }) {
+  execute: async (args) => {
+    const { uvz_description } = args;
     const searchQueries = [
       `${uvz_description} reviews`,
       `${uvz_description} reddit`,
@@ -218,12 +221,13 @@ Analyze and return JSON:
 // Tool 4: Generate Product Ideas
 const generate_product_ideas = tool({
   description: 'Generate digital product ideas based on a validated UVZ.',
-  parameters: z.object({
+  inputSchema: z.object({
     uvz: z.string().describe('The validated UVZ'),
     target_audience: z.string().describe('The specific target audience'),
     budget_level: z.enum(['bootstrap', 'funded', 'enterprise']).default('bootstrap').describe('Budget level'),
   }),
-  execute: async function({ uvz, target_audience, budget_level }: { uvz: string; target_audience: string; budget_level: 'bootstrap' | 'funded' | 'enterprise' }) {
+  execute: async (args) => {
+    const { uvz, target_audience, budget_level } = args;
     const productPrompt = `Generate innovative digital product ideas for this validated UVZ:
 
 UVZ: "${uvz}"
