@@ -31,10 +31,12 @@ export default function ChatPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(false); // Prevent duplicate responses when loading history
   
   // Chat session
   const [chatSessionId, setChatSessionId] = useState(() => `uvz-chat-${Date.now()}`);
-  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), []);
+  // Create new transport when chatSessionId changes to fully reset chat state
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [chatSessionId]);
   const { messages, sendMessage, status, setMessages } = useChat({
     id: chatSessionId,
     transport,
@@ -309,6 +311,10 @@ export default function ChatPage() {
 
   // Load existing session
   const loadSession = useCallback(async (sessionId: string) => {
+    // Don't reload if already on this session
+    if (dbSessionId === sessionId) return;
+    
+    setIsLoadingSession(true);
     try {
       // Fetch messages for session
       const response = await fetch(`/api/sessions/${sessionId}/messages`);
@@ -323,14 +329,29 @@ export default function ChatPage() {
           createdAt: new Date(msg.created_at),
         }));
 
+        // Clear messages first
+        setMessages([]);
+        
+        // Set DB session ID
         setDbSessionId(sessionId);
-        setChatSessionId(`session-${sessionId}`);
-        setMessages(uiMessages);
+        
+        // Set new chat ID - this creates a fresh transport and chat state
+        const newChatId = `session-${sessionId}-${Date.now()}`;
+        setChatSessionId(newChatId);
+        
+        // Set the loaded messages after a brief delay to let the new chat state initialize
+        setTimeout(() => {
+          setMessages(uiMessages);
+          setIsLoadingSession(false);
+        }, 150);
+      } else {
+        setIsLoadingSession(false);
       }
     } catch (error) {
       console.error('Error loading session:', error);
+      setIsLoadingSession(false);
     }
-  }, [setMessages]);
+  }, [setMessages, dbSessionId]);
 
   // Delete session
   const deleteSession = useCallback(async (sessionId: string) => {
