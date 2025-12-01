@@ -5,7 +5,9 @@ import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
 import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Twitter, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
+import { createClient } from "@/lib/supabase/client";
 
 const HandDrawnCircle = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
   <RoughNotation type="circle" show={true} color="#f97316" strokeWidth={3} animationDelay={delay} animationDuration={1000}>
@@ -26,6 +28,26 @@ const HandDrawnBox = ({ children, delay = 0 }: { children: React.ReactNode; dela
 
 export default function Home() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Check if user is logged in and redirect to chat
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          router.push('/chat');
+        } else {
+          setIsCheckingAuth(false);
+        }
+      } catch {
+        setIsCheckingAuth(false);
+      }
+    }
+    checkAuth();
+  }, [router, supabase.auth]);
   
   // Accessibility: keep the accessible label updated for the menu toggle
   useEffect(() => {
@@ -58,6 +80,15 @@ export default function Home() {
       document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
+
+  // Show loading state while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-uvz-orange border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   // If the OAuth provider redirects back to the app root with a `code` query param (e.g. /?code=...),
   // forward the request to our auth callback route so we can exchange the code for a session.

@@ -311,23 +311,23 @@ export default function ChatSidebar({
             onClick={() => setIsLogoutOpen(false)}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="relative bg-white border-4 border-black p-6 w-full max-w-md mx-4 shadow-brutal">
-            <h2 className="text-xl font-black mb-4">Are you sure you want to leave?</h2>
-            <p className="text-sm text-gray-600 mb-6">
-              If you log out, your session will be cleared and you'll be redirected to the login page.
+          <div className="relative bg-white border-4 border-black p-6 w-full max-w-sm mx-4 shadow-brutal rounded-lg">
+            <h2 className="text-xl font-black mb-2 text-center">Are you sure you want to leave?</h2>
+            <p className="text-sm text-gray-600 mb-6 text-center">
+              You'll need to log in again to continue your research.
             </p>
-            <div className="flex justify-end gap-3">
+            <div className="flex gap-3">
               <button
                 onClick={() => setIsLogoutOpen(false)}
-                className="px-4 py-2 border-2 border-black rounded font-medium hover:bg-gray-100"
+                className="flex-1 px-4 py-3 bg-gray-100 border-2 border-black rounded-lg font-bold hover:bg-gray-200 transition-colors"
               >
-                Cancel
+                No, stay
               </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-uvz-orange text-white border-2 border-black rounded font-bold hover:-translate-y-0.5 transition-transform"
+                className="flex-1 px-4 py-3 bg-red-500 text-white border-2 border-black rounded-lg font-bold hover:bg-red-600 hover:-translate-y-0.5 transition-all"
               >
-                Log out
+                Yes, log out
               </button>
             </div>
           </div>
