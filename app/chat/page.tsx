@@ -2,344 +2,613 @@
 
 import { useChat, type UIMessage } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Loader2, Bot, User, Plus } from 'lucide-react';
+import { Sparkles, Send, Loader2, Bot, User } from 'lucide-react';
 import Link from 'next/link';
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatSidebar from '@/components/chat/ChatSidebar';
+import NewSessionModal from '@/components/chat/NewSessionModal';
+
+interface Session {
+  id: string;
+  title: string;
+  phase: string;
+  created_at: string;
+  last_message_at: string;
+}
 
 export default function ChatPage() {
   const [input, setInput] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  // New dynamic chat session id so Plus creates a new session
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [isDesktop, setIsDesktop] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  
+  // Database session state
+  const [dbSessionId, setDbSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false);
+  
+  // Chat session
   const [chatSessionId, setChatSessionId] = useState(() => `uvz-chat-${Date.now()}`);
   const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), []);
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, setMessages } = useChat({
     id: chatSessionId,
     transport,
   });
 
+  // User & auth state
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
+  // Handle responsive
   useEffect(() => {
-    // Close mobile drawers when escape is pressed
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setIsSidebarOpen(false);
-      }
+    function handleResize() {
+      setIsDesktop(window.innerWidth >= 768);
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
+  // Load user and sessions
   useEffect(() => {
-    async function loadUser() {
+    async function loadUserAndSessions() {
       try {
         const { data } = await supabase.auth.getUser();
-        // v2 returns { data: { user } } — adapt for your Supabase client version:
-        const user = (data && (data.user || data)) ?? null;
-        setCurrentUser(user as any);
-      } catch (err) {
+        const user = data?.user ?? null;
+        setCurrentUser(user);
+
+        if (user) {
+          // Load user's sessions
+          const response = await fetch('/api/sessions');
+          if (response.ok) {
+            const { sessions: userSessions } = await response.json();
+            setSessions(userSessions || []);
+          }
+        }
+      } catch {
         setCurrentUser(null);
       }
     }
-    loadUser();
+    loadUserAndSessions();
+  }, [supabase.auth]);
+
+  // Auto-scroll
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages]);
+
+  // Create a new database session when user sends first message
+  const createDbSession = useCallback(async (firstMessage: string) => {
+    if (!currentUser || dbSessionId || isCreatingSession) return null;
+    
+    setIsCreatingSession(true);
+    try {
+      const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? '...' : '');
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+
+      if (response.ok) {
+        const { session } = await response.json();
+        setDbSessionId(session.id);
+        setSessions(prev => [session, ...prev]);
+        return session.id;
+      }
+    } catch (error) {
+      console.error('Error creating session:', error);
+    } finally {
+      setIsCreatingSession(false);
+    }
+    return null;
+  }, [currentUser, dbSessionId, isCreatingSession]);
+
+  // Save message to database
+  const saveMessageToDb = useCallback(async (sessionId: string, role: string, content: string, toolCalls?: any, toolResults?: any) => {
+    if (!sessionId || !currentUser) return;
+    
+    try {
+      await fetch(`/api/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, content, tool_calls: toolCalls, tool_results: toolResults }),
+      });
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  }, [currentUser]);
+
+  // Detect phase from tool calls and update session
+  const detectAndUpdatePhase = useCallback(async (sessionId: string, toolCalls: any[]) => {
+    if (!sessionId || !toolCalls?.length) return;
+
+    // Map tools to phases
+    // Map tools to database phases (matching DB constraints)
+    const toolPhaseMap: Record<string, string> = {
+      'identify_industry_niches': 'niche_drilling',
+      'drill_uvz': 'uvz_identification',
+      'research_uvz_topic': 'uvz_identification',
+      'validate_uvz_demand': 'validation',
+      'competitive_analysis': 'validation',
+      'generate_product_ideas': 'product_ideation',
+      'generate_ebook_outline': 'product_ideation',
+      'generate_marketing_copy': 'product_ideation',
+    };
+
+    // Find the highest phase from the tool calls (order matches DB enum)
+    const phaseOrder = ['discovery', 'niche_drilling', 'uvz_identification', 'validation', 'product_ideation', 'completed'];
+    let highestPhase = 'discovery';
+
+    for (const toolCall of toolCalls) {
+      const toolName = toolCall.toolName || toolCall.name;
+      const detectedPhase = toolPhaseMap[toolName];
+      if (detectedPhase) {
+        const currentIdx = phaseOrder.indexOf(highestPhase);
+        const newIdx = phaseOrder.indexOf(detectedPhase);
+        if (newIdx > currentIdx) {
+          highestPhase = detectedPhase;
+        }
+      }
+    }
+
+    // Update session phase in database
+    try {
+      await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phase: highestPhase }),
+      });
+
+      // Update local sessions state
+      setSessions(prev => prev.map(s => 
+        s.id === sessionId ? { ...s, phase: highestPhase } : s
+      ));
+    } catch (error) {
+      console.error('Error updating phase:', error);
+    }
   }, []);
 
-  const createNewChat = () => {
-    // Reset chat session by generating a new session id
-    setIsSidebarOpen(false);
-    setChatSessionId(`uvz-chat-${Date.now()}`);
-    setInput('');
-  };
-  // Logout modal state
-  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const router = useRouter();
+  // Handle sending message with database integration
+  const handleSendMessage = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    let sessionId = dbSessionId;
+
+    // Create session on first message
+    if (!sessionId && currentUser) {
+      sessionId = await createDbSession(text);
+    }
+
+    // Send message via AI SDK
+    sendMessage({ text });
+
+    // Save user message to database
+    if (sessionId) {
+      await saveMessageToDb(sessionId, 'user', text);
+    }
+  }, [dbSessionId, currentUser, createDbSession, sendMessage, saveMessageToDb]);
+
+  // Save assistant response when streaming completes
+  useEffect(() => {
+    if (status === 'ready' && messages.length > 0 && dbSessionId) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        const textContent = lastMessage.parts
+          .filter((part: any) => part.type === 'text')
+          .map((part: any) => part.text)
+          .join('');
+        
+        const toolCalls = lastMessage.parts.filter((part: any) => part.type === 'tool-call');
+        const toolResults = lastMessage.parts.filter((part: any) => part.type === 'tool-result');
+
+        if (textContent) {
+          saveMessageToDb(
+            dbSessionId,
+            'assistant',
+            textContent,
+            toolCalls.length > 0 ? toolCalls : undefined,
+            toolResults.length > 0 ? toolResults : undefined
+          );
+        }
+
+        // Detect and update phase based on tool usage
+        if (toolCalls.length > 0) {
+          detectAndUpdatePhase(dbSessionId, toolCalls);
+        }
+      }
+    }
+  }, [status, messages, dbSessionId, saveMessageToDb, detectAndUpdatePhase]);
+
+  // Open new session modal
+  const createNewChat = useCallback(() => {
+    setIsNewSessionModalOpen(true);
+  }, []);
+
+  // Handle creating a new session from modal
+  const handleCreateNewSession = useCallback(async (data: { title: string; industry: string; goal: string }) => {
+    if (!currentUser) {
+      console.error('No user logged in');
+      alert('Please log in to create a session');
+      return;
+    }
+    
+    setIsCreatingSession(true);
+    try {
+      console.log('Creating session with data:', data);
+      console.log('Current user:', currentUser.id);
+      
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: data.title || `${data.industry} Research`,
+          industry: data.industry,
+        }),
+      });
+
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        console.error('Failed to create session:', responseData);
+        console.error('Status:', response.status);
+        alert(`Failed to create session: ${responseData.details || responseData.error || 'Unknown error'}`);
+        return;
+      }
+
+      const { session } = responseData;
+      console.log('Session created:', session);
+      
+      // Reset chat state
+      const newChatId = `uvz-chat-${Date.now()}`;
+      setChatSessionId(newChatId);
+      setDbSessionId(session.id);
+      setMessages([]);
+      setInput('');
+      setSessions(prev => [session, ...prev]);
+      setIsNewSessionModalOpen(false);
+      
+      // Build initial greeting with context
+      const initialMessage = data.goal 
+        ? `I'm interested in the ${data.industry} industry and my goal is to ${data.goal.toLowerCase()}. Can you help me discover my Unique Value Zone?`
+        : `I want to explore opportunities in the ${data.industry} industry. Help me find my Unique Value Zone.`;
+      
+      // Small delay to ensure chat is ready, then send message
+      setTimeout(async () => {
+        console.log('Sending initial message:', initialMessage);
+        sendMessage({ text: initialMessage });
+        
+        // Save user message to database
+        try {
+          await saveMessageToDb(session.id, 'user', initialMessage);
+          console.log('Message saved to database');
+        } catch (err) {
+          console.error('Error saving message to db:', err);
+        }
+      }, 200);
+      
+    } catch (error) {
+      console.error('Error creating session:', error);
+    } finally {
+      setIsCreatingSession(false);
+    }
+  }, [currentUser, setMessages, sendMessage, saveMessageToDb]);
+
+  // Load existing session
+  const loadSession = useCallback(async (sessionId: string) => {
+    try {
+      // Fetch messages for session
+      const response = await fetch(`/api/sessions/${sessionId}/messages`);
+      if (response.ok) {
+        const { messages: dbMessages } = await response.json();
+        
+        // Convert DB messages to UI format
+        const uiMessages: UIMessage[] = dbMessages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          parts: [{ type: 'text', text: msg.content }],
+          createdAt: new Date(msg.created_at),
+        }));
+
+        setDbSessionId(sessionId);
+        setChatSessionId(`session-${sessionId}`);
+        setMessages(uiMessages);
+      }
+    } catch (error) {
+      console.error('Error loading session:', error);
+    }
+  }, [setMessages]);
+
+  // Delete session
+  const deleteSession = useCallback(async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+      if (response.ok) {
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+        if (dbSessionId === sessionId) {
+          createNewChat();
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  }, [dbSessionId, createNewChat]);
 
   const handleLogout = async () => {
     try {
-      // sign out client-side
       await supabase.auth.signOut();
-      // clear server-side session as well
       await fetch('/api/auth/session', { method: 'DELETE' });
       setIsLogoutOpen(false);
       router.push('/login');
-    } catch (err) {
-      // fallback: just go to login
+    } catch {
       setIsLogoutOpen(false);
       router.push('/login');
     }
   };
 
+  // Calculate main content margin based on sidebar (only on desktop)
+  const getMainMargin = () => {
+    if (!isDesktop) return 0; // Mobile: no margin, sidebar is overlay
+    if (!isSidebarOpen) return 0;
+    return 288; // w-72 = 18rem = 288px
+  };
+
   return (
-    <div className="flex h-screen bg-white">
-      
+    <div className="h-screen bg-gray-50 overflow-hidden">
+      {/* Header */}
+      <ChatHeader
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        createNewChat={createNewChat}
+        currentUser={currentUser}
+        profileMenuOpen={profileMenuOpen}
+        setProfileMenuOpen={setProfileMenuOpen}
+        setIsLogoutOpen={setIsLogoutOpen}
+      />
+
       {/* Sidebar */}
-      {/* Left Sidebar - hidden on small screens, toggled via menu */}
-      <aside className={`hidden md:block w-64 bg-gray-50 border-r-2 border-black p-4`}> 
-        <div className="mb-6 border-b-2 border-black pb-4 flex justify-center">
-          <Link href="/chat" className="text-2xl font-black"><img src="2-photoroom.png" alt="manymarkets" className='h-12 w-auto' /></Link>
-        </div>
-        <button onClick={createNewChat} className="w-full bg-uvz-orange text-white py-3 px-4 border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all font-bold flex items-center justify-center gap-2">
-          <Plus className="w-5 h-5" />
-          New Session
-        </button>
-        
-        <div className="mt-8">
-          <h3 className="text-xs font-bold uppercase text-gray-600 mb-3">Phase Progress</h3>
-          <div className="space-y-4">
-            <div className="bg-white border-2 border-black p-3">
-              <p className="text-xs font-bold text-gray-600 mb-1">Current Phase</p>
-              <p className="font-black">Discovery</p>
-              <div className="mt-2 h-2 bg-gray-200 border border-black">
-                <div className="h-full bg-uvz-orange" style={{ width: '40%' }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <ChatSidebar
+        isOpen={isSidebarOpen}
+        isMobile={!isDesktop}
+        onClose={() => setIsSidebarOpen(false)}
+        createNewChat={createNewChat}
+        isLogoutOpen={isLogoutOpen}
+        setIsLogoutOpen={setIsLogoutOpen}
+        handleLogout={handleLogout}
+        sessions={sessions}
+        currentSessionId={dbSessionId}
+        onSelectSession={loadSession}
+        onDeleteSession={deleteSession}
+      />
 
-      {/* Mobile Left Sidebar Drawer (overlay) */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
-          <div className="w-64 bg-white border-r-4 border-black p-4 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <Link href="/" className="text-xl font-black">manymarket research tool</Link>
-              <button onClick={() => setIsSidebarOpen(false)} className="p-2 border-2 border-black rounded">Close</button>
-            </div>
-            <button onClick={createNewChat} className="w-full bg-uvz-orange text-white py-3 px-4 border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all font-bold flex items-center justify-center gap-2">
-              <Plus className="w-5 h-5" />
-              New Session
-            </button>
-            <div className="mt-8">
-              <h3 className="text-xs font-bold uppercase text-gray-600 mb-3">Phase Progress</h3>
-              <div className="space-y-4">
-                <div className="bg-white border-2 border-black p-3">
-                  <p className="text-xs font-bold text-gray-600 mb-1">Current Phase</p>
-                  <p className="font-black">Discovery</p>
-                  <div className="mt-2 h-2 bg-gray-200 border border-black">
-                    <div className="h-full bg-uvz-orange" style={{ width: '40%' }} />
-                  </div>
+      {/* Main Chat Area - stretches full width and adjusts based on sidebar */}
+      <main
+        style={{ marginLeft: getMainMargin() }}
+        className="h-screen pt-16 flex flex-col transition-all duration-300 ease-in-out"
+      >
+        {/* Messages Container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            {/* Empty state */}
+            {messages.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-16"
+              >
+                <div className="w-20 h-20 bg-yellow-300 border-4 border-black mx-auto mb-6 flex items-center justify-center shadow-brutal">
+                  <Sparkles className="w-10 h-10" />
                 </div>
-              </div>
-            </div>
-            {/* Insights content moved into left sidebar */}
-            <div className="mt-6">
-              <h3 className="font-black text-lg mb-4 uppercase">📊 Insights</h3>
-              <div className="space-y-4">
-                <div className="bg-white border-2 border-black p-4">
-                  <p className="text-sm font-bold text-gray-600 mb-2">Discovery Tips</p>
-                  <ul className="text-sm font-medium space-y-2">
-                    <li>✓ Be specific about your interests</li>
-                    <li>✓ Share your experience level</li>
-                    <li>✓ Consider audience size</li>
-                    <li>✓ Think about monetization</li>
-                  </ul>
-                </div>
-                <div className="bg-yellow-100 border-2 border-black p-4">
-                  <p className="text-xs font-bold uppercase mb-2">Quick Actions</p>
-                  <div className="space-y-2">
-                    <Link href="/marketplace" className="block text-sm font-bold text-center py-2 bg-white border-2 border-black hover:shadow-brutal transition-all">Browse Marketplace</Link>
-                    <Link href="/builder" className="block text-sm font-bold text-center py-2 bg-white border-2 border-black hover:shadow-brutal transition-all">Product Builder</Link>
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <button
-                    onClick={() => setIsLogoutOpen(true)}
-                    className="w-full bg-white text-black py-3 px-4 border-4 border-black font-bold hover:-translate-y-1 transition-all"
-                  >
-                    Log out
-                  </button>
-                </div>
-              </div>
-            </div>
-            {/* Logout confirmation modal */}
-            {isLogoutOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center">
-                <div onClick={() => setIsLogoutOpen(false)} className="absolute inset-0 bg-black/30" />
-                <div className="relative bg-white border-4 border-black p-6 w-full max-w-md mx-4">
-                  <h2 className="text-xl font-black mb-4">Are you sure you want to leave?</h2>
-                  <p className="text-sm text-gray-600 mb-6">If you log out, your session will be cleared and you'll be redirected to the login page.</p>
-                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setIsLogoutOpen(false)} className="px-4 py-2 border-2 border-black">Cancel</button>
-                    <button onClick={handleLogout} className="px-4 py-2 bg-uvz-orange text-white border-4 border-black font-bold">Log out</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div onClick={() => setIsSidebarOpen(false)} className="flex-1 bg-black/30" />
-              {currentUser ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                    className="flex items-center gap-2 p-2 border-2 border-black rounded bg-white"
-                    aria-label="Profile menu"
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="font-bold text-sm">{(currentUser as any)?.email ?? 'Profile'}</span>
-                  </button>
-                  {profileMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white border-2 border-black p-2 z-50">
-                      <button onClick={() => { setProfileMenuOpen(false); setIsLogoutOpen(true); }} className="w-full text-left px-2 py-1">Log out</button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Link href="/login" className="px-3 py-2 border-2 border-black bg-white">Login</Link>
-              )}
-              
-          </div>
-        )}
-      {/* Main Chat Area */}
-        
-        {/* Messages */}
-        <main className="flex-1 flex flex-col pt-20">
-          
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {messages.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-2xl mx-auto text-center mt-20"
-            >
-              <div className="w-20 h-20 bg-yellow-300 border-4 border-black mx-auto mb-6 flex items-center justify-center">
-                <Sparkles className="w-10 h-10" />
-              </div>
-          <p className="text-lg font-medium text-gray-700 mb-8">
-            I'll guide you through finding your Unique Value Zone—a profitable niche that matches your skills and market demand.
-          </p>
-          <div className="flex-1 flex flex-col">
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {['Find niches in health tech', 'Discover AI tool opportunities', 'Explore digital product ideas'].map((prompt, i) => (
+                <h2 className="text-2xl font-black mb-4">Find Your Unique Value Zone</h2>
+                <p className="text-lg font-medium text-gray-600 mb-8 max-w-xl mx-auto">
+                  I'll guide you through finding a profitable niche that matches your skills and market demand.
+                </p>
+                
+                {/* Start New Session Button */}
                 <button
-                  key={i}
-                  onClick={() => {
-                    sendMessage({ text: prompt });
-                  }}
-                  className="bg-white border-4 border-black p-4 font-bold text-left hover:-translate-y-1 hover:shadow-brutal transition-all"
+                  onClick={() => setIsNewSessionModalOpen(true)}
+                  className="bg-uvz-orange text-white border-4 border-black px-8 py-4 font-black text-lg shadow-brutal hover:-translate-y-1 hover:shadow-brutal-lg transition-all rounded mb-8"
                 >
-                  {prompt}
+                  🚀 Start New Research Session
                 </button>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-          )}
-
-          {messages.map((message: UIMessage) => {
-            const textContent = message.parts
-              .filter((part: any) => part.type === 'text')
-              .map((part: any) => part.text)
-              .join('');
-            const toolParts = message.parts.filter((part: any) => part.type === 'tool-call' || part.type === 'tool-result');
-            
-            return (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-                <div className={`flex gap-3 max-w-[80%] sm:max-w-full ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                {/* Avatar */}
-                <div className={`w-10 h-10 shrink-0 border-4 border-black flex items-center justify-center ${
-                  message.role === 'user' ? 'bg-blue-300' : 'bg-yellow-300'
-                }`}>
-                  {message.role === 'user' ? (
-                    <User className="w-5 h-5" />
-                  ) : (
-                    <Bot className="w-5 h-5" />
-                  )}
-                </div>
-
-                {/* Message Content */}
-                <div className={`border-4 border-black p-4 shadow-brutal ${
-                  message.role === 'user' ? 'bg-blue-50' : 'bg-white'
-                }`}>
-                  {textContent && <p className="font-medium whitespace-pre-wrap wrap-break-word">{textContent}</p>}
-                  
-                  {/* Display tool results if any */}
-                  {toolParts.map((part: any, idx: number) => (
-                    <div key={idx} className="mt-4 p-3 bg-yellow-100 border-2 border-black">
-                      <p className="text-sm font-bold mb-2 uppercase">🔧 {part.toolName?.replace(/_/g, ' ') || 'Tool'}</p>
-                      {part.type === 'tool-result' && part.result && (
-                        <pre className="text-xs overflow-x-auto font-mono bg-white p-2 border-2 border-black">
-                          {JSON.stringify(part.result, null, 2)}
-                        </pre>
-                      )}
-                      {part.type === 'tool-call' && (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-sm font-medium">Processing...</span>
-                        </div>
-                      )}
-                    </div>
+                
+                <p className="text-sm text-gray-500 mb-4">Or try a quick prompt:</p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {['Find niches in health tech', 'Discover AI tool opportunities', 'Explore digital product ideas'].map((prompt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSendMessage(prompt)}
+                      className="bg-white border-2 border-black px-4 py-3 font-bold text-left hover:-translate-y-1 hover:shadow-brutal transition-all rounded"
+                    >
+                      {prompt}
+                    </button>
                   ))}
                 </div>
-              </div>
-            </motion.div>
-          )})}
+              </motion.div>
+            )}
 
-          {status === 'streaming' && (
-            <div className="flex justify-start">
-              <div className="flex gap-3 max-w-[80%]">
-                <div className="w-10 h-10 shrink-0 bg-yellow-300 border-4 border-black flex items-center justify-center">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div className="border-4 border-black p-4 shadow-brutal bg-white">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="font-medium">Thinking...</span>
+            {/* Messages */}
+            <div className="space-y-6">
+              {messages.map((message: UIMessage) => {
+                const textContent = message.parts
+                  .filter((part: any) => part.type === 'text')
+                  .map((part: any) => part.text)
+                  .join('');
+                const toolParts = message.parts.filter((part: any) => part.type === 'tool-call' || part.type === 'tool-result');
+
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                      {/* Avatar */}
+                      <div className={`w-10 h-10 shrink-0 rounded-lg border-2 border-black hidden sm:flex items-center justify-center ${
+                        message.role === 'user' ? 'bg-blue-400' : 'bg-yellow-300'
+                      }`}>
+                        {message.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                      </div>
+
+                      {/* Message Bubble */}
+                      <div className={`px-4 py-3 rounded-2xl shadow-sm ${
+                        message.role === 'user'
+                          ? 'bg-blue-600 text-white rounded-br-md'
+                          : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md'
+                      }`}>
+                        {textContent && (
+                          <p className="font-medium whitespace-pre-wrap break-words leading-relaxed">
+                            {textContent}
+                          </p>
+                        )}
+
+                        {/* Tool Results */}
+                        {toolParts.map((part: any, idx: number) => (
+                          <div key={idx} className="mt-3 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                            <p className="text-sm font-bold mb-2 text-yellow-800">
+                              🔧 {part.toolName?.replace(/_/g, ' ') || 'Tool'}
+                            </p>
+                            {part.type === 'tool-result' && part.result && (
+                              <pre className="text-xs overflow-x-auto font-mono bg-white p-2 border border-yellow-200 rounded">
+                                {JSON.stringify(part.result, null, 2)}
+                              </pre>
+                            )}
+                            {part.type === 'tool-call' && (
+                              <div className="flex items-center gap-2 text-yellow-700">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span className="text-sm font-medium">Processing...</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {/* Streaming indicator */}
+              {status === 'streaming' && (
+                <div className="flex justify-start">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 shrink-0 bg-yellow-300 rounded-lg border-2 border-black flex items-center justify-center">
+                      <Bot className="w-5 h-5" />
+                    </div>
+                    <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="font-medium">Thinking...</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Input */}
-        <div className="border-t-4 border-black p-4 bg-white sticky bottom-0 z-20">
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (input.trim()) {
-                sendMessage({ text: input });
-                setInput('');
-              }
-            }}
-            className="max-w-4xl mx-auto"
-          >
-            <div className="flex gap-3">
-              <input
+        {/* Input Area */}
+        <div className="border-t border-gray-200 bg-white">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (input.trim()) {
+                  handleSendMessage(input);
+                  setInput('');
+                }
+              }}
+              className="flex gap-3"
+            >
+              <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your answer..."
-                className="flex-1 px-4 py-3 border-4 border-black focus:outline-none focus:ring-4 focus:ring-uvz-orange/20 font-medium"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (input.trim()) {
+                      handleSendMessage(input);
+                      setInput('');
+                    }
+                  }
+                }}
+                rows={1}
+                placeholder="Type your message... (Enter to send, Shift+Enter for newline)"
+                className="flex-1 px-4 py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-uvz-orange focus:border-uvz-orange font-medium resize-none"
                 disabled={status === 'streaming'}
               />
               <button
                 type="submit"
                 disabled={status === 'streaming' || !input.trim()}
-                className="px-6 py-3 bg-uvz-orange text-white border-4 border-black font-bold hover:-translate-y-1 hover:shadow-brutal transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2"
+                className="px-6 py-3 bg-uvz-orange text-white border-2 border-black font-bold rounded-xl hover:-translate-y-0.5 hover:shadow-brutal transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2"
               >
                 <Send className="w-5 h-5" />
-                Send
+                <span className="hidden sm:inline">Send</span>
               </button>
+            </form>
+          </div>
+
+          {/* Product Cards */}
+          <div className="border-t border-gray-100 bg-gray-50 px-4 py-4">
+            <div className="max-w-4xl mx-auto">
+              <h3 className="text-sm font-bold uppercase text-gray-500 mb-3">Suggested Products</h3>
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4">
+                {[
+                  { id: 'p1', title: 'AI Niche Report', price: '$49', description: 'Detailed report on niche viability and competition.' },
+                  { id: 'p2', title: 'Landing Page Kit', price: '$29', description: 'Templates and assets for your product landing page.' },
+                  { id: 'p3', title: 'Audience Builder Pack', price: '$79', description: 'Email and social playbooks to grow your audience.' },
+                ].map((p) => (
+                  <div key={p.id} className="min-w-[240px] bg-white border-2 border-black rounded-lg p-4 shadow-sm hover:shadow-brutal transition-shadow">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-bold text-sm">{p.title}</h4>
+                      <span className="font-black text-uvz-orange">{p.price}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-4">{p.description}</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => sendMessage({ text: `Tell me more about ${p.title}` })}
+                        className="flex-1 text-sm border-2 border-black px-3 py-2 bg-white font-bold rounded hover:bg-gray-50 transition-colors"
+                      >
+                        Discuss
+                      </button>
+                      <Link
+                        href={`/marketplace/${p.id}`}
+                        className="text-sm border-2 border-black px-3 py-2 bg-uvz-orange text-white font-bold rounded hover:bg-orange-600 transition-colors"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </form>
+          </div>
         </div>
       </main>
 
-      {/* Insights are integrated into the left sidebar */}
-
-      {/* Insights are integrated into the sidebar; no separate mobile drawer needed */}
-
-      {/* End of layout */}
+      {/* New Session Modal */}
+      <NewSessionModal
+        isOpen={isNewSessionModalOpen}
+        onClose={() => setIsNewSessionModalOpen(false)}
+        onCreateSession={handleCreateNewSession}
+        isCreating={isCreatingSession}
+      />
     </div>
   );
 }
