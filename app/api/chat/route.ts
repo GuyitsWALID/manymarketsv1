@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages } from 'ai';
-import { getModel, models } from '@/lib/ai/provider';
+import { models } from '@/lib/ai/provider';
 import { researchTools } from '@/lib/ai/tools';
 import { SYSTEM_PROMPTS } from '@/lib/ai/prompts';
 
@@ -60,20 +60,58 @@ Then restart the development server. 🚀`;
       });
     }
 
-    // Get the model with automatic fallback
-    const model = getModel();
-    console.log('Using model:', hasGroq ? 'Groq Llama 3.3 70B' : 'Gemini 2.0 Flash');
+    // Use Groq as primary (most generous free tier)
+    // Fallback to Gemini if Groq fails
+    let result;
+    let usedModel = '';
+    
+    if (hasGroq) {
+      try {
+        console.log('Using Groq Llama 3.3 70B...');
+        result = await streamText({
+          model: models.groqLlama70B(),
+          messages,
+          system: SYSTEM_PROMPTS.chatbot,
+          onFinish: ({ text, finishReason }) => {
+            console.log('Stream finished:', { finishReason, textLength: text?.length });
+          },
+        });
+        usedModel = 'Groq Llama 3.3 70B';
+      } catch (groqError: unknown) {
+        console.error('Groq failed, trying Gemini fallback:', groqError);
+        // If Groq fails, try Gemini
+        if (hasGemini) {
+          console.log('Falling back to Gemini 2.0 Flash...');
+          result = await streamText({
+            model: models.geminiFlash(),
+            messages,
+            system: SYSTEM_PROMPTS.chatbot,
+            onFinish: ({ text, finishReason }) => {
+              console.log('Stream finished:', { finishReason, textLength: text?.length });
+            },
+          });
+          usedModel = 'Gemini 2.0 Flash (fallback)';
+        } else {
+          throw groqError; // Re-throw if no fallback available
+        }
+      }
+    } else if (hasGemini) {
+      // Only Gemini available
+      console.log('Using Gemini 2.0 Flash...');
+      result = await streamText({
+        model: models.geminiFlash(),
+        messages,
+        system: SYSTEM_PROMPTS.chatbot,
+        onFinish: ({ text, finishReason }) => {
+          console.log('Stream finished:', { finishReason, textLength: text?.length });
+        },
+      });
+      usedModel = 'Gemini 2.0 Flash';
+    } else {
+      throw new Error('No AI provider available');
+    }
 
-    const result = await streamText({
-      model,
-      messages,
-      system: SYSTEM_PROMPTS.chatbot,
-      onFinish: ({ text, finishReason }) => {
-        console.log('Stream finished:', { finishReason, textLength: text?.length });
-      },
-    });
-
-    console.log('Streaming response started');
+    console.log('Streaming response started with:', usedModel);
     
     // AI SDK v5 - use toUIMessageStreamResponse() for useChat with DefaultChatTransport
     return result.toUIMessageStreamResponse();
