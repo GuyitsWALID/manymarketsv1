@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings } from 'lucide-react';
+import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -77,7 +77,7 @@ const pricingPlans = [
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'danger'>('profile');
+  const [openSection, setOpenSection] = useState<'profile' | 'subscription' | 'danger' | null>('profile');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -92,6 +92,10 @@ export default function SettingsPage() {
   
   const router = useRouter();
   const supabase = createClient();
+
+  const toggleSection = (section: 'profile' | 'subscription' | 'danger') => {
+    setOpenSection(openSection === section ? null : section);
+  };
 
   // Handle responsive
   useEffect(() => {
@@ -188,77 +192,53 @@ export default function SettingsPage() {
 
       {/* Main Content */}
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen && !isMobile ? 'ml-72' : ''}`}>
-        <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="max-w-3xl mx-auto px-4 py-8">
           {/* Settings Title */}
           <h1 className="text-3xl font-black mb-8 flex items-center gap-3">
             <Settings className="w-8 h-8" />
             Settings
           </h1>
 
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Settings Navigation */}
-            <nav className="w-full lg:w-64 shrink-0">
-              <div className="bg-white border-2 border-black rounded shadow-brutal overflow-hidden">
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className={`w-full text-left px-4 py-3 font-bold flex items-center gap-3 transition-colors ${
-                    activeTab === 'profile' ? 'bg-uvz-orange text-white' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <User className="w-5 h-5" />
-                  Profile
-                </button>
-                <div className="border-t border-gray-200" />
-                <button
-                  onClick={() => setActiveTab('subscription')}
-                  className={`w-full text-left px-4 py-3 font-bold flex items-center gap-3 transition-colors ${
-                    activeTab === 'subscription' ? 'bg-uvz-orange text-white' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5" />
-                  Subscription
-                </button>
-                <div className="border-t border-gray-200" />
-                <button
-                  onClick={() => setActiveTab('danger')}
-                  className={`w-full text-left px-4 py-3 font-bold flex items-center gap-3 transition-colors ${
-                    activeTab === 'danger' ? 'bg-red-600 text-white' : 'text-red-600 hover:bg-red-50'
-                  }`}
-                >
-                  <Trash2 className="w-5 h-5" />
-                  Delete Account
-                </button>
-              </div>
-            </nav>
-
-            {/* Main Content */}
-            <div className="flex-1">
-              {/* Profile Tab */}
-            {activeTab === 'profile' && (
-              <div className="bg-white border-2 border-black rounded shadow-brutal p-6">
-                <h2 className="text-xl font-black mb-6 flex items-center gap-2">
-                  <User className="w-6 h-6" />
-                  Your Profile
-                </h2>
-                
-                <div className="space-y-6">
-                  {/* Avatar */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 bg-uvz-orange border-2 border-black rounded-full flex items-center justify-center text-white text-2xl font-black">
-                      {user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <p className="font-bold text-lg">{user?.email}</p>
-                      <p className="text-gray-600 text-sm">
-                        Member since {new Date(user?.created_at).toLocaleDateString('en-US', { 
-                          month: 'long', 
-                          year: 'numeric' 
-                        })}
-                      </p>
-                    </div>
+          {/* Accordion Sections */}
+          <div className="space-y-4">
+            
+            {/* Profile Section */}
+            <div className="bg-white border-2 border-black rounded-lg shadow-brutal overflow-hidden">
+              <button
+                onClick={() => toggleSection('profile')}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-uvz-orange rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
                   </div>
+                  <div className="text-left">
+                    <h2 className="text-lg font-black">Profile</h2>
+                    <p className="text-sm text-gray-500">Manage your account information</p>
+                  </div>
+                </div>
+                <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${openSection === 'profile' ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {openSection === 'profile' && (
+                <div className="px-6 pb-6 border-t-2 border-gray-100">
+                  <div className="pt-6 space-y-6">
+                    {/* Avatar */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 bg-uvz-orange border-2 border-black rounded-full flex items-center justify-center text-white text-2xl font-black">
+                        {user?.email?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">{user?.email}</p>
+                        <p className="text-gray-600 text-sm">
+                          Member since {new Date(user?.created_at).toLocaleDateString('en-US', { 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                    </div>
 
-                  <div className="border-t border-gray-200 pt-6">
                     <div className="grid gap-4">
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Email Address</label>
@@ -292,118 +272,143 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Subscription Tab */}
-            {activeTab === 'subscription' && (
-              <div className="space-y-6">
-                <div className="bg-white border-2 border-black rounded shadow-brutal p-6">
-                  <h2 className="text-xl font-black mb-2 flex items-center gap-2">
-                    <CreditCard className="w-6 h-6" />
-                    Manage Subscription
-                  </h2>
-                  <p className="text-gray-600 mb-6">
-                    Choose the plan that works best for you. Upgrade anytime to unlock more features.
-                  </p>
-
-                  {/* Current Plan Banner */}
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded p-4 mb-6">
-                    <p className="font-bold text-blue-800">
-                      Your current plan: <span className="text-uvz-orange">{currentPlan}</span>
-                    </p>
+            {/* Subscription Section */}
+            <div className="bg-white border-2 border-black rounded-lg shadow-brutal overflow-hidden">
+              <button
+                onClick={() => toggleSection('subscription')}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-lg font-black">Subscription</h2>
+                    <p className="text-sm text-gray-500">Manage your plan and billing</p>
                   </div>
                 </div>
+                <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${openSection === 'subscription' ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {openSection === 'subscription' && (
+                <div className="px-6 pb-6 border-t-2 border-gray-100">
+                  <div className="pt-6">
+                    {/* Current Plan Banner */}
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded p-4 mb-6">
+                      <p className="font-bold text-blue-800">
+                        Your current plan: <span className="text-uvz-orange">{currentPlan}</span>
+                      </p>
+                    </div>
 
-                {/* Pricing Cards */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  {pricingPlans.map((plan, i) => {
-                    const Icon = plan.icon;
-                    const isCurrentPlan = plan.name === currentPlan;
-                    
-                    return (
-                      <div
-                        key={plan.name}
-                        className={`bg-white border-2 border-black rounded shadow-brutal p-6 flex flex-col relative ${
-                          plan.popular ? 'ring-4 ring-uvz-orange ring-offset-2' : ''
-                        } ${isCurrentPlan ? 'bg-orange-50' : ''}`}
-                      >
-                        {plan.popular && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-uvz-orange text-white px-4 py-1 text-xs font-black uppercase border-2 border-black rounded">
-                            Most Popular
+                    {/* Pricing Cards */}
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {pricingPlans.map((plan) => {
+                        const Icon = plan.icon;
+                        const isCurrentPlan = plan.name === currentPlan;
+                        
+                        return (
+                          <div
+                            key={plan.name}
+                            className={`border-2 border-black rounded p-4 flex flex-col relative ${
+                              plan.popular ? 'ring-2 ring-uvz-orange ring-offset-1' : ''
+                            } ${isCurrentPlan ? 'bg-orange-50' : 'bg-white'}`}
+                          >
+                            {plan.popular && (
+                              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-uvz-orange text-white px-3 py-0.5 text-xs font-black uppercase border-2 border-black rounded">
+                                Popular
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center gap-2 mb-3">
+                              <Icon className={`w-5 h-5 ${plan.popular ? 'text-uvz-orange' : 'text-gray-600'}`} />
+                              <h3 className="text-lg font-black">{plan.name}</h3>
+                            </div>
+                            
+                            <div className="mb-3">
+                              <span className="text-2xl font-black">{plan.price}</span>
+                              <span className="text-gray-600 text-xs font-bold ml-1">/{plan.period}</span>
+                            </div>
+                            
+                            <p className="text-gray-600 text-xs mb-4">{plan.description}</p>
+                            
+                            <ul className="space-y-1.5 mb-4 flex-1">
+                              {plan.features.slice(0, 4).map((feature, fi) => (
+                                <li key={fi} className="flex items-start gap-1.5 text-xs">
+                                  <Check className="w-3 h-3 text-green-600 shrink-0 mt-0.5" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                              {plan.features.length > 4 && (
+                                <li className="text-xs text-gray-500">+{plan.features.length - 4} more</li>
+                              )}
+                            </ul>
+                            
+                            <button
+                              disabled={isCurrentPlan}
+                              className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm transition-all ${
+                                isCurrentPlan
+                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                  : plan.popular
+                                  ? 'bg-uvz-orange text-white hover:-translate-y-0.5 shadow-brutal'
+                                  : 'bg-white text-black hover:bg-gray-50 shadow-brutal hover:-translate-y-0.5'
+                              }`}
+                            >
+                              {isCurrentPlan ? 'Current' : plan.cta}
+                            </button>
                           </div>
-                        )}
-                        
-                        <div className="flex items-center gap-2 mb-4">
-                          <Icon className={`w-6 h-6 ${plan.popular ? 'text-uvz-orange' : 'text-gray-600'}`} />
-                          <h3 className="text-xl font-black">{plan.name}</h3>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <span className="text-4xl font-black">{plan.price}</span>
-                          <span className="text-gray-600 text-sm font-bold ml-1">/{plan.period}</span>
-                        </div>
-                        
-                        <p className="text-gray-600 text-sm mb-6">{plan.description}</p>
-                        
-                        <ul className="space-y-2 mb-6 flex-1">
-                          {plan.features.map((feature, fi) => (
-                            <li key={fi} className="flex items-start gap-2 text-sm">
-                              <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        
-                        <button
-                          disabled={isCurrentPlan}
-                          className={`w-full py-3 px-4 font-bold border-2 border-black rounded transition-all ${
-                            isCurrentPlan
-                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              : plan.popular
-                              ? 'bg-uvz-orange text-white hover:-translate-y-0.5 shadow-brutal'
-                              : 'bg-white text-black hover:bg-gray-50 shadow-brutal hover:-translate-y-0.5'
-                          }`}
-                        >
-                          {isCurrentPlan ? 'Current Plan' : plan.cta}
-                        </button>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Danger Zone Tab */}
-            {activeTab === 'danger' && (
-              <div className="bg-white border-2 border-red-500 rounded shadow-brutal p-6">
-                <h2 className="text-xl font-black mb-2 flex items-center gap-2 text-red-600">
-                  <AlertTriangle className="w-6 h-6" />
-                  Danger Zone
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Once you delete your account, there is no going back. Please be certain.
-                </p>
-
-                <div className="bg-red-50 border-2 border-red-200 rounded p-4 mb-6">
-                  <h3 className="font-bold text-red-800 mb-2">What happens when you delete your account:</h3>
-                  <ul className="text-red-700 text-sm space-y-1">
-                    <li>• All your chat sessions and research data will be permanently deleted</li>
-                    <li>• Your subscription will be cancelled immediately</li>
-                    <li>• You will lose access to all your saved UVZ research</li>
-                    <li>• This action cannot be undone</li>
-                  </ul>
-                </div>
-
-                <button
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  className="px-6 py-3 bg-red-600 text-white font-bold border-2 border-black rounded shadow-brutal hover:-translate-y-0.5 transition-transform"
-                >
-                  Delete My Account
-                </button>
-              </div>
-            )}
+              )}
             </div>
+
+            {/* Danger Zone Section */}
+            <div className="bg-white border-2 border-red-500 rounded-lg shadow-brutal overflow-hidden">
+              <button
+                onClick={() => toggleSection('danger')}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-red-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+                    <Trash2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-lg font-black text-red-600">Danger Zone</h2>
+                    <p className="text-sm text-red-400">Delete your account permanently</p>
+                  </div>
+                </div>
+                <ChevronDown className={`w-6 h-6 text-red-500 transition-transform duration-300 ${openSection === 'danger' ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {openSection === 'danger' && (
+                <div className="px-6 pb-6 border-t-2 border-red-100">
+                  <div className="pt-6">
+                    <div className="bg-red-50 border-2 border-red-200 rounded p-4 mb-6">
+                      <h3 className="font-bold text-red-800 mb-2">What happens when you delete your account:</h3>
+                      <ul className="text-red-700 text-sm space-y-1">
+                        <li>• All your chat sessions and research data will be permanently deleted</li>
+                        <li>• Your subscription will be cancelled immediately</li>
+                        <li>• You will lose access to all your saved UVZ research</li>
+                        <li>• This action cannot be undone</li>
+                      </ul>
+                    </div>
+
+                    <button
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      className="px-6 py-3 bg-red-600 text-white font-bold border-2 border-black rounded shadow-brutal hover:-translate-y-0.5 transition-transform"
+                    >
+                      Delete My Account
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </main>
