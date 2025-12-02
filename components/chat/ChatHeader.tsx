@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Plus, User, Menu, X, Settings, LogOut } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface ChatHeaderProps {
   isSidebarOpen: boolean;
@@ -24,6 +25,7 @@ export default function ChatHeader({
   setIsLogoutOpen,
 }: ChatHeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function ChatHeader({
                 <button
                   onClick={() => {
                     setProfileMenuOpen(false);
-                    // TODO: Navigate to settings page when available
+                    router.push('/settings');
                   }}
                   className="w-full text-left px-4 py-3 hover:bg-gray-100 font-medium flex items-center gap-3 transition-colors"
                 >
