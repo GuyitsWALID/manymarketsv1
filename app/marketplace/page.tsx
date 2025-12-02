@@ -23,9 +23,12 @@ import {
   Package,
   ChevronDown,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  Menu
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import ChatSidebar from '@/components/chat/ChatSidebar';
+import ChatHeader from '@/components/chat/ChatHeader';
 
 // Icon mapping for categories
 const categoryIcons: Record<string, React.ElementType> = {
@@ -78,6 +81,14 @@ interface Product {
   };
 }
 
+interface Session {
+  id: string;
+  title: string;
+  phase: string;
+  created_at: string;
+  last_message_at: string;
+}
+
 export default function MarketplacePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -100,7 +111,24 @@ export default function MarketplacePage() {
   const [savedProducts, setSavedProducts] = useState<Set<string>>(new Set());
   const [user, setUser] = useState<any>(null);
   
+  // Sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  
   const supabase = createClient();
+
+  // Handle responsive
+  useEffect(() => {
+    function handleResize() {
+      setIsDesktop(window.innerWidth >= 768);
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch categories
   useEffect(() => {
@@ -130,6 +158,17 @@ export default function MarketplacePage() {
         
         if (saves) {
           setSavedProducts(new Set(saves.map(s => s.product_id)));
+        }
+        
+        // Load sessions for sidebar
+        try {
+          const response = await fetch('/api/sessions');
+          if (response.ok) {
+            const { sessions: userSessions } = await response.json();
+            setSessions(userSessions || []);
+          }
+        } catch (e) {
+          console.error('Failed to load sessions:', e);
         }
       }
     }
@@ -210,73 +249,74 @@ export default function MarketplacePage() {
     return categoryIcons[iconName] || Package;
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
+  const createNewChat = () => {
+    router.push('/chat');
+  };
+
+  const isMobile = !isDesktop;
+
   return (
     <div className="min-h-screen bg-uvz-cream">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            {/* Logo & Back */}
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2">
-                <img src="/2-Photoroom.png" alt="manymarkets" className="h-9 w-auto" />
-              </Link>
-              <div className="hidden sm:block h-8 w-px bg-gray-300" />
-              <h1 className="hidden sm:block text-xl font-black">Marketplace</h1>
-            </div>
+      <ChatHeader
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        createNewChat={createNewChat}
+        currentUser={user}
+        profileMenuOpen={profileMenuOpen}
+        setProfileMenuOpen={setProfileMenuOpen}
+        setIsLogoutOpen={setIsLogoutOpen}
+      />
 
-            {/* Search */}
-            <div className="flex-1 max-w-xl">
+      {/* Sidebar */}
+      <ChatSidebar
+        isOpen={isSidebarOpen}
+        isMobile={isMobile}
+        onClose={() => setIsSidebarOpen(false)}
+        createNewChat={createNewChat}
+        isLogoutOpen={isLogoutOpen}
+        setIsLogoutOpen={setIsLogoutOpen}
+        handleLogout={handleLogout}
+        sessions={sessions}
+        currentSessionId={null}
+      />
+
+      {/* Main Content */}
+      <main className={`pt-16 transition-all duration-300 ${isSidebarOpen && !isMobile ? 'ml-72' : ''}`}>
+        {/* Hero Section */}
+        <section className="bg-gradient-to-r from-uvz-orange to-orange-500 border-b-2 border-black py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-2">
+              Discover Digital Products
+            </h2>
+            <p className="text-lg text-white/90 max-w-2xl mx-auto mb-6">
+              Explore products built by entrepreneurs who found their Unique Value Zone.
+            </p>
+            
+            {/* Search Bar */}
+            <div className="max-w-xl mx-auto">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border-2 border-black rounded-lg focus:ring-2 focus:ring-uvz-orange focus:outline-none"
+                  className="w-full pl-12 pr-4 py-3 bg-white border-2 border-black rounded-lg focus:ring-2 focus:ring-white focus:outline-none text-lg"
                 />
               </div>
             </div>
-
-            {/* Auth */}
-            <div className="flex items-center gap-3">
-              {user ? (
-                <Link
-                  href="/chat"
-                  className="px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded shadow-brutal hover:-translate-y-0.5 transition-transform"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <Link
-                  href="/login"
-                  className="px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded shadow-brutal hover:-translate-y-0.5 transition-transform"
-                >
-                  Sign In
-                </Link>
-              )}
-            </div>
           </div>
-        </div>
-      </header>
+        </section>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-uvz-orange to-orange-500 border-b-2 border-black py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
-            Discover Digital Products
-          </h2>
-          <p className="text-xl text-white/90 max-w-2xl mx-auto">
-            Explore products built by entrepreneurs who found their Unique Value Zone. 
-            Get inspired and find solutions for your business.
-          </p>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Filters Bar */}
+        {/* Products Section */}
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Filters Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           {/* Category Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -619,16 +659,8 @@ export default function MarketplacePage() {
             </button>
           </div>
         )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t-2 border-black bg-white py-8 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-600">
-            © 2024 ManyMarkets. All products are created by our community.
-          </p>
         </div>
-      </footer>
+      </main>
     </div>
   );
 }
