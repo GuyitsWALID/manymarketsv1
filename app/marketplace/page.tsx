@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -89,7 +89,7 @@ interface Session {
   last_message_at: string;
 }
 
-export default function MarketplacePage() {
+function MarketplaceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -662,5 +662,17 @@ export default function MarketplacePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function MarketplacePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-uvz-orange border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <MarketplaceContent />
+    </Suspense>
   );
 }
