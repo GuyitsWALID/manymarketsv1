@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Menu, X, Settings, LogOut, Plus, MessageSquare, Search, Target, Crosshair, CheckCircle, Lightbulb } from 'lucide-react';
+import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatSidebar from '@/components/chat/ChatSidebar';
 
 interface Session {
   id: string;
@@ -13,22 +14,6 @@ interface Session {
   created_at: string;
   last_message_at: string;
 }
-
-// Phase configuration
-const PHASES = [
-  { id: 'discovery', name: 'Discovery', icon: Search, color: 'text-blue-600' },
-  { id: 'niche_drilling', name: 'Niche', icon: Target, color: 'text-purple-600' },
-  { id: 'uvz_identification', name: 'UVZ', icon: Crosshair, color: 'text-uvz-orange' },
-  { id: 'validation', name: 'Validation', icon: CheckCircle, color: 'text-green-600' },
-  { id: 'product_ideation', name: 'Product', icon: Lightbulb, color: 'text-yellow-600' },
-  { id: 'completed', name: 'Completed', icon: CheckCircle, color: 'text-green-700' },
-] as const;
-
-const getPhaseIndex = (phase: string): number => {
-  const normalizedPhase = phase?.toLowerCase() || 'discovery';
-  const phaseIndex = PHASES.findIndex(p => p.id === normalizedPhase);
-  return phaseIndex === -1 ? 0 : phaseIndex;
-};
 
 const pricingPlans = [
   {
@@ -104,7 +89,6 @@ export default function SettingsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   
   const router = useRouter();
   const supabase = createClient();
@@ -118,19 +102,6 @@ export default function SettingsPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    if (profileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [profileMenuOpen]);
 
   useEffect(() => {
     async function getUser() {
@@ -175,17 +146,6 @@ export default function SettingsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString();
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
@@ -196,135 +156,35 @@ export default function SettingsPage() {
 
   const isMobile = !isDesktop;
 
+  const createNewChat = () => {
+    router.push('/chat');
+  };
+
   return (
     <div className="min-h-screen bg-uvz-cream">
-      {/* Header - Same as Chat */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b-2 border-black flex items-center justify-between px-4 md:px-6">
-        {/* Left: Toggle + Logo */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 bg-uvz-orange text-white border-2 border-black rounded shadow-brutal hover:-translate-y-0.5 transition-transform"
-            aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-          >
-            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-          <Link href="/chat" className="flex items-center">
-            <img src="/2-Photoroom.png" alt="manymarkets" className="h-9 w-auto" />
-          </Link>
-        </div>
-
-        {/* Right: Profile */}
-        <div className="flex items-center gap-3">
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-              className="flex items-center gap-2 p-2 border-2 border-black rounded bg-white hover:bg-gray-50 transition-colors"
-              aria-label="Profile menu"
-            >
-              <User className="w-5 h-5" />
-              <span className="hidden md:inline font-bold text-sm truncate max-w-[120px]">
-                {user?.email ?? 'Profile'}
-              </span>
-            </button>
-            {profileMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border-2 border-black rounded shadow-brutal z-50 overflow-hidden">
-                <button
-                  onClick={() => setProfileMenuOpen(false)}
-                  className="w-full text-left px-4 py-3 bg-gray-100 font-medium flex items-center gap-3"
-                >
-                  <Settings className="w-4 h-4" />
-                  Settings
-                </button>
-                <div className="border-t border-gray-200" />
-                <button
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    setIsLogoutOpen(true);
-                  }}
-                  className="w-full text-left px-4 py-3 hover:bg-red-50 text-red-600 font-medium flex items-center gap-3 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Log out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Header */}
+      <ChatHeader
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        createNewChat={createNewChat}
+        currentUser={user}
+        profileMenuOpen={profileMenuOpen}
+        setProfileMenuOpen={setProfileMenuOpen}
+        setIsLogoutOpen={setIsLogoutOpen}
+      />
 
       {/* Sidebar */}
-      {isSidebarOpen && (
-        <>
-          {/* Mobile backdrop */}
-          {isMobile && (
-            <div
-              onClick={() => setIsSidebarOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            />
-          )}
-          
-          <aside className={`fixed top-0 left-0 bottom-0 z-40 bg-gray-50 border-r-2 border-black transition-all duration-300 w-72 flex flex-col ${
-            isMobile ? 'shadow-2xl' : 'top-16'
-          }`}>
-            {/* Mobile header */}
-            {isMobile && (
-              <div className="flex items-center justify-between p-4 border-b-2 border-black bg-white">
-                <Link href="/chat" className="flex items-center">
-                  <img src="/2-Photoroom.png" alt="manymarkets" className="h-8 w-auto" />
-                </Link>
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="p-2 bg-gray-100 border-2 border-black rounded hover:bg-gray-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto p-4">
-              {/* New Session Button */}
-              <Link
-                href="/chat"
-                className="w-full bg-uvz-orange text-white py-3 px-4 border-2 border-black shadow-brutal hover:-translate-y-0.5 transition-transform font-bold flex items-center justify-center gap-2 rounded"
-              >
-                <Plus className="w-5 h-5" />
-                <span>New Session</span>
-              </Link>
-
-              {/* Sessions List */}
-              {sessions.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-xs font-bold uppercase text-gray-500 mb-2">Recent Sessions</h3>
-                  <div className="space-y-2">
-                    {sessions.slice(0, 10).map((session) => {
-                      const phaseIndex = getPhaseIndex(session.phase);
-                      const PhaseIcon = PHASES[phaseIndex]?.icon || Search;
-                      const phaseColor = PHASES[phaseIndex]?.color || 'text-gray-500';
-                      
-                      return (
-                        <Link
-                          key={session.id}
-                          href={`/chat?session=${session.id}`}
-                          className="group relative bg-white border-2 border-black rounded p-3 block transition-all hover:shadow-brutal"
-                        >
-                          <div className="flex items-start gap-2">
-                            <PhaseIcon className={`w-4 h-4 shrink-0 mt-0.5 ${phaseColor}`} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate">{session.title}</p>
-                              <p className="text-xs text-gray-500">{formatDate(session.last_message_at || session.created_at)}</p>
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </aside>
-        </>
-      )}
+      <ChatSidebar
+        isOpen={isSidebarOpen}
+        isMobile={isMobile}
+        onClose={() => setIsSidebarOpen(false)}
+        createNewChat={createNewChat}
+        isLogoutOpen={isLogoutOpen}
+        setIsLogoutOpen={setIsLogoutOpen}
+        handleLogout={handleLogout}
+        sessions={sessions}
+        currentSessionId={null}
+      />
 
       {/* Main Content */}
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen && !isMobile ? 'ml-72' : ''}`}>
@@ -593,30 +453,6 @@ export default function SettingsPage() {
                 }`}
               >
                 {isDeleting ? 'Deleting...' : 'Delete Forever'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Logout Confirmation Modal */}
-      {isLogoutOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-black rounded shadow-brutal p-6 max-w-sm w-full">
-            <h3 className="text-xl font-black mb-4">Log out?</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to log out?</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setIsLogoutOpen(false)}
-                className="flex-1 px-4 py-2 border-2 border-black bg-white font-bold rounded hover:bg-gray-50"
-              >
-                No, stay
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 px-4 py-2 border-2 border-black bg-red-600 text-white font-bold rounded hover:-translate-y-0.5 transition-transform"
-              >
-                Yes, log out
               </button>
             </div>
           </div>
