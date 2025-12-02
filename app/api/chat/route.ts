@@ -64,14 +64,10 @@ Then restart the development server. 🚀`;
     const model = getModel();
     console.log('Using model:', hasGroq ? 'Groq Llama 3.3 70B' : 'Gemini 2.0 Flash');
 
-    const result = streamText({
+    const result = await streamText({
       model,
       messages,
-      // Temporarily commenting out tools to test basic streaming
-      // tools: researchTools,
       system: SYSTEM_PROMPTS.chatbot,
-      // maxSteps: 5,
-      // toolChoice: 'auto',
       onFinish: ({ text, finishReason }) => {
         console.log('Stream finished:', { finishReason, textLength: text?.length });
       },

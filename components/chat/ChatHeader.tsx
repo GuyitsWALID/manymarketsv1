@@ -35,7 +35,7 @@ export default function ChatHeader({
           {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
         <Link href="/chat" className="flex items-center">
-          <img src="/2-photoroom.png" alt="manymarkets" className="h-9 w-auto" />
+          <img src="2-photoroom.png" alt="manymarkets" className="h-9 w-auto" />
         </Link>
       </div>
 
