@@ -81,15 +81,6 @@ export default function Home() {
     };
   }, []);
 
-  // Show loading state while checking auth
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-uvz-orange border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
   // If the OAuth provider redirects back to the app root with a `code` query param (e.g. /?code=...),
   // forward the request to our auth callback route so we can exchange the code for a session.
   useEffect(() => {
@@ -104,6 +95,15 @@ export default function Home() {
       // swallow — nothing to do here
     }
   }, []);
+
+  // Show loading state while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-uvz-orange border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   const features = [
     { 
