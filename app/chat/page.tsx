@@ -6,11 +6,13 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Loader2, Bot, User } from 'lucide-react';
+import { Sparkles, Send, Loader2, Bot, User, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
 import NewSessionModal from '@/components/chat/NewSessionModal';
+import SkillsAssessmentModal, { type SkillsData } from '@/components/chat/SkillsAssessmentModal';
+import ProductSuggestionPanel, { type ProductSuggestion } from '@/components/chat/ProductSuggestionPanel';
 
 interface Session {
   id: string;
@@ -32,6 +34,14 @@ export default function ChatPage() {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false); // Prevent duplicate responses when loading history
+  
+  // Research completion state
+  const [isResearchComplete, setIsResearchComplete] = useState(false);
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
+  const [isProductPanelOpen, setIsProductPanelOpen] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([]);
+  const [researchSummary, setResearchSummary] = useState({ niche: '', uvz: '', targetAudience: '' });
   
   // Chat session
   const [chatSessionId, setChatSessionId] = useState(() => `uvz-chat-${Date.now()}`);
@@ -225,15 +235,79 @@ export default function ChatPage() {
             toolCalls.length > 0 ? toolCalls : undefined,
             toolResults.length > 0 ? toolResults : undefined
           );
+          
+          // Check for research completion signals in the response
+          const completionSignals = [
+            'research is complete',
+            'research phase is complete',
+            'completed the research',
+            'finished our research',
+            'research is done',
+            'ready to build',
+            'ready to create your product',
+            'move on to building',
+            'start building your product',
+            'validated and ready',
+            'validation complete',
+            'research journey is complete',
+          ];
+          
+          const lowerContent = textContent.toLowerCase();
+          const isComplete = completionSignals.some(signal => lowerContent.includes(signal));
+          
+          if (isComplete && !isResearchComplete) {
+            setIsResearchComplete(true);
+          }
         }
 
         // Detect and update phase based on tool usage
         if (toolCalls.length > 0) {
           detectAndUpdatePhase(dbSessionId, toolCalls);
+          
+          // Check if we've reached product_ideation or completed phase
+          const productTools = ['generate_product_ideas', 'generate_ebook_outline'];
+          const hasProductTool = toolCalls.some((tc: any) => 
+            productTools.includes(tc.toolName || tc.name)
+          );
+          if (hasProductTool && !isResearchComplete) {
+            setIsResearchComplete(true);
+          }
         }
       }
     }
-  }, [status, messages, dbSessionId, saveMessageToDb, detectAndUpdatePhase]);
+  }, [status, messages, dbSessionId, saveMessageToDb, detectAndUpdatePhase, isResearchComplete]);
+
+  // Handle skills assessment submission
+  const handleSkillsSubmit = useCallback(async (skillsData: SkillsData) => {
+    if (!dbSessionId) return;
+    
+    setIsLoadingSuggestions(true);
+    setIsSkillsModalOpen(false);
+    setIsProductPanelOpen(true);
+    
+    try {
+      const response = await fetch('/api/research/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: dbSessionId,
+          skills: skillsData,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setProductSuggestions(data.suggestions);
+        setResearchSummary(data.researchSummary);
+      } else {
+        console.error('Failed to get suggestions');
+      }
+    } catch (error) {
+      console.error('Error getting suggestions:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, [dbSessionId]);
 
   // Open new session modal
   const createNewChat = useCallback(() => {
@@ -546,6 +620,30 @@ export default function ChatPage() {
 
         {/* Input Area */}
         <div className="border-t border-gray-200 bg-white">
+          {/* Research Complete Banner */}
+          {isResearchComplete && messages.length > 0 && (
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-3">
+              <div className="max-w-4xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-3 text-white">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold">Research Complete!</p>
+                    <p className="text-sm text-white/80">Ready to build your product based on this research</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsSkillsModalOpen(true)}
+                  className="px-6 py-2 bg-white text-green-600 font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                >
+                  <Rocket className="w-5 h-5" />
+                  Build Product
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="max-w-4xl mx-auto px-4 py-4">
             <form
               onSubmit={(e) => {
@@ -570,7 +668,7 @@ export default function ChatPage() {
                   }
                 }}
                 rows={1}
-                placeholder="Type your message... (Enter to send, Shift+Enter for newline)"
+                placeholder={isResearchComplete ? "Ask follow-up questions or click 'Build Product' to continue..." : "Type your message... (Enter to send, Shift+Enter for newline)"}
                 className="flex-1 px-4 py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-uvz-orange focus:border-uvz-orange font-medium resize-none"
                 disabled={status === 'streaming'}
               />
@@ -584,42 +682,6 @@ export default function ChatPage() {
               </button>
             </form>
           </div>
-
-          {/* Product Cards */}
-          <div className="border-t border-gray-100 bg-gray-50 px-4 py-4">
-            <div className="max-w-4xl mx-auto">
-              <h3 className="text-sm font-bold uppercase text-gray-500 mb-3">Suggested Products</h3>
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4">
-                {[
-                  { id: 'p1', title: 'AI Niche Report', price: '$49', description: 'Detailed report on niche viability and competition.' },
-                  { id: 'p2', title: 'Landing Page Kit', price: '$29', description: 'Templates and assets for your product landing page.' },
-                  { id: 'p3', title: 'Audience Builder Pack', price: '$79', description: 'Email and social playbooks to grow your audience.' },
-                ].map((p) => (
-                  <div key={p.id} className="min-w-[240px] bg-white border-2 border-black rounded-lg p-4 shadow-sm hover:shadow-brutal transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold text-sm">{p.title}</h4>
-                      <span className="font-black text-uvz-orange">{p.price}</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-4">{p.description}</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => sendMessage({ text: `Tell me more about ${p.title}` })}
-                        className="flex-1 text-sm border-2 border-black px-3 py-2 bg-white font-bold rounded hover:bg-gray-50 transition-colors"
-                      >
-                        Discuss
-                      </button>
-                      <Link
-                        href={`/marketplace/${p.id}`}
-                        className="text-sm border-2 border-black px-3 py-2 bg-uvz-orange text-white font-bold rounded hover:bg-orange-600 transition-colors"
-                      >
-                        View
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 
@@ -629,6 +691,24 @@ export default function ChatPage() {
         onClose={() => setIsNewSessionModalOpen(false)}
         onCreateSession={handleCreateNewSession}
         isCreating={isCreatingSession}
+      />
+      
+      {/* Skills Assessment Modal */}
+      <SkillsAssessmentModal
+        isOpen={isSkillsModalOpen}
+        onClose={() => setIsSkillsModalOpen(false)}
+        onSubmit={handleSkillsSubmit}
+        isLoading={isLoadingSuggestions}
+      />
+      
+      {/* Product Suggestion Panel */}
+      <ProductSuggestionPanel
+        isOpen={isProductPanelOpen}
+        onClose={() => setIsProductPanelOpen(false)}
+        suggestions={productSuggestions}
+        researchSummary={researchSummary}
+        sessionId={dbSessionId || ''}
+        isLoading={isLoadingSuggestions}
       />
     </div>
   );

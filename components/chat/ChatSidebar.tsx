@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, X, MessageSquare, Trash2, Target, Search, Crosshair, CheckCircle, Lightbulb } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Target, Search, Crosshair, CheckCircle, Lightbulb } from 'lucide-react';
 
 interface Session {
   id: string;
@@ -91,23 +91,7 @@ export default function ChatSidebar({
           isMobile ? 'shadow-2xl' : 'top-16'
         }`}
       >
-        {/* Mobile header with close button */}
-        {isMobile && (
-          <div className="flex items-center justify-between p-4 border-b-2 border-black bg-white">
-            <Link href="/chat" className="flex items-center">
-              <img src="/2-photoroom.png" alt="manymarkets" className="h-8 w-auto" />
-            </Link>
-            <button
-              onClick={onClose}
-              className="p-2 bg-gray-100 border-2 border-black rounded hover:bg-gray-200 transition-colors"
-              aria-label="Close sidebar"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 pt-20 md:pt-4">
           {/* New Session Button */}
           <button
             onClick={() => {

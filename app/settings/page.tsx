@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown, Loader2 } from 'lucide-react';
+import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown, Loader2, Camera } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -86,6 +86,10 @@ function SettingsContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentPlan, setCurrentPlan] = useState('free');
   const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
   
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -120,6 +124,10 @@ function SettingsContent() {
         return;
       }
       setUser(user);
+      
+      // Load user metadata
+      setDisplayName(user.user_metadata?.display_name || user.user_metadata?.full_name || '');
+      setAvatarUrl(user.user_metadata?.avatar_url || '');
       
       // Load sessions
       try {
@@ -198,6 +206,53 @@ function SettingsContent() {
       alert('Failed to process upgrade. Please try again.');
     } finally {
       setUpgrading(null);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    setProfileSaved(false);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          display_name: displayName,
+          avatar_url: avatarUrl,
+        }
+      });
+      if (error) throw error;
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      
+      setAvatarUrl(publicUrl);
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Failed to upload avatar. Please try again or use a URL instead.');
     }
   };
 
@@ -292,13 +347,32 @@ function SettingsContent() {
               {openSection === 'profile' && (
                 <div className="px-6 pb-6 border-t-2 border-gray-100">
                   <div className="pt-6 space-y-6">
-                    {/* Avatar */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 bg-uvz-orange border-2 border-black rounded-full flex items-center justify-center text-white text-2xl font-black">
-                        {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    {/* Avatar Section */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="relative">
+                        {avatarUrl ? (
+                          <img 
+                            src={avatarUrl} 
+                            alt="Avatar" 
+                            className="w-20 h-20 border-2 border-black rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 bg-uvz-orange border-2 border-black rounded-full flex items-center justify-center text-white text-2xl font-black">
+                            {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                          </div>
+                        )}
+                        <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-uvz-blue border-2 border-black rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors">
+                          <Camera className="w-4 h-4 text-white" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                          />
+                        </label>
                       </div>
                       <div>
-                        <p className="font-bold text-lg">{user?.email}</p>
+                        <p className="font-bold text-lg">{displayName || user?.email}</p>
                         <p className="text-gray-600 text-sm">
                           Member since {new Date(user?.created_at).toLocaleDateString('en-US', { 
                             month: 'long', 
@@ -310,6 +384,17 @@ function SettingsContent() {
 
                     <div className="grid gap-4">
                       <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Display Name</label>
+                        <input
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="Your name"
+                          className="w-full px-4 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-uvz-orange"
+                        />
+                      </div>
+                      
+                      <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Email Address</label>
                         <input
                           type="email"
@@ -319,25 +404,35 @@ function SettingsContent() {
                         />
                         <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                       </div>
-                      
-                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">User ID</label>
-                        <input
-                          type="text"
-                          value={user?.id || ''}
-                          disabled
-                          className="w-full px-4 py-2 border-2 border-gray-300 rounded bg-gray-100 text-gray-600 font-mono text-sm"
-                        />
-                      </div>
 
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">Current Plan</label>
                         <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 bg-uvz-orange text-white font-bold text-sm rounded border-2 border-black">
+                          <span className="px-3 py-1 bg-uvz-orange text-white font-bold text-sm rounded border-2 border-black uppercase">
                             {currentPlan}
                           </span>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleSaveProfile}
+                        disabled={savingProfile}
+                        className="px-6 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {savingProfile ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                        ) : (
+                          'Save Changes'
+                        )}
+                      </button>
+                      {profileSaved && (
+                        <span className="text-green-600 font-bold flex items-center gap-1">
+                          <Check className="w-4 h-4" /> Saved!
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
