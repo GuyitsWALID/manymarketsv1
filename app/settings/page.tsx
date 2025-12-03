@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -17,6 +17,7 @@ interface Session {
 
 const pricingPlans = [
   {
+    id: "free",
     name: "FREE",
     price: "$0",
     period: "forever",
@@ -33,6 +34,7 @@ const pricingPlans = [
     icon: Zap,
   },
   {
+    id: "pro",
     name: "PRO",
     price: "$29",
     period: "per month",
@@ -53,6 +55,7 @@ const pricingPlans = [
     icon: Crown,
   },
   {
+    id: "enterprise",
     name: "ENTERPRISE",
     price: "Custom",
     period: "contact us",
@@ -74,14 +77,15 @@ const pricingPlans = [
   }
 ];
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [openSection, setOpenSection] = useState<'profile' | 'subscription' | 'danger' | null>('profile');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [currentPlan] = useState('FREE'); // TODO: Get from database
+  const [currentPlan, setCurrentPlan] = useState('free');
+  const [upgrading, setUpgrading] = useState<string | null>(null);
   
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -91,6 +95,7 @@ export default function SettingsPage() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const toggleSection = (section: 'profile' | 'subscription' | 'danger') => {
@@ -127,10 +132,74 @@ export default function SettingsPage() {
         console.error('Failed to load sessions:', e);
       }
       
+      // Load billing state from Autumn
+      try {
+        const billingResponse = await fetch('/api/billing');
+        if (billingResponse.ok) {
+          const billingData = await billingResponse.json();
+          setCurrentPlan(billingData.currentPlan || 'free');
+        }
+      } catch (e) {
+        console.error('Failed to load billing:', e);
+      }
+      
       setLoading(false);
     }
     getUser();
-  }, [router, supabase.auth]);
+    
+    // Check for success/cancel from Stripe checkout
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
+    if (success) {
+      // Refresh billing state after successful checkout
+      fetch('/api/billing').then(res => res.json()).then(data => {
+        setCurrentPlan(data.currentPlan || 'free');
+      });
+    }
+  }, [router, supabase.auth, searchParams]);
+
+  const handleUpgrade = async (planId: string) => {
+    if (planId === 'enterprise') {
+      // Open contact form or email for enterprise
+      window.location.href = 'mailto:contact@manymarkets.com?subject=Enterprise Plan Inquiry';
+      return;
+    }
+    
+    setUpgrading(planId);
+    try {
+      const response = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'checkout', productId: planId }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.url) {
+        // Redirect to Stripe checkout
+        window.location.href = data.url;
+      } else if (data.preview) {
+        // Payment on file, need to confirm
+        const confirmUpgrade = confirm(`Confirm upgrade to ${planId.toUpperCase()}?`);
+        if (confirmUpgrade) {
+          const attachResponse = await fetch('/api/billing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'attach', productId: planId }),
+          });
+          if (attachResponse.ok) {
+            setCurrentPlan(planId);
+            alert('Successfully upgraded!');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      alert('Failed to process upgrade. Please try again.');
+    } finally {
+      setUpgrading(null);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -299,7 +368,7 @@ export default function SettingsPage() {
                     {/* Current Plan Banner */}
                     <div className="bg-blue-50 border-2 border-blue-200 rounded p-4 mb-6">
                       <p className="font-bold text-blue-800">
-                        Your current plan: <span className="text-uvz-orange">{currentPlan}</span>
+                        Your current plan: <span className="text-uvz-orange">{currentPlan.toUpperCase()}</span>
                       </p>
                     </div>
 
@@ -307,11 +376,12 @@ export default function SettingsPage() {
                     <div className="grid md:grid-cols-3 gap-4">
                       {pricingPlans.map((plan) => {
                         const Icon = plan.icon;
-                        const isCurrentPlan = plan.name === currentPlan;
+                        const isCurrentPlan = plan.id === currentPlan;
+                        const isUpgrading = upgrading === plan.id;
                         
                         return (
                           <div
-                            key={plan.name}
+                            key={plan.id}
                             className={`border-2 border-black rounded p-4 flex flex-col relative ${
                               plan.popular ? 'ring-2 ring-uvz-orange ring-offset-1' : ''
                             } ${isCurrentPlan ? 'bg-orange-50' : 'bg-white'}`}
@@ -347,8 +417,9 @@ export default function SettingsPage() {
                             </ul>
                             
                             <button
-                              disabled={isCurrentPlan}
-                              className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm transition-all ${
+                              onClick={() => !isCurrentPlan && handleUpgrade(plan.id)}
+                              disabled={isCurrentPlan || isUpgrading}
+                              className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm transition-all flex items-center justify-center gap-2 ${
                                 isCurrentPlan
                                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                   : plan.popular
@@ -356,7 +427,16 @@ export default function SettingsPage() {
                                   : 'bg-white text-black hover:bg-gray-50 shadow-brutal hover:-translate-y-0.5'
                               }`}
                             >
-                              {isCurrentPlan ? 'Current' : plan.cta}
+                              {isUpgrading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Processing...
+                                </>
+                              ) : isCurrentPlan ? (
+                                'Current'
+                              ) : (
+                                plan.cta
+                              )}
                             </button>
                           </div>
                         );
@@ -464,5 +544,17 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-uvz-orange border-t-transparent rounded-full"></div>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }
