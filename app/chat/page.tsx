@@ -515,7 +515,7 @@ export default function ChatPage() {
                 {/* Start New Session Button */}
                 <button
                   onClick={() => setIsNewSessionModalOpen(true)}
-                  className="bg-uvz-orange text-white border-4 border-black px-8 py-4 font-black text-lg shadow-brutal hover:-translate-y-1 hover:shadow-brutal-lg transition-all rounded mb-8"
+                  className="bg-uvz-orange text-white border-2 border-black px-8 py-4 font-black text-lg shadow-brutal hover:-translate-y-1 hover:shadow-brutal-lg transition-all rounded mb-8"
                 >
                   🚀 Start New Research Session
                 </button>
