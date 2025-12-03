@@ -211,8 +211,8 @@ export default function Home() {
     <div className="min-h-screen bg-white text-black font-sans overflow-hidden">
       {/* Header */}
       <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-sm ">
-        <div className="flex items-center justify-between container mx-auto px-6 py-3">
-          <img src="3-Photoroom.png" alt="UVZ Logo" className="h-10 md:h-18 w-auto pt-1 md:pt-6" />
+        <div className="flex items-center justify-between container mx-auto px-4 sm:px-6 py-3">
+          <img src="/3-Photoroom.png" alt="ManyMarkets Logo" className="h-8 sm:h-10 md:h-14 w-auto" />
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6 font-bold text-base">
@@ -314,8 +314,8 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section className="container mt-28 mx-auto px-2 py-2 md:py-32">
-            <div className="max-w-5xl mx-auto text-center space-y-2 relative">
+        <section className="container mt-20 sm:mt-24 md:mt-28 mx-auto px-4 sm:px-6 py-8 md:py-32">
+            <div className="max-w-5xl mx-auto text-center space-y-4 relative">
             {/* Floating hand-drawn icons - Top side */}
             <motion.div
               initial={{ opacity: 0, y: -50, rotate: 10 }}
@@ -405,7 +405,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-5xl md:text-7xl font-black leading-tight mb-6">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 sm:mb-6">
           From Market Insight to{" "}
           <span className="text-uvz-orange">Marketplace Success</span>
               </h2>
@@ -415,7 +415,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.6 }}
-              className="text-xl md:text-2xl font-medium max-w-3xl mx-auto text-left"
+              className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium max-w-3xl mx-auto text-left sm:text-center px-2"
             >
               The only platform that guides you from <strong>"I want to build something"</strong> to <strong>"I'm making sales"</strong>—with AI doing the heavy lifting. Discover profitable niches, create digital products, and launch your marketplace business in days, not months.
             </motion.p>
@@ -424,13 +424,13 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="flex flex-col sm:flex-row justify-center gap-6 pt-8"
+              className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 pt-6 sm:pt-8 px-2"
             >
-              <Link href="/login" className="group bg-uvz-orange text-white text-xl font-bold px-8 py-4 border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center gap-2">
-                Start Discovery <Zap className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+              <Link href="/login" className="group bg-uvz-orange text-white text-base sm:text-lg md:text-xl font-bold px-6 sm:px-8 py-3 sm:py-4 border-3 sm:border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center justify-center gap-2">
+                Start Discovery <Zap className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform" />
               </Link>
-              <Link href="/marketplace" className="group bg-white text-black text-xl font-bold px-8 py-4 border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center gap-2">
-                Browse Marketplace <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+              <Link href="/marketplace" className="group bg-white text-black text-base sm:text-lg md:text-xl font-bold px-6 sm:px-8 py-3 sm:py-4 border-3 sm:border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center justify-center gap-2">
+                Browse Marketplace <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform" />
               </Link>
             </motion.div>
 
@@ -439,16 +439,16 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.9 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-16 max-w-4xl mx-auto"
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 pt-8 sm:pt-12 md:pt-16 max-w-4xl mx-auto px-2"
             >
               {stats.map((stat, i) => (
                 <motion.div
                   key={i}
                   whileHover={{ scale: 1.05, rotate: i % 2 === 0 ? 2 : -2 }}
-                  className="border-4 border-black p-6 bg-white shadow-brutal"
+                  className="border-2 sm:border-3 md:border-4 border-black p-3 sm:p-4 md:p-6 bg-white shadow-brutal"
                 >
-                  <stat.icon className="w-8 h-8 mx-auto mb-2 text-uvz-orange" />
-                  <div className="text-3xl font-black mb-1">
+                  <stat.icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 mx-auto mb-1 sm:mb-2 text-uvz-orange" />
+                  <div className="text-xl sm:text-2xl md:text-3xl font-black mb-1">
                     <HandDrawnCircle delay={1200 + i * 100}>{stat.number}</HandDrawnCircle>
                   </div>
                   <div className="text-sm font-bold uppercase">{stat.label}</div>
@@ -459,12 +459,12 @@ export default function Home() {
         </section>
 
         {/* How It Works */}
-        <section className="bg-yellow-50 border-y-4 border-black py-20 md:py-32">
-          <div className="container mx-auto px-6">
-            <h2 className="text-4xl md:text-5xl font-black text-center mb-16 uppercase">
+        <section className="bg-yellow-50 border-y-2 sm:border-y-4 border-black py-12 sm:py-16 md:py-20 lg:py-32">
+          <div className="container mx-auto px-4 sm:px-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-8 sm:mb-12 md:mb-16 uppercase">
               <HandDrawnBox delay={100}>How It Works</HandDrawnBox>
             </h2>
-            <div className="grid md:grid-cols-3 gap-12 max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 max-w-6xl mx-auto">
               {process.map((item, i) => (
                 <motion.div
                   key={i}
@@ -474,11 +474,11 @@ export default function Home() {
                   transition={{ delay: i * 0.2 }}
                   className="relative"
                 >
-                  <div className="text-8xl font-black text-uvz-orange/20 absolute -top-8 -left-4 -z-10">
+                  <div className="text-5xl sm:text-6xl md:text-8xl font-black text-uvz-orange/20 absolute -top-4 sm:-top-6 md:-top-8 -left-2 sm:-left-4 -z-10">
                     {item.step}
                   </div>
-                  <div className="border-4 border-black p-8 bg-white shadow-brutal h-full hover:-translate-y-2 transition-transform">
-                    <h3 className="text-2xl font-black mb-4 uppercase">
+                  <div className="border-2 sm:border-3 md:border-4 border-black p-4 sm:p-6 md:p-8 bg-white shadow-brutal h-full hover:-translate-y-2 transition-transform">
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-2 sm:mb-4 uppercase">
                       <HandDrawnUnderline delay={300 + i * 100}>{item.title}</HandDrawnUnderline>
                     </h3>
                     <p className="font-medium leading-relaxed">{item.description}</p>
@@ -495,11 +495,11 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="container mx-auto px-6 py-20 md:py-32">
-          <h2 className="text-4xl md:text-5xl font-black text-center mb-16 uppercase">
+        <section id="features" className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20 lg:py-32">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-8 sm:mb-12 md:mb-16 uppercase">
             Everything You Need to <span className="text-uvz-orange"><HandDrawnUnderline delay={100}>Succeed</HandDrawnUnderline></span>
           </h2>
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
             {features.map((feature, i) => (
               <motion.div
                 key={i}
@@ -510,25 +510,25 @@ export default function Home() {
                 whileHover={{ y: -8, rotate: i % 2 === 0 ? 1 : -1 }}
                 onHoverStart={() => setHoveredFeature(i)}
                 onHoverEnd={() => setHoveredFeature(null)}
-                className="border-4 border-black p-8 shadow-brutal bg-white cursor-pointer relative overflow-hidden"
+                className="border-2 sm:border-3 md:border-4 border-black p-4 sm:p-6 md:p-8 shadow-brutal bg-white cursor-pointer relative overflow-hidden"
               >
                 <motion.div
                   initial={{ scale: 0 }}
                   whileInView={{ scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 + i * 0.1, type: "spring" }}
-                  className={`absolute top-4 right-4 w-16 h-16 border-4 border-black rounded-full flex items-center justify-center ${
+                  className={`absolute top-3 right-3 sm:top-4 sm:right-4 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 border-2 sm:border-3 md:border-4 border-black rounded-full flex items-center justify-center ${
                     hoveredFeature === i ? "bg-uvz-orange" : "bg-yellow-300"
                   } transition-colors`}
                 >
-                  <feature.icon className="w-8 h-8" />
+                  <feature.icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
                 </motion.div>
-                <h3 className="text-2xl font-black mb-4 uppercase pr-20">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-black mb-2 sm:mb-4 uppercase pr-14 sm:pr-16 md:pr-20">
                   {feature.title}
                 </h3>
-                <p className="font-medium mb-4 leading-relaxed">{feature.desc}</p>
-                <div className="border-t-2 border-black pt-4 mt-4">
-                  <p className="text-sm font-bold text-uvz-blue">{feature.detail}</p>
+                <p className="font-medium mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base">{feature.desc}</p>
+                <div className="border-t-2 border-black pt-3 sm:pt-4 mt-3 sm:mt-4">
+                  <p className="text-xs sm:text-sm font-bold text-uvz-blue">{feature.detail}</p>
                 </div>
               </motion.div>
             ))}
@@ -536,16 +536,16 @@ export default function Home() {
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="bg-blue-50 border-y-4 border-black py-20 md:py-32">
-          <div className="container mx-auto px-6">
-            <h2 className="text-4xl md:text-5xl font-black text-center mb-6 uppercase">
+        <section id="pricing" className="bg-blue-50 border-y-2 sm:border-y-4 border-black py-12 sm:py-16 md:py-20 lg:py-32">
+          <div className="container mx-auto px-4 sm:px-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-4 sm:mb-6 uppercase">
               <HandDrawnBox delay={100}>Simple, Transparent Pricing</HandDrawnBox>
             </h2>
-            <p className="text-xl text-center mb-16 font-medium max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-center mb-8 sm:mb-12 md:mb-16 font-medium max-w-2xl mx-auto px-2">
               Start free, upgrade when you're ready. No hidden fees, no surprises. Pay only for what you use.
             </p>
             
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
               {pricingPlans.map((plan, i) => (
                 <motion.div
                   key={i}
@@ -553,34 +553,34 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className={`border-4 border-black p-8 bg-white shadow-brutal relative ${
-                    plan.popular ? "md:-translate-y-4 scale-105" : ""
+                  className={`border-2 sm:border-3 md:border-4 border-black p-4 sm:p-6 md:p-8 bg-white shadow-brutal relative ${
+                    plan.popular ? "sm:col-span-2 lg:col-span-1 lg:-translate-y-4 lg:scale-105" : ""
                   }`}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-uvz-orange text-white px-6 py-2 border-4 border-black font-black uppercase text-sm shadow-brutal">
+                    <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-uvz-orange text-white px-3 sm:px-6 py-1 sm:py-2 border-2 sm:border-4 border-black font-black uppercase text-xs sm:text-sm shadow-brutal">
                       Most Popular
                     </div>
                   )}
-                  <div className="text-center mb-8">
-                    <h3 className="text-2xl font-black uppercase mb-2">{plan.name}</h3>
-                    <div className="text-5xl font-black mb-2">
+                  <div className="text-center mb-4 sm:mb-6 md:mb-8">
+                    <h3 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-2">{plan.name}</h3>
+                    <div className="text-3xl sm:text-4xl md:text-5xl font-black mb-1 sm:mb-2">
                       <HandDrawnCircle delay={300 + i * 100}>{plan.price}</HandDrawnCircle>
                     </div>
-                    <div className="text-sm font-bold text-gray-600 uppercase">{plan.period}</div>
+                    <div className="text-xs sm:text-sm font-bold text-gray-600 uppercase">{plan.period}</div>
                   </div>
-                  <p className="text-center font-medium mb-6 min-h-12">{plan.description}</p>
-                  <ul className="space-y-3 mb-8">
+                  <p className="text-center font-medium mb-4 sm:mb-6 min-h-10 sm:min-h-12 text-sm sm:text-base">{plan.description}</p>
+                  <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                     {plan.features.map((feature, fi) => (
                       <li key={fi} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 mt-0.5 shrink-0 text-uvz-orange" strokeWidth={3} />
-                        <span className="font-medium text-sm">{feature}</span>
+                        <Check className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 shrink-0 text-uvz-orange" strokeWidth={3} />
+                        <span className="font-medium text-xs sm:text-sm">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <Link 
                     href="/signup" 
-                    className={`block text-center font-bold px-6 py-3 border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all ${
+                    className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${
                       plan.popular ? "bg-uvz-orange text-white" : "bg-white text-black"
                     }`}
                   >
@@ -590,8 +590,8 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="text-center mt-12 max-w-3xl mx-auto">
-              <p className="text-sm font-medium border-4 border-black p-6 bg-white shadow-brutal">
+            <div className="text-center mt-8 sm:mt-12 max-w-3xl mx-auto px-2">
+              <p className="text-xs sm:text-sm font-medium border-2 sm:border-4 border-black p-4 sm:p-6 bg-white shadow-brutal">
                 <strong>💰 Marketplace Fees:</strong> Free users cannot sell on marketplace. Pro users pay 15% commission on sales. Enterprise users pay only 10% commission. All plans include free payment processing through Stripe.
               </p>
             </div>
@@ -599,44 +599,44 @@ export default function Home() {
         </section>
 
         {/* CTA Section */}
-        <section className="container mx-auto px-6 py-20 md:py-32">
+        <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20 lg:py-32">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="max-w-4xl mx-auto border-8 border-black p-12 md:p-16 bg-linear-to-br from-yellow-300 to-yellow-200 shadow-[12px_12px_0px_0px_#000000] text-center"
+            className="max-w-4xl mx-auto border-4 sm:border-6 md:border-8 border-black p-6 sm:p-10 md:p-12 lg:p-16 bg-gradient-to-br from-yellow-300 to-yellow-200 shadow-[6px_6px_0px_0px_#000000] sm:shadow-[8px_8px_0px_0px_#000000] md:shadow-[12px_12px_0px_0px_#000000] text-center"
           >
-            <h2 className="text-4xl md:text-6xl font-black mb-6 uppercase leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black mb-4 sm:mb-6 uppercase leading-tight">
               Ready to Build Your <span className="text-uvz-orange">Marketplace Empire?</span>
             </h2>
-            <p className="text-xl font-medium mb-8 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl font-medium mb-6 sm:mb-8 max-w-2xl mx-auto">
               Join thousands of creators who have discovered their profitable niche and launched successful digital product businesses with ManyMarkets.
             </p>
             <Link 
               href="/login" 
-              className="inline-flex items-center gap-3 bg-black text-white text-2xl font-bold px-12 py-6 border-4 border-black hover:bg-uvz-orange hover:scale-105 transition-all shadow-brutal"
+              className="inline-flex items-center gap-2 sm:gap-3 bg-black text-white text-lg sm:text-xl md:text-2xl font-bold px-6 sm:px-8 md:px-12 py-4 sm:py-5 md:py-6 border-2 sm:border-4 border-black hover:bg-uvz-orange hover:scale-105 transition-all shadow-brutal"
             >
-              Start Free Today <Rocket className="w-8 h-8" />
+              Start Free Today <Rocket className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
             </Link>
-            <p className="mt-6 text-sm font-bold">No credit card required • 5-minute setup • Cancel anytime</p>
+            <p className="mt-4 sm:mt-6 text-xs sm:text-sm font-bold">No credit card required • 5-minute setup • Cancel anytime</p>
           </motion.div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t-4 border-black bg-black text-white py-12">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div>
-              <h3 className="text-2xl font-black mb-4 uppercase">ManyMarkets</h3>
+      <footer className="border-t-2 sm:border-t-4 border-black bg-black text-white py-8 sm:py-12">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 md:gap-12 mb-8 sm:mb-12">
+            <div className="col-span-2 md:col-span-1">
+              <h3 className="text-xl sm:text-2xl font-black mb-3 sm:mb-4 uppercase">ManyMarkets</h3>
               <p className="font-medium text-gray-300">
                 AI-powered platform for discovering profitable niches and launching digital product businesses.
               </p>
             </div>
             
             <div>
-              <h4 className="text-lg font-black mb-4 uppercase border-b-2 border-white pb-2">Product</h4>
-              <ul className="space-y-2 font-medium">
+              <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Product</h4>
+              <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/features" className="hover:text-uvz-orange transition-colors">Features</Link></li>
                 <li><Link href="/pricing" className="hover:text-uvz-orange transition-colors">Pricing</Link></li>
                 <li><Link href="/marketplace" className="hover:text-uvz-orange transition-colors">Marketplace</Link></li>
@@ -645,8 +645,8 @@ export default function Home() {
             </div>
             
             <div>
-              <h4 className="text-lg font-black mb-4 uppercase border-b-2 border-white pb-2">Company</h4>
-              <ul className="space-y-2 font-medium">
+              <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Company</h4>
+              <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/about" className="hover:text-uvz-orange transition-colors">About Us</Link></li>
                 <li><Link href="/blog" className="hover:text-uvz-orange transition-colors">Blog</Link></li>
                 <li><Link href="/careers" className="hover:text-uvz-orange transition-colors">Careers</Link></li>
@@ -655,8 +655,8 @@ export default function Home() {
             </div>
             
             <div>
-              <h4 className="text-lg font-black mb-4 uppercase border-b-2 border-white pb-2">Legal</h4>
-              <ul className="space-y-2 font-medium">
+              <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Legal</h4>
+              <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/privacy" className="hover:text-uvz-orange transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-uvz-orange transition-colors">Terms of Service</Link></li>
                 <li><Link href="/cookies" className="hover:text-uvz-orange transition-colors">Cookie Policy</Link></li>
@@ -664,42 +664,42 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="border-t-2 border-white pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="font-medium text-gray-300">
+          <div className="border-t-2 border-white pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
+            <p className="font-medium text-gray-300 text-sm sm:text-base text-center md:text-left">
               © 2025 ManyMarkets. All rights reserved.
             </p>
             
-            <div className="flex gap-4">
+            <div className="flex gap-3 sm:gap-4">
               <Link 
                 href="https://twitter.com/manymarkets" 
                 target="_blank"
-                className="w-12 h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
+                className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
                 aria-label="Twitter"
               >
-                <Twitter className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                <Twitter className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
               </Link>
               <Link 
                 href="https://linkedin.com/company/manymarkets" 
                 target="_blank"
-                className="w-12 h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
+                className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
                 aria-label="LinkedIn"
               >
-                <Linkedin className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                <Linkedin className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
               </Link>
               <Link 
                 href="https://github.com/manymarkets" 
                 target="_blank"
-                className="w-12 h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
+                className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
                 aria-label="GitHub"
               >
-                <Github className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                <Github className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
               </Link>
               <Link 
                 href="mailto:hello@manymarkets.com"
-                className="w-12 h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
+                className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
                 aria-label="Email"
               >
-                <Mail className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                <Mail className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
               </Link>
             </div>
           </div>
