@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Sparkles, ArrowRight, CheckCircle, Clock, DollarSign, Zap, Book, Code, Video, Users, FileText, Loader2 } from 'lucide-react';
+import { X, Sparkles, ArrowRight, CheckCircle, Clock, DollarSign, Zap, Book, Code, Video, Users, FileText, Loader2, Crown, Lock } from 'lucide-react';
 
 export interface ProductSuggestion {
   id: string;
@@ -51,12 +51,81 @@ export default function ProductSuggestionPanel({
 }: ProductSuggestionPanelProps) {
   const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState<boolean | null>(null);
+  const [checkingPlan, setCheckingPlan] = useState(true);
+  const [creatingProduct, setCreatingProduct] = useState(false);
+
+  // Check user's subscription when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      checkSubscription();
+    }
+  }, [isOpen]);
+
+  const checkSubscription = async () => {
+    try {
+      const response = await fetch('/api/billing');
+      if (response.ok) {
+        const data = await response.json();
+        const plan = data.currentPlan || 'free';
+        setIsPro(plan === 'pro' || plan === 'enterprise');
+      } else {
+        setIsPro(false);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      setIsPro(false);
+    } finally {
+      setCheckingPlan(false);
+    }
+  };
 
   if (!isOpen) return null;
 
-  const handleStartBuilding = (suggestion: ProductSuggestion) => {
-    // Navigate to builder with product context
-    router.push(`/builder?session=${sessionId}&product=${suggestion.id}&type=${suggestion.type}`);
+  const handleStartBuilding = async (suggestion: ProductSuggestion) => {
+    // If not Pro, redirect to upgrade page
+    if (!isPro) {
+      router.push('/upgrade');
+      return;
+    }
+
+    // Create product in database first
+    setCreatingProduct(true);
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          name: suggestion.name,
+          description: suggestion.description,
+          productType: suggestion.type,
+          tagline: suggestion.whyThisProduct,
+          mvpScope: suggestion.mvpScope,
+          revenueModel: suggestion.revenueModel,
+          timeToLaunch: suggestion.timeToLaunch,
+          difficulty: suggestion.difficulty,
+          estimatedEarnings: suggestion.estimatedEarnings,
+          skillsMatch: suggestion.skillsMatch,
+          matchScore: suggestion.matchScore,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create product');
+      }
+
+      // Navigate to builder with product ID
+      router.push(`/builder?product=${data.product.id}`);
+    } catch (error) {
+      console.error('Error creating product:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to create product: ${message}`);
+    } finally {
+      setCreatingProduct(false);
+    }
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -237,11 +306,41 @@ export default function ProductSuggestionPanel({
                           {/* Action Button */}
                           <button
                             onClick={() => handleStartBuilding(suggestion)}
-                            className="w-full py-3 bg-uvz-orange text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                            disabled={creatingProduct || checkingPlan}
+                            className={`w-full py-3 font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              isPro 
+                                ? 'bg-uvz-orange text-white' 
+                                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                            }`}
                           >
-                            Start Building This Product
-                            <ArrowRight className="w-5 h-5" />
+                            {creatingProduct ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Creating Product...
+                              </>
+                            ) : checkingPlan ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Checking...
+                              </>
+                            ) : isPro ? (
+                              <>
+                                Start Building This Product
+                                <ArrowRight className="w-5 h-5" />
+                              </>
+                            ) : (
+                              <>
+                                <Crown className="w-5 h-5" />
+                                Upgrade to Pro to Build
+                                <Lock className="w-4 h-4" />
+                              </>
+                            )}
                           </button>
+                          {!isPro && !checkingPlan && (
+                            <p className="text-center text-sm text-gray-500 mt-2">
+                              Product Builder is a Pro feature
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}

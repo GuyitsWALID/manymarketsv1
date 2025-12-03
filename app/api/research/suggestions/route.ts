@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateText } from 'ai';
-import { groq } from '@/lib/ai/provider';
+import { groq, google } from '@/lib/ai/provider';
 
 const PRODUCT_TYPES = [
   { id: 'ebook', name: 'E-book/Guide', icon: '📚' },
@@ -13,6 +13,54 @@ const PRODUCT_TYPES = [
   { id: 'newsletter', name: 'Paid Newsletter', icon: '📧' },
   { id: 'audio', name: 'Podcast/Audio', icon: '🎙️' },
 ];
+
+// Helper function to create fallback suggestions when AI fails
+function createFallbackSuggestions(session: { industry?: string; selected_niche?: string }, skills: { skills: string[] }) {
+  return [
+    {
+      id: 'fallback-ebook',
+      type: 'ebook',
+      name: `${session.selected_niche || session.industry || 'Niche'} Success Guide`,
+      description: 'A comprehensive ebook covering the key insights from your research. Perfect for establishing authority and generating passive income.',
+      matchScore: 75,
+      skillsMatch: skills.skills.slice(0, 2),
+      timeToLaunch: '2-3 weeks',
+      revenueModel: 'One-time $29-49',
+      difficulty: 'Easy' as const,
+      whyThisProduct: 'Ebooks are the fastest way to monetize expertise and validate demand.',
+      mvpScope: ['Core content (10-15 chapters)', 'PDF formatting', 'Sales page'],
+      estimatedEarnings: '$500-1k/month',
+    },
+    {
+      id: 'fallback-template',
+      type: 'template',
+      name: `${session.selected_niche || session.industry || 'Productivity'} Template Pack`,
+      description: 'Ready-to-use templates that solve a specific problem for your audience. High value, quick to create.',
+      matchScore: 70,
+      skillsMatch: skills.skills.slice(0, 2),
+      timeToLaunch: '1-2 weeks',
+      revenueModel: 'One-time $19-39',
+      difficulty: 'Easy' as const,
+      whyThisProduct: 'Templates have high perceived value and are quick to create.',
+      mvpScope: ['5-10 templates', 'Usage guide', 'Gumroad/Notion setup'],
+      estimatedEarnings: '$300-800/month',
+    },
+    {
+      id: 'fallback-community',
+      type: 'community',
+      name: `${session.selected_niche || session.industry || 'Niche'} Inner Circle`,
+      description: 'A paid community for people in your niche to connect and grow together. Builds recurring revenue.',
+      matchScore: 65,
+      skillsMatch: skills.skills.slice(0, 2),
+      timeToLaunch: '1-2 weeks',
+      revenueModel: 'Subscription $19-49/mo',
+      difficulty: 'Medium' as const,
+      whyThisProduct: 'Communities build recurring revenue and create strong customer relationships.',
+      mvpScope: ['Discord/Circle setup', 'Welcome content', 'Weekly live calls'],
+      estimatedEarnings: '$500-2k/month',
+    },
+  ];
+}
 
 export async function POST(request: Request) {
   try {
@@ -104,10 +152,37 @@ Respond ONLY with a valid JSON array (no markdown, no explanation):
   }
 ]`;
 
-    const { text } = await generateText({
-      model: groq('llama-3.3-70b-versatile'),
-      prompt,
-    });
+    let text = '';
+    
+    // Try Groq first, fallback to Google if it fails
+    try {
+      const result = await generateText({
+        model: groq('llama-3.3-70b-versatile'),
+        prompt,
+      });
+      text = result.text;
+    } catch (groqError) {
+      console.error('Groq API error, trying Google fallback:', groqError);
+      try {
+        const result = await generateText({
+          model: google('gemini-2.0-flash'),
+          prompt,
+        });
+        text = result.text;
+      } catch (googleError) {
+        console.error('Google API also failed:', googleError);
+        // Return fallback suggestions if both APIs fail
+        const fallbackSuggestions = createFallbackSuggestions(session, skills);
+        return NextResponse.json({
+          suggestions: fallbackSuggestions,
+          researchSummary: {
+            niche: session.selected_niche || session.industry || 'Your niche',
+            uvz: session.selected_uvz || 'Your unique value zone',
+            targetAudience: 'Your target audience',
+          },
+        });
+      }
+    }
 
     // Parse AI response
     let suggestions;
@@ -121,51 +196,8 @@ Respond ONLY with a valid JSON array (no markdown, no explanation):
       }
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError, text);
-      // Return fallback suggestions
-      suggestions = [
-        {
-          id: 'fallback-ebook',
-          type: 'ebook',
-          name: `${session.industry || 'Niche'} Success Guide`,
-          description: 'A comprehensive ebook covering the key insights from your research.',
-          matchScore: 75,
-          skillsMatch: skills.skills.slice(0, 2),
-          timeToLaunch: '2-3 weeks',
-          revenueModel: 'One-time $29-49',
-          difficulty: 'Easy',
-          whyThisProduct: 'Ebooks are the fastest way to monetize expertise and validate demand.',
-          mvpScope: ['Core content (10-15 chapters)', 'PDF formatting', 'Sales page'],
-          estimatedEarnings: '$500-1k/month',
-        },
-        {
-          id: 'fallback-template',
-          type: 'template',
-          name: `${session.industry || 'Productivity'} Template Pack`,
-          description: 'Ready-to-use templates that solve a specific problem for your audience.',
-          matchScore: 70,
-          skillsMatch: skills.skills.slice(0, 2),
-          timeToLaunch: '1-2 weeks',
-          revenueModel: 'One-time $19-39',
-          difficulty: 'Easy',
-          whyThisProduct: 'Templates have high perceived value and are quick to create.',
-          mvpScope: ['5-10 templates', 'Usage guide', 'Gumroad/Notion setup'],
-          estimatedEarnings: '$300-800/month',
-        },
-        {
-          id: 'fallback-community',
-          type: 'community',
-          name: `${session.industry || 'Niche'} Inner Circle`,
-          description: 'A paid community for people in your niche to connect and grow together.',
-          matchScore: 65,
-          skillsMatch: skills.skills.slice(0, 2),
-          timeToLaunch: '1-2 weeks',
-          revenueModel: 'Subscription $19-49/mo',
-          difficulty: 'Medium',
-          whyThisProduct: 'Communities build recurring revenue and create strong customer relationships.',
-          mvpScope: ['Discord/Circle setup', 'Welcome content', 'Weekly live calls'],
-          estimatedEarnings: '$500-2k/month',
-        },
-      ];
+      // Return fallback suggestions using helper function
+      suggestions = createFallbackSuggestions(session, skills);
     }
 
     // Extract research summary
@@ -181,8 +213,9 @@ Respond ONLY with a valid JSON array (no markdown, no explanation):
     });
   } catch (error) {
     console.error('Error generating product suggestions:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to generate suggestions' },
+      { error: `Failed to generate suggestions: ${errorMessage}` },
       { status: 500 }
     );
   }

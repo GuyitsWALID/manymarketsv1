@@ -27,10 +27,33 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    const currentPlan = data?.products?.[0]?.id || 'free';
+    
+    // Sync subscription tier to database if it differs
+    // This ensures the DB stays in sync with Autumn
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile && profile.subscription_tier !== currentPlan) {
+        console.log(`Syncing subscription tier for user ${user.id}: ${profile.subscription_tier} -> ${currentPlan}`);
+        await supabase
+          .from('profiles')
+          .update({ subscription_tier: currentPlan })
+          .eq('id', user.id);
+      }
+    } catch (syncError) {
+      console.error('Error syncing subscription tier:', syncError);
+      // Don't fail the request, just log the error
+    }
+
     return NextResponse.json({
       customer: data,
       products: data?.products || [],
-      currentPlan: data?.products?.[0]?.id || 'free',
+      currentPlan,
     });
   } catch (error) {
     console.error('Error fetching billing state:', error);

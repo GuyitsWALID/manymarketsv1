@@ -279,7 +279,11 @@ export default function ChatPage() {
 
   // Handle skills assessment submission
   const handleSkillsSubmit = useCallback(async (skillsData: SkillsData) => {
-    if (!dbSessionId) return;
+    if (!dbSessionId) {
+      console.error('No session ID available');
+      alert('No active session. Please start a new research session.');
+      return;
+    }
     
     setIsLoadingSuggestions(true);
     setIsSkillsModalOpen(false);
@@ -295,15 +299,20 @@ export default function ChatPage() {
         }),
       });
       
+      const data = await response.json();
+      
       if (response.ok) {
-        const data = await response.json();
-        setProductSuggestions(data.suggestions);
-        setResearchSummary(data.researchSummary);
+        setProductSuggestions(data.suggestions || []);
+        setResearchSummary(data.researchSummary || { niche: '', uvz: '', targetAudience: '' });
       } else {
-        console.error('Failed to get suggestions');
+        console.error('Failed to get suggestions:', data.error || 'Unknown error');
+        alert(`Failed to get product suggestions: ${data.error || 'Please try again.'}`);
+        setIsProductPanelOpen(false);
       }
     } catch (error) {
       console.error('Error getting suggestions:', error);
+      alert('Network error while getting suggestions. Please check your connection and try again.');
+      setIsProductPanelOpen(false);
     } finally {
       setIsLoadingSuggestions(false);
     }
