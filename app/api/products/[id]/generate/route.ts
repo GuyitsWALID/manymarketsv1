@@ -16,6 +16,51 @@ async function checkProStatus(userId: string): Promise<boolean> {
   }
 }
 
+// Helper function to clean and parse JSON from AI responses
+function cleanJsonResponse(text: string): string {
+  // Remove markdown code blocks if present
+  let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+  
+  // Find the JSON object
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('No JSON object found in response');
+  }
+  
+  cleaned = jsonMatch[0];
+  
+  // Fix common JSON issues from AI responses
+  // Replace actual newlines inside strings with \n
+  cleaned = cleaned.replace(/:\s*"([^"]*?)"/g, (match, content) => {
+    // Replace actual newlines with escaped newlines
+    const fixed = content
+      .replace(/\r\n/g, '\\n')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\n')
+      .replace(/\t/g, '\\t');
+    return `: "${fixed}"`;
+  });
+  
+  // Handle multi-line string values more aggressively
+  // This regex finds string values and ensures they're properly escaped
+  try {
+    // Try to parse as-is first
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch {
+    // If that fails, try more aggressive cleaning
+    // Replace problematic control characters
+    cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, (char) => {
+      if (char === '\n') return '\\n';
+      if (char === '\r') return '\\r';
+      if (char === '\t') return '\\t';
+      return '';
+    });
+    
+    return cleaned;
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -232,14 +277,11 @@ Respond ONLY with valid JSON (no markdown, no explanation):
       }
 
       const outline = product.raw_analysis?.outline;
-      const structure = product.raw_analysis?.structure;
 
       prompt = `You are an expert ${product.product_type || 'ebook'} writer. Write the FULL content for the following chapter.
 
 PRODUCT: ${product.name}
-PRODUCT TYPE: ${product.product_type || 'ebook'}
 TARGET AUDIENCE: ${product.raw_analysis?.targetAudience || 'General audience'}
-PROBLEM SOLVED: ${product.raw_analysis?.problemSolved || 'Not specified'}
 
 CHAPTER TO WRITE:
 Title: ${chapterTitle}
@@ -249,28 +291,24 @@ Key Points to Cover: ${keyPoints?.join(', ') || 'Not specified'}
 ${outline ? `BOOK OUTLINE CONTEXT:
 ${outline.chapters?.map((c: { number: number; title: string }) => `Chapter ${c.number}: ${c.title}`).join('\n') || ''}` : ''}
 
-Write engaging, practical content that:
+Write engaging, practical content (600-1000 words) that:
 1. Has a strong opening hook
 2. Covers each key point with actionable advice
 3. Includes examples and practical tips
-4. Uses bullet points and formatting for readability
-5. Ends with a chapter summary or key takeaways
+4. Uses simple formatting for readability
+5. Ends with key takeaways
 
-FORMAT: Write in a conversational but professional tone. Use markdown formatting (headers, bullets, bold for emphasis). Aim for 800-1500 words.
+IMPORTANT: Your response must be valid JSON. Use \\n for line breaks in content. Do not use actual newlines inside the content string.
 
-Respond ONLY with valid JSON:
-{
-  "chapterId": "${chapterId}",
-  "content": "The full markdown-formatted chapter content goes here...",
-  "wordCount": 1000,
-  "readingTimeMinutes": 5,
-  "keyTakeaways": ["Takeaway 1", "Takeaway 2", "Takeaway 3"]
-}`;
+Respond with this exact JSON structure:
+{"content": "Your chapter content here with \\n for line breaks", "wordCount": 800, "readingTimeMinutes": 4, "keyTakeaways": ["Takeaway 1", "Takeaway 2", "Takeaway 3"]}`;
 
       const text = await generateWithFallback(prompt);
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const chapterContent = JSON.parse(jsonMatch[0]);
+      
+      try {
+        // Clean the response and extract JSON
+        const cleanedText = cleanJsonResponse(text);
+        const chapterContent = JSON.parse(cleanedText);
         
         // Update the outline with the new chapter content
         const updatedOutline = { ...product.raw_analysis?.outline };
@@ -280,9 +318,9 @@ Respond ONLY with valid JSON:
               ? { 
                   ...ch, 
                   content: chapterContent.content,
-                  wordCount: chapterContent.wordCount,
-                  readingTimeMinutes: chapterContent.readingTimeMinutes,
-                  keyTakeaways: chapterContent.keyTakeaways
+                  wordCount: chapterContent.wordCount || 500,
+                  readingTimeMinutes: chapterContent.readingTimeMinutes || 3,
+                  keyTakeaways: chapterContent.keyTakeaways || []
                 }
               : ch
           );
@@ -301,8 +339,9 @@ Respond ONLY with valid JSON:
           .eq('user_id', user.id);
 
         return NextResponse.json({ success: true, chapterContent, outline: updatedOutline });
-      } else {
-        throw new Error('Failed to parse chapter content response');
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError, 'Raw text:', text.substring(0, 500));
+        throw new Error('Failed to parse chapter content. The AI response was not valid JSON.');
       }
     } else if (type === 'all-chapters') {
       // Generate content for ALL chapters at once
@@ -316,7 +355,7 @@ Respond ONLY with valid JSON:
       
       // Generate content for each chapter
       for (const chapter of outline.chapters) {
-        prompt = `You are an expert ${product.product_type || 'ebook'} writer. Write CONCISE, VALUE-PACKED content for this chapter.
+        prompt = `You are an expert ${product.product_type || 'ebook'} writer. Write VALUE-PACKED content for this chapter.
 
 PRODUCT: ${product.name}
 TARGET AUDIENCE: ${product.raw_analysis?.targetAudience || 'General audience'}
@@ -325,44 +364,38 @@ CHAPTER ${chapter.number}: ${chapter.title}
 Description: ${chapter.description || 'Not provided'}
 Key Points: ${chapter.keyPoints?.join(', ') || 'Cover the main topic'}
 
-Write practical, actionable content with:
+Write practical, actionable content (400-600 words) with:
 - Strong opening (1-2 sentences)
-- 3-5 main points with bullet explanations
+- 3-5 main points with explanations
 - Real examples or tips
 - Quick summary/takeaways
 
-Keep it focused and valuable. Aim for 400-700 words.
+IMPORTANT: Your response must be valid JSON. Use \\n for line breaks. Do not use actual newlines inside strings.
 
-Respond ONLY with valid JSON:
-{
-  "content": "## ${chapter.title}\\n\\nYour markdown content here...",
-  "wordCount": 500,
-  "readingTimeMinutes": 3,
-  "keyTakeaways": ["Takeaway 1", "Takeaway 2"]
-}`;
+Respond with exactly this JSON format on a single line:
+{"content": "Chapter title and content here with \\n for line breaks", "wordCount": 500, "readingTimeMinutes": 3, "keyTakeaways": ["Takeaway 1", "Takeaway 2"]}`;
 
         try {
           const text = await generateWithFallback(prompt);
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            chaptersWithContent.push({
-              id: chapter.id,
-              content: parsed.content,
-              wordCount: parsed.wordCount || 500,
-              readingTimeMinutes: parsed.readingTimeMinutes || 3,
-              keyTakeaways: parsed.keyTakeaways || [],
-            });
-          }
+          const cleanedText = cleanJsonResponse(text);
+          const parsed = JSON.parse(cleanedText);
+          
+          chaptersWithContent.push({
+            id: chapter.id,
+            content: parsed.content || `## ${chapter.title}\n\nContent for this chapter.`,
+            wordCount: parsed.wordCount || 500,
+            readingTimeMinutes: parsed.readingTimeMinutes || 3,
+            keyTakeaways: parsed.keyTakeaways || [],
+          });
         } catch (chapterError) {
           console.error(`Error generating chapter ${chapter.id}:`, chapterError);
           // Continue with other chapters even if one fails
           chaptersWithContent.push({
             id: chapter.id,
-            content: `## ${chapter.title}\n\n*Content generation failed. Please try again.*`,
-            wordCount: 0,
-            readingTimeMinutes: 0,
-            keyTakeaways: [],
+            content: `## ${chapter.title}\n\n${chapter.description || 'This chapter covers important concepts.'}\n\n**Key Points:**\n${chapter.keyPoints?.map((p: string) => `- ${p}`).join('\n') || '- Main concepts and ideas'}\n\n*Content will be expanded. Click regenerate to try again.*`,
+            wordCount: 100,
+            readingTimeMinutes: 1,
+            keyTakeaways: chapter.keyPoints?.slice(0, 3) || ['Key concept from this chapter'],
           });
         }
       }

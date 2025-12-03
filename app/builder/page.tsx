@@ -244,6 +244,19 @@ function BuilderContent() {
   });
   const [isLaunching, setIsLaunching] = useState(false);
   
+  // Notification modal state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+    details?: string[];
+  }>({ show: false, type: 'info', title: '', message: '' });
+
+  const showNotification = (type: 'success' | 'error' | 'info', title: string, message: string, details?: string[]) => {
+    setNotification({ show: true, type, title, message, details });
+  };
+  
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -386,7 +399,7 @@ function BuilderContent() {
       setProducts(prev => prev.map(p => p.id === product.id ? product : p));
     } catch (error) {
       console.error('Save error:', error);
-      alert('Failed to save product');
+      showNotification('error', 'Save Failed', 'Failed to save product. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -413,7 +426,7 @@ function BuilderContent() {
       setProductToDelete(null);
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete product');
+      showNotification('error', 'Delete Failed', 'Failed to delete product. Please try again.');
     }
   };
 
@@ -453,7 +466,7 @@ function BuilderContent() {
       ));
     } catch (error) {
       console.error('Generate outline error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to generate outline');
+      showNotification('error', 'Outline Generation Failed', error instanceof Error ? error.message : 'Failed to generate outline');
     } finally {
       setIsGeneratingOutline(false);
     }
@@ -495,7 +508,7 @@ function BuilderContent() {
       ));
     } catch (error) {
       console.error('Generate structure error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to generate structure');
+      showNotification('error', 'Structure Generation Failed', error instanceof Error ? error.message : 'Failed to generate structure');
     } finally {
       setIsGeneratingStructure(false);
     }
@@ -539,11 +552,15 @@ function BuilderContent() {
       // Mark content as complete in checklist
       setLaunchChecklist(prev => ({ ...prev, contentComplete: true }));
       
-      // Show stats
-      alert(`✨ Content generated!\n\n📝 ${data.stats.chaptersGenerated} chapters written\n📊 ${data.stats.totalWordCount.toLocaleString()} words\n📖 ~${data.stats.estimatedPages} pages`);
+      // Show success modal
+      showNotification('success', 'Content Generated!', 'Your ebook content has been written successfully.', [
+        `📝 ${data.stats.chaptersGenerated} chapters written`,
+        `📊 ${data.stats.totalWordCount.toLocaleString()} total words`,
+        `📖 ~${data.stats.estimatedPages} pages`
+      ]);
     } catch (error) {
       console.error('Generate content error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to generate content');
+      showNotification('error', 'Generation Failed', error instanceof Error ? error.message : 'Failed to generate content');
     } finally {
       setIsGeneratingContent(false);
     }
@@ -597,7 +614,7 @@ function BuilderContent() {
       }
     } catch (error) {
       console.error('Generate chapter content error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to generate chapter content');
+      showNotification('error', 'Chapter Generation Failed', error instanceof Error ? error.message : 'Failed to generate chapter content');
     } finally {
       setGeneratingChapterId(null);
     }
@@ -667,7 +684,7 @@ function BuilderContent() {
       setImageSuggestions(data.suggestions || []);
     } catch (error) {
       console.error('Get suggestions error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to get image suggestions');
+      showNotification('error', 'Image Suggestions Failed', error instanceof Error ? error.message : 'Failed to get image suggestions');
     } finally {
       setIsLoadingSuggestions(false);
     }
@@ -760,11 +777,15 @@ function BuilderContent() {
       
       setShowLaunchModal(false);
       
-      // Redirect to marketplace or show success
-      alert('🎉 Product launched successfully! It will appear on the marketplace shortly.');
+      // Show success notification
+      showNotification('success', 'Product Launched!', 'Your product is now live on the marketplace.', [
+        '🎉 Congratulations!',
+        '👀 Customers can now discover your product',
+        '💰 You\'ll be notified when you make sales'
+      ]);
     } catch (error) {
       console.error('Launch error:', error);
-      alert('Failed to launch product');
+      showNotification('error', 'Launch Failed', 'Failed to launch product. Please try again.');
     } finally {
       setIsLaunching(false);
     }
@@ -1262,32 +1283,31 @@ function BuilderContent() {
                             <div className="space-y-3 mt-6">
                               {currentProduct.raw_analysis.outline.chapters?.map((chapter: Chapter) => (
                                 <div key={chapter.id} className={`border-2 rounded-xl overflow-hidden ${chapter.content ? 'border-green-300 bg-green-50/30' : 'border-gray-200'}`}>
-                                  <button
-                                    onClick={() => toggleChapter(chapter.id)}
-                                    className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors"
-                                  >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${chapter.content ? 'bg-green-500 text-white' : 'bg-uvz-orange text-white'}`}>
-                                      {chapter.content ? <CheckCircle className="w-5 h-5" /> : chapter.number}
-                                    </div>
-                                    <div className="flex-1 text-left">
-                                      <p className="font-bold">{chapter.title}</p>
-                                      <div className="flex items-center gap-2 mt-0.5">
-                                        {chapter.wordCount ? (
-                                          <span className="text-xs text-green-600 font-medium">✓ {chapter.wordCount.toLocaleString()} words</span>
-                                        ) : chapter.estimatedPages ? (
-                                          <span className="text-xs text-gray-500">~{chapter.estimatedPages} pages</span>
-                                        ) : null}
-                                        {chapter.readingTimeMinutes && (
-                                          <span className="text-xs text-gray-500">• {chapter.readingTimeMinutes} min read</span>
-                                        )}
+                                  <div className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
+                                    <div 
+                                      onClick={() => toggleChapter(chapter.id)}
+                                      className="flex-1 flex items-center gap-3 cursor-pointer"
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${chapter.content ? 'bg-green-500 text-white' : 'bg-uvz-orange text-white'}`}>
+                                        {chapter.content ? <CheckCircle className="w-5 h-5" /> : chapter.number}
+                                      </div>
+                                      <div className="flex-1 text-left">
+                                        <p className="font-bold">{chapter.title}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          {chapter.wordCount ? (
+                                            <span className="text-xs text-green-600 font-medium">✓ {chapter.wordCount.toLocaleString()} words</span>
+                                          ) : chapter.estimatedPages ? (
+                                            <span className="text-xs text-gray-500">~{chapter.estimatedPages} pages</span>
+                                          ) : null}
+                                          {chapter.readingTimeMinutes && (
+                                            <span className="text-xs text-gray-500">• {chapter.readingTimeMinutes} min read</span>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                     {!chapter.content && (
                                       <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleGenerateChapterContent(chapter);
-                                        }}
+                                        onClick={() => handleGenerateChapterContent(chapter)}
                                         disabled={generatingChapterId === chapter.id}
                                         className="px-3 py-1.5 bg-green-100 text-green-700 text-sm font-bold rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1"
                                       >
@@ -1299,12 +1319,17 @@ function BuilderContent() {
                                         Write
                                       </button>
                                     )}
-                                    {expandedChapters.has(chapter.id) ? (
-                                      <ChevronDown className="w-5 h-5 text-gray-400" />
-                                    ) : (
-                                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                                    )}
-                                  </button>
+                                    <div 
+                                      onClick={() => toggleChapter(chapter.id)}
+                                      className="cursor-pointer p-1"
+                                    >
+                                      {expandedChapters.has(chapter.id) ? (
+                                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                                      ) : (
+                                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                                      )}
+                                    </div>
+                                  </div>
                                   
                                   {expandedChapters.has(chapter.id) && (
                                     <div className="px-4 pb-4 pt-0 border-t border-gray-100">
@@ -2413,31 +2438,86 @@ function BuilderContent() {
                             <span>📚 {currentProduct.raw_analysis.outline.chapters.length} chapters</span>
                           )}
                         </div>
+                        {/* Content completion status */}
+                        {currentProduct.raw_analysis.outline.chapters && (
+                          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span className="text-sm">
+                              {currentProduct.raw_analysis.outline.chapters.filter((ch: Chapter) => ch.content).length}/{currentProduct.raw_analysis.outline.chapters.length} chapters written
+                            </span>
+                          </div>
+                        )}
                       </div>
                       
-                      {/* Chapters List */}
-                      <div className="space-y-4">
-                        {currentProduct.raw_analysis.outline.chapters?.map((chapter) => (
-                          <div key={chapter.id} className="bg-white border-2 border-gray-200 rounded-xl p-4">
-                            <div className="flex items-start gap-4">
-                              <div className="w-10 h-10 bg-uvz-orange text-white rounded-lg flex items-center justify-center font-black shrink-0">
-                                {chapter.number}
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-bold text-lg">{chapter.title}</h4>
-                                <p className="text-gray-600 text-sm mt-1">{chapter.description}</p>
-                                {chapter.keyPoints && chapter.keyPoints.length > 0 && (
-                                  <div className="mt-3 flex flex-wrap gap-2">
-                                    {chapter.keyPoints.map((point, i) => (
-                                      <span key={i} className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                        • {point}
-                                      </span>
-                                    ))}
+                      {/* Full Content Preview - Ebook Style */}
+                      <div className="space-y-8">
+                        {currentProduct.raw_analysis.outline.chapters?.map((chapter: Chapter) => (
+                          <div key={chapter.id} className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
+                            <div className="bg-gradient-to-r from-uvz-orange/10 to-transparent p-4 border-b">
+                              <div className="flex items-start gap-4">
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-black text-lg shrink-0 ${chapter.content ? 'bg-green-500 text-white' : 'bg-uvz-orange text-white'}`}>
+                                  {chapter.content ? <CheckCircle className="w-6 h-6" /> : chapter.number}
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="font-bold text-xl">{chapter.title}</h4>
+                                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                                    {chapter.wordCount && <span>{chapter.wordCount.toLocaleString()} words</span>}
+                                    {chapter.readingTimeMinutes && <span>• {chapter.readingTimeMinutes} min read</span>}
                                   </div>
-                                )}
+                                </div>
                               </div>
-                              {chapter.estimatedPages && (
-                                <span className="text-sm text-gray-400">{chapter.estimatedPages} pages</span>
+                            </div>
+                            
+                            <div className="p-6">
+                              {chapter.content ? (
+                                <>
+                                  {/* Rendered Content */}
+                                  <div className="prose prose-gray max-w-none">
+                                    <div 
+                                      className="text-gray-700 leading-relaxed"
+                                      dangerouslySetInnerHTML={{ 
+                                        __html: chapter.content
+                                          .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-6 mb-3 text-gray-900">$1</h2>')
+                                          .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold mt-4 mb-2 text-gray-800">$1</h3>')
+                                          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
+                                          .replace(/^\* (.*$)/gim, '<li class="ml-4 list-disc my-1">$1</li>')
+                                          .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc my-1">$1</li>')
+                                          .replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul class="my-3">$&</ul>')
+                                          .replace(/\n\n/g, '</p><p class="my-3">')
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  {/* Key Takeaways */}
+                                  {chapter.keyTakeaways && chapter.keyTakeaways.length > 0 && (
+                                    <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                      <h5 className="font-bold text-blue-800 mb-3">💡 Key Takeaways</h5>
+                                      <ul className="space-y-2">
+                                        {chapter.keyTakeaways.map((takeaway, i) => (
+                                          <li key={i} className="text-blue-700 flex items-start gap-2">
+                                            <CheckCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                                            {takeaway}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                  <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                  <p className="font-medium">Content not yet generated</p>
+                                  <p className="text-sm">{chapter.description}</p>
+                                  {chapter.keyPoints && chapter.keyPoints.length > 0 && (
+                                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                      {chapter.keyPoints.slice(0, 3).map((point, i) => (
+                                        <span key={i} className="text-xs px-2 py-1 bg-gray-100 rounded-full">
+                                          • {point}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -2449,7 +2529,7 @@ function BuilderContent() {
                         <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-6 mt-6">
                           <h3 className="font-black text-purple-800 mb-4">🎁 Bonus Materials</h3>
                           <div className="grid md:grid-cols-2 gap-3">
-                            {currentProduct.raw_analysis.outline.bonus_content.map((bonus, i) => (
+                            {currentProduct.raw_analysis.outline.bonus_content.map((bonus: BonusContent, i: number) => (
                               <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-lg">
                                 <CheckCircle className="w-5 h-5 text-purple-500" />
                                 <span className="font-medium">{bonus.title}</span>
@@ -2639,6 +2719,68 @@ function BuilderContent() {
                   Close Preview
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {notification.show && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border-4 border-black shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className={`p-6 ${
+              notification.type === 'success' ? 'bg-gradient-to-r from-green-50 to-emerald-50' :
+              notification.type === 'error' ? 'bg-gradient-to-r from-red-50 to-rose-50' :
+              'bg-gradient-to-r from-blue-50 to-indigo-50'
+            }`}>
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                  notification.type === 'success' ? 'bg-green-500' :
+                  notification.type === 'error' ? 'bg-red-500' :
+                  'bg-blue-500'
+                }`}>
+                  {notification.type === 'success' && <CheckCircle className="w-8 h-8 text-white" />}
+                  {notification.type === 'error' && <X className="w-8 h-8 text-white" />}
+                  {notification.type === 'info' && <Sparkles className="w-8 h-8 text-white" />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-black">{notification.title}</h3>
+                  <p className="text-gray-600 mt-1">{notification.message}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Details */}
+            {notification.details && notification.details.length > 0 && (
+              <div className="p-6 border-t border-gray-100">
+                <div className="space-y-2">
+                  {notification.details.map((detail, i) => (
+                    <div key={i} className="flex items-center gap-2 text-gray-700">
+                      <div className={`w-2 h-2 rounded-full ${
+                        notification.type === 'success' ? 'bg-green-500' :
+                        notification.type === 'error' ? 'bg-red-500' :
+                        'bg-blue-500'
+                      }`} />
+                      <span>{detail}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200">
+              <button
+                onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+                className={`w-full py-3 font-bold border-2 border-black rounded-xl transition-colors ${
+                  notification.type === 'success' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                  notification.type === 'error' ? 'bg-red-500 hover:bg-red-600 text-white' :
+                  'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {notification.type === 'success' ? 'Awesome!' : notification.type === 'error' ? 'Got it' : 'OK'}
+              </button>
             </div>
           </div>
         </div>
