@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { autumn } from '@/lib/autumn';
+import { getAutumn } from '@/lib/autumn';
 import { createClient } from '@/lib/supabase/server';
 
 // POST - Check if user has access to a feature
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Feature ID required' }, { status: 400 });
     }
 
-    const { data, error } = await autumn.check({
+    const { data, error } = await getAutumn().check({
       customer_id: user.id,
       feature_id: featureId,
       required_balance: requiredBalance,

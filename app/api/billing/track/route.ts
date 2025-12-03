@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { autumn } from '@/lib/autumn';
+import { getAutumn } from '@/lib/autumn';
 import { createClient } from '@/lib/supabase/server';
 
 // POST - Track feature usage
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Feature ID required' }, { status: 400 });
     }
 
-    const { data, error } = await autumn.track({
+    const { data, error } = await getAutumn().track({
       customer_id: user.id,
       feature_id: featureId,
       value: value,

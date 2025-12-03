@@ -1,9 +1,25 @@
 import { Autumn } from 'autumn-js';
 
-// Initialize Autumn client
-export const autumn = new Autumn({
-  secretKey: process.env.AUTUMN_API_KEY!,
-});
+// Lazy initialization to prevent build errors when env vars are missing
+let _autumn: Autumn | null = null;
+
+export function getAutumn(): Autumn {
+  if (!_autumn) {
+    const secretKey = process.env.AUTUMN_API_KEY;
+    if (!secretKey) {
+      throw new Error('AUTUMN_API_KEY environment variable is not set');
+    }
+    _autumn = new Autumn({ secretKey });
+  }
+  return _autumn;
+}
+
+// Legacy export for backward compatibility - use getAutumn() instead
+export const autumn = {
+  get client() {
+    return getAutumn();
+  }
+};
 
 // Product IDs matching your Autumn dashboard
 export const PRODUCTS = {

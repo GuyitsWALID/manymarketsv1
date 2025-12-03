@@ -36,13 +36,30 @@ export default function Home() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user) {
+        // Add a timeout to prevent infinite loading
+        const timeoutPromise = new Promise<null>((resolve) => 
+          setTimeout(() => resolve(null), 3000)
+        );
+        
+        // First check session from local storage (faster)
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          router.push('/chat');
+          return;
+        }
+        
+        // If no session, try getUser with timeout as fallback
+        const authPromise = supabase.auth.getUser().then(r => r.data?.user);
+        const user = await Promise.race([authPromise, timeoutPromise]);
+        
+        if (user) {
           router.push('/chat');
         } else {
           setIsCheckingAuth(false);
         }
-      } catch {
+      } catch (error) {
+        console.log('Auth check failed:', error);
         setIsCheckingAuth(false);
       }
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { autumn, PRODUCTS } from '@/lib/autumn';
+import { getAutumn, PRODUCTS } from '@/lib/autumn';
 import { createClient } from '@/lib/supabase/server';
 
 // GET - Get customer billing state
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get customer state from Autumn
-    const { data, error } = await autumn.customers.get(user.id);
+    const { data, error } = await getAutumn().customers.get(user.id);
     
     if (error) {
       // If customer doesn't exist, return free tier info
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'create_customer': {
         // Create or update customer in Autumn
-        const { data, error } = await autumn.customers.create({
+        const { data, error } = await getAutumn().customers.create({
           id: user.id,
           name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           email: user.email!,
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
         }
 
-        const { data, error } = await autumn.checkout({
+        const { data, error } = await getAutumn().checkout({
           customer_id: user.id,
           product_id: productId,
         });
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
         }
 
-        const { data, error } = await autumn.attach({
+        const { data, error } = await getAutumn().attach({
           customer_id: user.id,
           product_id: productId,
         });
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
 
       case 'cancel': {
         // Cancel subscription
-        const { data, error } = await autumn.cancel({
+        const { data, error } = await getAutumn().cancel({
           customer_id: user.id,
           product_id: productId || PRODUCTS.PRO,
         });

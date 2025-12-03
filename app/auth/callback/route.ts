@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { autumn } from '@/lib/autumn';
+import { getAutumn } from '@/lib/autumn';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       if (user) {
         try {
           // Create customer in Autumn (auto-enables free plan)
-          await autumn.customers.create({
+          await getAutumn().customers.create({
             id: user.id,
             name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
             email: user.email!,

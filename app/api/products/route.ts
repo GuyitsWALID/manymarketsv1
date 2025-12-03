@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { autumn } from '@/lib/autumn';
+import { getAutumn } from '@/lib/autumn';
 
 // Helper function to check if user is Pro via Autumn
 async function checkProStatus(userId: string): Promise<boolean> {
   try {
-    const { data, error } = await autumn.customers.get(userId);
+    const { data, error } = await getAutumn().customers.get(userId);
     if (error) return false;
     const plan = data?.products?.[0]?.id || 'free';
     return plan === 'pro' || plan === 'enterprise';
