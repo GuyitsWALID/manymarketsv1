@@ -63,20 +63,31 @@ export default function ChatHeader({
 
       {/* Right: New Chat + Profile */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={createNewChat}
+        <Link
+          href="/chat"
+          onClick={() => {
+            // Clear active session so chat page starts fresh
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('uvz_active_session');
+            }
+          }}
           className="hidden sm:flex items-center gap-2 bg-uvz-orange text-white px-4 py-2 border-2 border-black font-bold rounded shadow-brutal hover:-translate-y-0.5 transition-transform"
         >
           <Plus className="w-4 h-4" />
           <span>New Chat</span>
-        </button>
-        <button
-          onClick={createNewChat}
+        </Link>
+        <Link
+          href="/chat"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('uvz_active_session');
+            }
+          }}
           className="sm:hidden p-2 bg-uvz-orange text-white border-2 border-black rounded shadow-brutal"
           aria-label="New chat"
         >
           <Plus className="w-5 h-5" />
-        </button>
+        </Link>
 
         {currentUser ? (
           <div className="relative" ref={dropdownRef}>

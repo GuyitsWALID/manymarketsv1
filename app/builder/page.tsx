@@ -31,12 +31,22 @@ import {
   Eye,
   ExternalLink,
   AlertCircle,
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   GripVertical,
   X,
   Check,
-  RefreshCw
+  RefreshCw,
+  Search,
+  Archive,
+  ArchiveRestore,
+  Filter,
+  Grid3X3,
+  List,
+  TrendingUp,
+  BarChart3,
+  Pencil
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -132,10 +142,13 @@ interface Asset {
   fullUrl?: string;
   prompt?: string;
   file?: File;
-  status: 'pending' | 'uploaded' | 'generating' | 'error';
+  status: 'pending' | 'uploaded' | 'generating' | 'error' | 'saved';
   generatedPrompt?: string;
   category?: 'cover' | 'chapter' | 'illustration' | 'diagram' | 'icon' | 'uploaded';
   aspectRatio?: string;
+  isSelected?: boolean;
+  storagePath?: string;
+  dbId?: string; // ID from database if saved
 }
 
 interface ImageSuggestion {
@@ -212,6 +225,26 @@ function BuilderContent() {
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [showProductMenu, setShowProductMenu] = useState<string | null>(null);
   
+  // Unsaved changes tracking
+  const [originalFormData, setOriginalFormData] = useState<{
+    name: string;
+    tagline: string;
+    description: string;
+    targetAudience: string;
+    problemSolved: string;
+    notes: string;
+  } | null>(null);
+  const [originalPrice, setOriginalPrice] = useState<string>('');
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ type: 'close' | 'switch'; productId?: string } | null>(null);
+  
+  // Product list states (new redesign)
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [isArchiving, setIsArchiving] = useState<string | null>(null);
+  
   // Content generation states
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingStructure, setIsGeneratingStructure] = useState(false);
@@ -228,6 +261,8 @@ function BuilderContent() {
   const [imageSuggestions, setImageSuggestions] = useState<ImageSuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [generatingImageId, setGeneratingImageId] = useState<string | null>(null);
+  const [isSavingAssets, setIsSavingAssets] = useState(false);
+  const [savingAssetId, setSavingAssetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Launch state
@@ -349,23 +384,136 @@ function BuilderContent() {
         if (productRes.ok) {
           const { product } = await productRes.json();
           setCurrentProduct(product);
-          setFormData({
+          const loadedFormData = {
             name: product.name || '',
             tagline: product.tagline || '',
             description: product.description || '',
             targetAudience: product.raw_analysis?.targetAudience || '',
             problemSolved: product.raw_analysis?.problemSolved || '',
             notes: product.notes || '',
-          });
+          };
+          setFormData(loadedFormData);
+          setOriginalFormData(loadedFormData);
           // Set product price
-          setProductPrice(product.price_point || '');
+          const loadedPrice = product.price_point || '';
+          setProductPrice(loadedPrice);
+          setOriginalPrice(loadedPrice);
+          
+          // Load saved assets for this product
+          try {
+            const assetsRes = await fetch(`/api/products/${productId}/assets`);
+            if (assetsRes.ok) {
+              const { assets: savedAssets } = await assetsRes.json();
+              // Convert database assets to Asset interface
+              const loadedAssets: Asset[] = (savedAssets || []).map((a: { id: string; name: string; type: string; url: string; thumbnail_url?: string; prompt?: string; category?: string; storage_path?: string }) => ({
+                id: `saved-${a.id}`,
+                dbId: a.id,
+                name: a.name,
+                type: a.type as Asset['type'],
+                url: a.url,
+                thumbnailUrl: a.thumbnail_url || a.url,
+                fullUrl: a.url,
+                prompt: a.prompt,
+                status: 'saved' as const,
+                category: a.category as Asset['category'],
+                storagePath: a.storage_path,
+              }));
+              setAssets(loadedAssets);
+            }
+          } catch (e) {
+            console.error('Failed to load assets:', e);
+          }
         }
       } catch (e) {
         console.error('Failed to load product:', e);
       }
+    } else {
+      // Clear assets when no product selected
+      setAssets([]);
     }
 
     setIsLoading(false);
+  };
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = (): boolean => {
+    if (!originalFormData || !currentProduct) return false;
+    
+    return (
+      formData.name !== originalFormData.name ||
+      formData.tagline !== originalFormData.tagline ||
+      formData.description !== originalFormData.description ||
+      formData.targetAudience !== originalFormData.targetAudience ||
+      formData.problemSolved !== originalFormData.problemSolved ||
+      formData.notes !== originalFormData.notes ||
+      productPrice !== originalPrice
+    );
+  };
+
+  // Handle closing editor with unsaved changes check
+  const handleCloseEditor = () => {
+    if (hasUnsavedChanges()) {
+      setPendingAction({ type: 'close' });
+      setShowUnsavedChangesModal(true);
+    } else {
+      closeEditor();
+    }
+  };
+
+  // Handle switching to another product with unsaved changes check
+  const handleSwitchProduct = (productId: string) => {
+    if (currentProduct?.id === productId) {
+      // Clicking same product - toggle close
+      handleCloseEditor();
+    } else if (hasUnsavedChanges()) {
+      // Switching to different product with unsaved changes
+      setPendingAction({ type: 'switch', productId });
+      setShowUnsavedChangesModal(true);
+    } else {
+      // No unsaved changes, just switch
+      router.push(`/builder?product=${productId}`);
+    }
+  };
+
+  // Close editor without saving
+  const closeEditor = () => {
+    setCurrentProduct(null);
+    setOriginalFormData(null);
+    setOriginalPrice('');
+    setFormData({
+      name: '',
+      tagline: '',
+      description: '',
+      targetAudience: '',
+      problemSolved: '',
+      notes: '',
+    });
+    setProductPrice('');
+    setAssets([]);
+    router.push('/builder');
+  };
+
+  // Discard changes and proceed with pending action
+  const handleDiscardChanges = () => {
+    setShowUnsavedChangesModal(false);
+    if (pendingAction?.type === 'close') {
+      closeEditor();
+    } else if (pendingAction?.type === 'switch' && pendingAction.productId) {
+      router.push(`/builder?product=${pendingAction.productId}`);
+    }
+    setPendingAction(null);
+  };
+
+  // Save and proceed with pending action
+  const handleSaveAndProceed = async () => {
+    await handleSaveProduct();
+    setShowUnsavedChangesModal(false);
+    if (pendingAction?.type === 'close') {
+      closeEditor();
+    } else if (pendingAction?.type === 'switch' && pendingAction.productId) {
+      router.push(`/builder?product=${pendingAction.productId}`);
+    }
+    setPendingAction(null);
   };
 
   const handleSaveProduct = async () => {
@@ -394,6 +542,10 @@ function BuilderContent() {
       
       const { product } = await response.json();
       setCurrentProduct(product);
+      
+      // Update original data to reflect saved state
+      setOriginalFormData({ ...formData });
+      setOriginalPrice(productPrice);
       
       // Update in list
       setProducts(prev => prev.map(p => p.id === product.id ? product : p));
@@ -429,6 +581,79 @@ function BuilderContent() {
       showNotification('error', 'Delete Failed', 'Failed to delete product. Please try again.');
     }
   };
+
+  const handleArchiveProduct = async (id: string, archive: boolean) => {
+    setIsArchiving(id);
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: archive ? 'archived' : 'idea' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Archive API error:', response.status, errorData);
+        throw new Error(errorData.error || 'Failed to update');
+      }
+      
+      // Update products list
+      setProducts(prev => prev.map(p => 
+        p.id === id ? { ...p, status: archive ? 'archived' : 'idea' } : p
+      ));
+      
+      // If archiving current product, clear selection
+      if (archive && currentProduct?.id === id) {
+        setCurrentProduct(null);
+        router.push('/builder');
+      }
+      
+      showNotification('success', archive ? 'Product Archived' : 'Product Restored', 
+        archive ? 'Product moved to archive.' : 'Product restored to active products.');
+      setShowProductMenu(null);
+    } catch (error) {
+      console.error('Archive error:', error);
+      showNotification('error', 'Update Failed', 'Failed to update product. Please try again.');
+    } finally {
+      setIsArchiving(null);
+    }
+  };
+
+  // Filter products based on current tab, search, and filter
+  const filteredProducts = products.filter(product => {
+    // Tab filter
+    const isArchived = product.status === 'archived';
+    if (activeTab === 'active' && isArchived) return false;
+    if (activeTab === 'archived' && !isArchived) return false;
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      if (!product.name.toLowerCase().includes(query) && 
+          !product.tagline?.toLowerCase().includes(query) &&
+          !product.product_type?.toLowerCase().includes(query)) {
+        return false;
+      }
+    }
+    
+    // Type filter
+    if (filterType !== 'all' && product.product_type !== filterType) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Calculate stats
+  const productStats = {
+    total: products.length,
+    active: products.filter(p => p.status !== 'archived').length,
+    archived: products.filter(p => p.status === 'archived').length,
+    launched: products.filter(p => p.status === 'launched').length,
+  };
+
+  // Get unique product types for filter
+  const productTypes = [...new Set(products.map(p => p.product_type).filter(Boolean))];
 
   // Generate content outline using AI
   const handleGenerateOutline = async () => {
@@ -623,11 +848,12 @@ function BuilderContent() {
   // Handle file upload for assets
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !currentProduct) return;
     
     setIsUploadingAsset(true);
     
-    const newAssets: Asset[] = [];
+    const uploadedAssets: Asset[] = [];
+    
     for (const file of Array.from(files)) {
       const assetType = file.type.startsWith('image/') ? 'image' 
         : file.type.startsWith('video/') ? 'video'
@@ -635,27 +861,72 @@ function BuilderContent() {
         : file.type.includes('pdf') || file.type.includes('document') ? 'document'
         : 'other';
       
-      newAssets.push({
-        id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      const tempId = `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Add as pending first
+      const pendingAsset: Asset = {
+        id: tempId,
         name: file.name,
         type: assetType,
         file: file,
         status: 'pending',
-      });
+      };
+      setAssets(prev => [...prev, pendingAsset]);
+      
+      try {
+        // Upload to Supabase via API
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('assetType', assetType);
+        formData.append('name', file.name);
+        
+        const response = await fetch(`/api/products/${currentProduct.id}/assets`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to upload file');
+        }
+        
+        const result = await response.json();
+        
+        // Update asset with saved status
+        setAssets(prev => prev.map(a => 
+          a.id === tempId 
+            ? { 
+                ...a, 
+                status: 'saved' as const, 
+                url: result.publicUrl,
+                storagePath: result.storagePath,
+                dbId: result.id
+              }
+            : a
+        ));
+        
+        uploadedAssets.push({
+          ...pendingAsset,
+          status: 'saved',
+          url: result.publicUrl,
+          storagePath: result.storagePath,
+          dbId: result.id
+        });
+      } catch (error) {
+        console.error('Upload error:', error);
+        // Mark as failed
+        setAssets(prev => prev.map(a => 
+          a.id === tempId 
+            ? { ...a, status: 'uploaded' as const, url: URL.createObjectURL(file) }
+            : a
+        ));
+      }
     }
     
-    setAssets(prev => [...prev, ...newAssets]);
+    setIsUploadingAsset(false);
     
-    // TODO: Actually upload to storage (Supabase Storage or similar)
-    // For now, simulate upload
-    setTimeout(() => {
-      setAssets(prev => prev.map(a => 
-        newAssets.find(na => na.id === a.id) 
-          ? { ...a, status: 'uploaded' as const, url: URL.createObjectURL(a.file!) }
-          : a
-      ));
-      setIsUploadingAsset(false);
-    }, 1500);
+    if (uploadedAssets.length > 0) {
+      showNotification('success', 'Upload Complete', `${uploadedAssets.length} file(s) uploaded and saved to your library`);
+    }
     
     // Reset input
     if (fileInputRef.current) {
@@ -702,17 +973,18 @@ function BuilderContent() {
     const thumbnailUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=400&height=300&nologo=true`;
     const fullUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true`;
     
-    // Create a new asset
+    // Create a new asset - status is 'uploaded' meaning generated but not saved to storage yet
     const newAsset: Asset = {
       id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: suggestion.title,
       type: 'image',
-      status: 'uploaded',
+      status: 'uploaded', // Generated but not saved to storage
       prompt: prompt,
       thumbnailUrl: thumbnailUrl,
       fullUrl: fullUrl,
       url: thumbnailUrl,
       category: suggestion.category,
+      isSelected: false,
     };
     
     setAssets(prev => [...prev, newAsset]);
@@ -738,12 +1010,13 @@ function BuilderContent() {
       id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: `Custom: ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`,
       type: 'image',
-      status: 'uploaded',
+      status: 'uploaded', // Generated but not saved to storage
       prompt: prompt,
       thumbnailUrl: thumbnailUrl,
       fullUrl: fullUrl,
       url: thumbnailUrl,
       category: 'illustration',
+      isSelected: false,
     };
     
     setAssets(prev => [...prev, newAsset]);
@@ -751,8 +1024,113 @@ function BuilderContent() {
     setIsGeneratingImage(false);
   };
 
+  // Toggle asset selection
+  const toggleAssetSelection = (assetId: string) => {
+    setAssets(prev => prev.map(a => 
+      a.id === assetId ? { ...a, isSelected: !a.isSelected } : a
+    ));
+  };
+
+  // Save a single asset to Supabase storage
+  const handleSaveAssetToStorage = async (asset: Asset) => {
+    if (!currentProduct || asset.status === 'saved') return;
+    
+    setSavingAssetId(asset.id);
+    try {
+      const response = await fetch(`/api/products/${currentProduct.id}/assets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: asset.name,
+          type: asset.type,
+          category: asset.category,
+          url: asset.url,
+          thumbnailUrl: asset.thumbnailUrl,
+          fullUrl: asset.fullUrl,
+          prompt: asset.prompt,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save asset');
+      }
+      
+      const { asset: savedAsset } = await response.json();
+      
+      // Update the asset in state to mark as saved
+      setAssets(prev => prev.map(a => 
+        a.id === asset.id ? {
+          ...a,
+          status: 'saved' as const,
+          dbId: savedAsset.id,
+          url: savedAsset.url,
+          thumbnailUrl: savedAsset.thumbnail_url || savedAsset.url,
+          fullUrl: savedAsset.url,
+          storagePath: savedAsset.storage_path,
+        } : a
+      ));
+      
+      showNotification('success', 'Asset Saved', `"${asset.name}" has been saved to your library.`);
+    } catch (error) {
+      console.error('Save asset error:', error);
+      showNotification('error', 'Save Failed', error instanceof Error ? error.message : 'Failed to save asset');
+    } finally {
+      setSavingAssetId(null);
+    }
+  };
+
+  // Save all selected assets to storage
+  const handleSaveSelectedAssets = async () => {
+    const selectedAssets = assets.filter(a => a.isSelected && a.status !== 'saved');
+    if (selectedAssets.length === 0) {
+      showNotification('info', 'No Assets Selected', 'Please select assets to save to your library.');
+      return;
+    }
+    
+    setIsSavingAssets(true);
+    let savedCount = 0;
+    
+    for (const asset of selectedAssets) {
+      try {
+        await handleSaveAssetToStorage(asset);
+        savedCount++;
+      } catch {
+        // Error already shown in handleSaveAssetToStorage
+      }
+    }
+    
+    setIsSavingAssets(false);
+    
+    if (savedCount > 0) {
+      showNotification('success', 'Assets Saved', `${savedCount} asset(s) saved to your library.`);
+    }
+    
+    // Deselect all
+    setAssets(prev => prev.map(a => ({ ...a, isSelected: false })));
+  };
+
   // Delete asset
-  const handleDeleteAsset = (assetId: string) => {
+  const handleDeleteAsset = async (assetId: string) => {
+    const asset = assets.find(a => a.id === assetId);
+    
+    // If it's saved in storage, delete from API
+    if (asset?.dbId && currentProduct) {
+      try {
+        const response = await fetch(`/api/products/${currentProduct.id}/assets?assetId=${asset.dbId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete from storage');
+        }
+      } catch (error) {
+        console.error('Delete asset error:', error);
+        showNotification('error', 'Delete Failed', 'Failed to delete asset from storage.');
+        return;
+      }
+    }
+    
     setAssets(prev => prev.filter(a => a.id !== assetId));
   };
 
@@ -901,137 +1279,341 @@ function BuilderContent() {
 
       {/* Main Content */}
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen && !isMobile ? 'ml-72' : ''}`}>
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          {/* Back Button */}
-          <button
-            onClick={() => router.push('/chat')}
-            className="flex items-center gap-2 text-gray-600 hover:text-black font-bold mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to Research
-          </button>
-
-          <div className="grid lg:grid-cols-4 gap-6">
-            {/* Products Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="bg-white border-2 border-black rounded-xl p-4 shadow-brutal">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-black">Your Products</h2>
-                  <span className="text-sm text-gray-500">{products.length}</span>
-                </div>
-                
-                {products.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No products yet</p>
-                    <p className="text-xs text-gray-400 mt-1">Complete research to get product suggestions</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {products.map(product => {
-                      const Icon = getProductIcon(product.product_type);
-                      const isActive = currentProduct?.id === product.id;
-                      
-                      return (
-                        <div
-                          key={product.id}
-                          className={`relative group rounded-lg border-2 transition-all ${
-                            isActive 
-                              ? 'border-uvz-orange bg-orange-50' 
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <button
-                            onClick={() => router.push(`/builder?product=${product.id}`)}
-                            className="w-full p-3 text-left"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                isActive ? 'bg-uvz-orange text-white' : 'bg-gray-100 text-gray-600'
-                              }`}>
-                                <Icon className="w-4 h-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm truncate">{product.name}</p>
-                                <p className="text-xs text-gray-500 capitalize">{product.status}</p>
-                              </div>
-                            </div>
-                          </button>
-                          
-                          {/* Menu */}
-                          <div className="absolute top-2 right-2">
-                            <button
-                              onClick={() => setShowProductMenu(showProductMenu === product.id ? null : product.id)}
-                              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
-                            
-                            {showProductMenu === product.id && (
-                              <div className="absolute right-0 mt-1 bg-white border-2 border-black rounded-lg shadow-lg z-10 py-1 min-w-[120px]">
-                                <button
-                                  onClick={() => {
-                                    setProductToDelete(product.id);
-                                    setShowDeleteModal(true);
-                                    setShowProductMenu(null);
-                                  }}
-                                  className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                
-                <Link
-                  href="/chat"
-                  className="mt-4 w-full py-2 text-sm font-bold text-gray-600 hover:text-black flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  New Research
-                </Link>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Page Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push('/chat')}
+                className="p-2 hover:bg-white rounded-lg border-2 border-transparent hover:border-black transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black">Product Builder</h1>
+                <p className="text-gray-600 text-sm">Build and manage your digital products</p>
               </div>
             </div>
+            <Link
+              href="/chat"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              New Research
+            </Link>
+          </div>
 
-            {/* Main Builder Area */}
-            <div className="lg:col-span-3">
-              {!currentProduct ? (
-                // No product selected
-                <div className="bg-white border-2 border-black rounded-xl p-12 text-center">
-                  <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h2 className="text-xl font-black mb-2">Select a Product</h2>
-                  <p className="text-gray-600 mb-6">
-                    Choose a product from the sidebar to continue building, or start new research to get product suggestions.
-                  </p>
-                  <Link
-                    href="/chat"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-uvz-orange text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all"
-                  >
-                    <Sparkles className="w-5 h-5" />
-                    Start Research
-                  </Link>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <div className="bg-white border-2 border-black rounded-xl p-3 md:p-4 shadow-brutal">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-blue-600 border-2 border-black rounded-lg flex items-center justify-center shrink-0">
+                  <Package className="w-5 h-5 md:w-6 md:h-6 text-white" />
                 </div>
-              ) : (
-                <>
+                <div>
+                  <p className="text-xl md:text-2xl font-black">{productStats.total}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Total Products</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white border-2 border-black rounded-xl p-3 md:p-4 shadow-brutal">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-green-500 to-green-600 border-2 border-black rounded-lg flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xl md:text-2xl font-black">{productStats.active}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Active</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white border-2 border-black rounded-xl p-3 md:p-4 shadow-brutal">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-purple-600 border-2 border-black rounded-lg flex items-center justify-center shrink-0">
+                  <Rocket className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xl md:text-2xl font-black">{productStats.launched}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Launched</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white border-2 border-black rounded-xl p-3 md:p-4 shadow-brutal">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-gray-500 to-gray-600 border-2 border-black rounded-lg flex items-center justify-center shrink-0">
+                  <Archive className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-xl md:text-2xl font-black">{productStats.archived}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Archived</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-1 gap-6">
+            {/* Products Panel */}
+            <div className="w-full">
+              <div className="bg-white border-2 border-black rounded-xl shadow-brutal overflow-hidden">
+                {/* Tabs */}
+                <div className="flex border-b-2 border-black">
+                  <button
+                    onClick={() => setActiveTab('active')}
+                    className={`flex-1 px-4 py-3 font-bold text-sm transition-colors ${
+                      activeTab === 'active' 
+                        ? 'bg-uvz-orange text-white' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Active Products ({productStats.active})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('archived')}
+                    className={`flex-1 px-4 py-3 font-bold text-sm transition-colors border-l-2 border-black ${
+                      activeTab === 'archived' 
+                        ? 'bg-gray-700 text-white' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Archive className="w-4 h-4 inline mr-1" />
+                    Archived ({productStats.archived})
+                  </button>
+                </div>
+
+                {/* Search & Filters */}
+                <div className="p-3 border-b-2 border-black bg-gray-50">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search products..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm border-2 border-black rounded-lg focus:outline-none focus:ring-2 focus:ring-uvz-orange"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        className="px-3 py-2 text-sm border-2 border-black rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-uvz-orange"
+                      >
+                        <option value="all">All Types</option>
+                        {productTypes.map(type => (
+                          <option key={type} value={type} className="capitalize">
+                            {type?.replace('_', ' ')}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex border-2 border-black rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setViewMode('list')}
+                          className={`p-2 ${viewMode === 'list' ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setViewMode('grid')}
+                          className={`p-2 border-l-2 border-black ${viewMode === 'grid' ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+                        >
+                          <Grid3X3 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Products List/Grid */}
+                <div className="p-4 max-h-[600px] overflow-y-auto">
+                  {filteredProducts.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      {activeTab === 'archived' ? (
+                        <>
+                          <p className="font-bold text-gray-600">No archived products</p>
+                          <p className="text-sm text-gray-400 mt-1">Products you archive will appear here</p>
+                        </>
+                      ) : searchQuery || filterType !== 'all' ? (
+                        <>
+                          <p className="font-bold text-gray-600">No products found</p>
+                          <p className="text-sm text-gray-400 mt-1">Try adjusting your search or filters</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-gray-600">No products yet</p>
+                          <p className="text-sm text-gray-400 mt-1">Complete research to get product suggestions</p>
+                          <Link
+                            href="/chat"
+                            className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            Start Research
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-3'}>
+                      {filteredProducts.map(product => {
+                        const Icon = getProductIcon(product.product_type);
+                        const isActive = currentProduct?.id === product.id;
+                        const isArchived = product.status === 'archived';
+                        
+                        return (
+                          <div
+                            key={product.id}
+                            className={`relative group rounded-xl border-2 transition-all ${
+                              isActive 
+                                ? 'border-uvz-orange bg-orange-50 shadow-brutal-sm' 
+                                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                            } ${viewMode === 'grid' ? 'p-4 sm:p-5' : ''}`}
+                          >
+                            <button
+                              onClick={() => {
+                                if (!isArchived) {
+                                  handleSwitchProduct(product.id);
+                                }
+                              }}
+                              disabled={isArchived}
+                              className={`w-full text-left ${viewMode === 'list' ? 'p-3 sm:p-4 pr-20 sm:pr-24' : ''} ${isArchived ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            >
+                              <div className={`flex items-start gap-3 ${viewMode === 'grid' ? 'flex-col items-center text-center' : ''}`}>
+                                <div className={`${viewMode === 'grid' ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-10 h-10 sm:w-12 sm:h-12'} rounded-xl flex items-center justify-center shrink-0 ${
+                                  isActive ? 'bg-uvz-orange text-white' : isArchived ? 'bg-gray-200 text-gray-500' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  <Icon className={viewMode === 'grid' ? 'w-7 h-7 sm:w-8 sm:h-8' : 'w-5 h-5 sm:w-6 sm:h-6'} />
+                                </div>
+                                <div className={`flex-1 min-w-0 ${viewMode === 'grid' ? 'w-full' : ''}`}>
+                                  <p className={`font-bold text-sm sm:text-base leading-tight ${viewMode === 'grid' ? 'break-words whitespace-normal' : 'break-words'}`}>{product.name}</p>
+                                  {viewMode === 'list' && product.tagline && (
+                                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 break-words">{product.tagline}</p>
+                                  )}
+                                  <div className={`flex items-center gap-1.5 sm:gap-2 mt-1.5 sm:mt-2 flex-wrap ${viewMode === 'grid' ? 'justify-center' : ''}`}>
+                                    <span className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-full capitalize ${
+                                      product.status === 'launched' 
+                                        ? 'bg-green-100 text-green-700' 
+                                        : product.status === 'building'
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : product.status === 'archived'
+                                            ? 'bg-gray-200 text-gray-600'
+                                            : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {product.status}
+                                    </span>
+                                    <span className="text-[10px] sm:text-xs text-gray-400 capitalize">
+                                      {product.product_type?.replace('_', ' ')}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                            
+                            {/* Action Buttons - Always visible on mobile, hover on desktop */}
+                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                              {!isArchived && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSwitchProduct(product.id);
+                                  }}
+                                  className={`relative p-1.5 rounded-lg border transition-all group/btn shadow-sm ${
+                                    currentProduct?.id === product.id
+                                      ? 'bg-blue-100 text-blue-700 border-blue-400'
+                                      : 'bg-white hover:bg-blue-50 text-blue-600 border-gray-200 hover:border-blue-300'
+                                  }`}
+                                  title={currentProduct?.id === product.id ? "Close Editor" : "Edit"}
+                                >
+                                  {currentProduct?.id === product.id ? (
+                                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  ) : (
+                                    <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  )}
+                                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs font-bold rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none hidden sm:block">
+                                    {currentProduct?.id === product.id ? 'Close' : 'Edit'}
+                                  </span>
+                                </button>
+                              )}
+                              {isArchived ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleArchiveProduct(product.id, false);
+                                  }}
+                                  disabled={isArchiving === product.id}
+                                  className="relative p-1.5 rounded-lg bg-white hover:bg-green-50 text-green-600 border border-gray-200 hover:border-green-300 transition-all disabled:opacity-50 group/btn shadow-sm"
+                                  title="Restore"
+                                >
+                                  {isArchiving === product.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                                  ) : (
+                                    <ArchiveRestore className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  )}
+                                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs font-bold rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none hidden sm:block">
+                                    Restore
+                                  </span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleArchiveProduct(product.id, true);
+                                  }}
+                                  disabled={isArchiving === product.id}
+                                  className="relative p-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-500 border border-gray-200 hover:border-gray-300 transition-all disabled:opacity-50 group/btn shadow-sm"
+                                  title="Archive"
+                                >
+                                  {isArchiving === product.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                                  ) : (
+                                    <Archive className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  )}
+                                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs font-bold rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none hidden sm:block">
+                                    Archive
+                                  </span>
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setProductToDelete(product.id);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="relative p-1.5 rounded-lg bg-white hover:bg-red-50 text-red-500 border border-gray-200 hover:border-red-300 transition-all group/btn shadow-sm"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs font-bold rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none hidden sm:block">
+                                  Delete
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Builder Area - Only shows when product selected */}
+          {currentProduct && (
+            <div className="mt-6">
                   {/* Header */}
-                  <div className="bg-white border-4 border-black rounded-2xl p-6 shadow-brutal mb-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-uvz-orange to-orange-400 border-2 border-black rounded-xl flex items-center justify-center">
-                          <ProductIcon className="w-8 h-8 text-white" />
+                  <div className="bg-white border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-brutal mb-4 sm:mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-uvz-orange to-orange-400 border-2 border-black rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+                          <ProductIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                         </div>
-                        <div className="flex-1">
-                          <h1 className="text-2xl font-black mb-1">{currentProduct.name}</h1>
-                          <p className="text-gray-600 capitalize">
+                        <div className="flex-1 min-w-0">
+                          <h1 className="text-lg sm:text-2xl font-black mb-1 break-words">{currentProduct.name}</h1>
+                          <p className="text-sm sm:text-base text-gray-600 capitalize">
                             {currentProduct.product_type?.replace('_', ' ') || 'Digital Product'}
                           </p>
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
                             <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
                               currentProduct.status === 'launched' 
                                 ? 'bg-green-100 text-green-700' 
@@ -1052,7 +1634,7 @@ function BuilderContent() {
                       <button
                         onClick={handleSaveProduct}
                         disabled={isSaving}
-                        className="px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {isSaving ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -1065,8 +1647,8 @@ function BuilderContent() {
                   </div>
 
                   {/* Progress Steps */}
-                  <div className="bg-white border-2 border-black rounded-xl p-4 mb-6">
-                    <div className="flex items-center justify-between overflow-x-auto">
+                  <div className="bg-white border-2 border-black rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 overflow-x-auto">
+                    <div className="flex items-center justify-between min-w-max sm:min-w-0">
                       {PRODUCT_STEPS.map((step, index) => {
                         const StepIcon = step.icon;
                         const isActive = index === currentStep;
@@ -1076,7 +1658,7 @@ function BuilderContent() {
                           <div key={step.id} className="flex items-center">
                             <button
                               onClick={() => setCurrentStep(index)}
-                              className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all ${
+                              className={`flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-xl transition-all ${
                                 isActive 
                                   ? 'bg-uvz-orange text-white' 
                                   : isCompleted 
@@ -1085,14 +1667,14 @@ function BuilderContent() {
                               }`}
                             >
                               {isCompleted ? (
-                                <CheckCircle className="w-6 h-6" />
+                                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                               ) : (
-                                <StepIcon className="w-6 h-6" />
+                                <StepIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                               )}
-                              <span className="text-xs font-bold hidden sm:block">{step.name}</span>
+                              <span className="text-[10px] sm:text-xs font-bold">{step.name}</span>
                             </button>
                             {index < PRODUCT_STEPS.length - 1 && (
-                              <div className={`w-8 h-1 mx-2 rounded shrink-0 ${
+                              <div className={`w-4 sm:w-8 h-1 mx-1 sm:mx-2 rounded shrink-0 ${
                                 index < currentStep ? 'bg-green-400' : 'bg-gray-200'
                               }`} />
                             )}
@@ -1103,10 +1685,10 @@ function BuilderContent() {
                   </div>
 
                   {/* Step Content */}
-                  <div className="bg-white border-2 border-black rounded-xl p-8 shadow-brutal">
+                  <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-6 md:p-8 shadow-brutal">
                     {currentStep === 0 && (
                       <div>
-                        <h2 className="text-xl font-black mb-4">Product Overview</h2>
+                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Product Overview</h2>
                         <p className="text-gray-600 mb-6">
                           Define the key aspects of your product.
                         </p>
@@ -1178,18 +1760,18 @@ function BuilderContent() {
                         </p>
                         
                         {/* AI Content Generation */}
-                        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-6">
+                        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
                           <div className="flex items-center gap-2 text-yellow-800 font-bold mb-2">
-                            <Sparkles className="w-5 h-5" />
-                            AI Content Assistant
+                            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <span className="text-sm sm:text-base">AI Content Assistant</span>
                           </div>
-                          <p className="text-sm text-yellow-700 mb-3">
+                          <p className="text-xs sm:text-sm text-yellow-700 mb-3">
                             Let AI help generate content structure based on your research.
                           </p>
                           <button 
                             onClick={handleGenerateOutline}
                             disabled={isGeneratingOutline}
-                            className="px-4 py-2 bg-yellow-400 text-black font-bold border-2 border-black rounded-lg hover:bg-yellow-500 transition-colors flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-yellow-400 text-black font-bold text-sm border-2 border-black rounded-lg hover:bg-yellow-500 transition-colors flex items-center justify-center sm:justify-start gap-2 disabled:opacity-50"
                           >
                             {isGeneratingOutline ? (
                               <>
@@ -1233,20 +1815,20 @@ function BuilderContent() {
                             </div>
                             
                             {/* Generate Full Content Button */}
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-4">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-bold text-green-800 flex items-center gap-2">
-                                    <FileText className="w-5 h-5" />
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-3 sm:p-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                <div className="flex-1">
+                                  <h4 className="font-bold text-green-800 flex items-center gap-2 text-sm sm:text-base">
+                                    <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                                     Write Full Content
                                   </h4>
-                                  <p className="text-sm text-green-700 mt-1">
-                                    Generate the actual written content for all {currentProduct.raw_analysis.outline.chapters?.length || 0} chapters
+                                  <p className="text-xs sm:text-sm text-green-700 mt-1">
+                                    Generate content for all {currentProduct.raw_analysis.outline.chapters?.length || 0} chapters
                                   </p>
                                   {/* Content Progress */}
                                   {currentProduct.raw_analysis.outline.chapters && (
                                     <div className="mt-2 flex items-center gap-2">
-                                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-xs">
+                                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[200px] sm:max-w-xs">
                                         <div 
                                           className="h-full bg-green-500 transition-all duration-300"
                                           style={{ 
@@ -1254,7 +1836,7 @@ function BuilderContent() {
                                           }}
                                         />
                                       </div>
-                                      <span className="text-xs text-green-700 font-bold">
+                                      <span className="text-xs text-green-700 font-bold whitespace-nowrap">
                                         {currentProduct.raw_analysis.outline.chapters.filter((ch: Chapter) => ch.content).length}/{currentProduct.raw_analysis.outline.chapters.length} written
                                       </span>
                                     </div>
@@ -1263,7 +1845,7 @@ function BuilderContent() {
                                 <button
                                   onClick={handleGenerateAllContent}
                                   disabled={isGeneratingContent}
-                                  className="px-4 py-2 bg-green-500 text-white font-bold border-2 border-black rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 disabled:opacity-50 shrink-0"
+                                  className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
                                   {isGeneratingContent ? (
                                     <>
@@ -1273,34 +1855,34 @@ function BuilderContent() {
                                   ) : (
                                     <>
                                       <Sparkles className="w-4 h-4" />
-                                      Write All Chapters
+                                      Write All
                                     </>
                                   )}
                                 </button>
                               </div>
                             </div>
                             
-                            <div className="space-y-3 mt-6">
+                            <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
                               {currentProduct.raw_analysis.outline.chapters?.map((chapter: Chapter) => (
                                 <div key={chapter.id} className={`border-2 rounded-xl overflow-hidden ${chapter.content ? 'border-green-300 bg-green-50/30' : 'border-gray-200'}`}>
-                                  <div className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors">
+                                  <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 hover:bg-gray-50 transition-colors">
                                     <div 
                                       onClick={() => toggleChapter(chapter.id)}
-                                      className="flex-1 flex items-center gap-3 cursor-pointer"
+                                      className="flex-1 flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0"
                                     >
-                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${chapter.content ? 'bg-green-500 text-white' : 'bg-uvz-orange text-white'}`}>
-                                        {chapter.content ? <CheckCircle className="w-5 h-5" /> : chapter.number}
+                                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 ${chapter.content ? 'bg-green-500 text-white' : 'bg-uvz-orange text-white'}`}>
+                                        {chapter.content ? <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" /> : chapter.number}
                                       </div>
-                                      <div className="flex-1 text-left">
-                                        <p className="font-bold">{chapter.title}</p>
-                                        <div className="flex items-center gap-2 mt-0.5">
+                                      <div className="flex-1 text-left min-w-0">
+                                        <p className="font-bold text-sm sm:text-base break-words">{chapter.title}</p>
+                                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5">
                                           {chapter.wordCount ? (
-                                            <span className="text-xs text-green-600 font-medium">✓ {chapter.wordCount.toLocaleString()} words</span>
+                                            <span className="text-[10px] sm:text-xs text-green-600 font-medium">✓ {chapter.wordCount.toLocaleString()} words</span>
                                           ) : chapter.estimatedPages ? (
-                                            <span className="text-xs text-gray-500">~{chapter.estimatedPages} pages</span>
+                                            <span className="text-[10px] sm:text-xs text-gray-500">~{chapter.estimatedPages} pages</span>
                                           ) : null}
                                           {chapter.readingTimeMinutes && (
-                                            <span className="text-xs text-gray-500">• {chapter.readingTimeMinutes} min read</span>
+                                            <span className="text-[10px] sm:text-xs text-gray-500">• {chapter.readingTimeMinutes} min</span>
                                           )}
                                         </div>
                                       </div>
@@ -1309,24 +1891,24 @@ function BuilderContent() {
                                       <button
                                         onClick={() => handleGenerateChapterContent(chapter)}
                                         disabled={generatingChapterId === chapter.id}
-                                        className="px-3 py-1.5 bg-green-100 text-green-700 text-sm font-bold rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1"
+                                        className="px-2 sm:px-3 py-1 sm:py-1.5 bg-green-100 text-green-700 text-xs sm:text-sm font-bold rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1 shrink-0"
                                       >
                                         {generatingChapterId === chapter.id ? (
                                           <Loader2 className="w-3 h-3 animate-spin" />
                                         ) : (
                                           <Sparkles className="w-3 h-3" />
                                         )}
-                                        Write
+                                        <span className="hidden sm:inline">Write</span>
                                       </button>
                                     )}
                                     <div 
                                       onClick={() => toggleChapter(chapter.id)}
-                                      className="cursor-pointer p-1"
+                                      className="cursor-pointer p-1 shrink-0"
                                     >
                                       {expandedChapters.has(chapter.id) ? (
-                                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                                        <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                                       ) : (
-                                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                                       )}
                                     </div>
                                   </div>
@@ -1486,28 +2068,28 @@ function BuilderContent() {
                         </p>
                         
                         {/* AI Structure Generation */}
-                        <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 mb-6">
-                          <div className="flex items-center gap-2 text-blue-800 font-bold mb-2">
-                            <Lightbulb className="w-5 h-5" />
+                        <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+                          <div className="flex items-center gap-2 text-blue-800 font-bold mb-2 text-sm sm:text-base">
+                            <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5" />
                             AI Structure Generator
                           </div>
-                          <p className="text-sm text-blue-700 mb-3">
+                          <p className="text-xs sm:text-sm text-blue-700 mb-3">
                             Generate a detailed structure with modules, lessons, and content items.
                           </p>
                           <button 
                             onClick={handleGenerateStructure}
                             disabled={isGeneratingStructure}
-                            className="px-4 py-2 bg-blue-400 text-white font-bold border-2 border-black rounded-lg hover:bg-blue-500 transition-colors flex items-center gap-2 disabled:opacity-50"
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-blue-400 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-blue-500 transition-colors flex items-center justify-center sm:justify-start gap-2 disabled:opacity-50"
                           >
                             {isGeneratingStructure ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Generating Structure...
+                                Generating...
                               </>
                             ) : (
                               <>
                                 <Lightbulb className="w-4 h-4" />
-                                Generate Product Structure
+                                Generate Structure
                               </>
                             )}
                           </button>
@@ -1515,22 +2097,22 @@ function BuilderContent() {
                         
                         {/* Display Generated Structure */}
                         {currentProduct.raw_analysis?.structure && (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-black text-lg capitalize">
+                          <div className="space-y-3 sm:space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <h3 className="font-black text-base sm:text-lg capitalize">
                                 {currentProduct.raw_analysis.structure.product_structure?.type || currentProduct.product_type} Structure
                               </h3>
                               <button
                                 onClick={handleGenerateStructure}
                                 disabled={isGeneratingStructure}
-                                className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                className="text-xs sm:text-sm text-blue-600 hover:underline flex items-center gap-1"
                               >
-                                <RefreshCw className={`w-4 h-4 ${isGeneratingStructure ? 'animate-spin' : ''}`} />
+                                <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isGeneratingStructure ? 'animate-spin' : ''}`} />
                                 Regenerate
                               </button>
                             </div>
                             
-                            <div className="flex gap-4 text-sm text-gray-500">
+                            <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
                               {currentProduct.raw_analysis.structure.product_structure?.total_modules && (
                                 <span>📦 {currentProduct.raw_analysis.structure.product_structure.total_modules} modules</span>
                               )}
@@ -1543,7 +2125,7 @@ function BuilderContent() {
                             </div>
                             
                             {/* Parts/Modules */}
-                            <div className="space-y-4 mt-6">
+                            <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
                               {currentProduct.raw_analysis.structure.product_structure?.parts?.map((part) => (
                                 <div key={part.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
                                   <button
@@ -1678,21 +2260,21 @@ function BuilderContent() {
                         
                         {/* AI Auto-Suggest Section */}
                         {currentProduct.raw_analysis?.outline && (
-                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-6 mb-6">
-                            <div className="flex items-center justify-between mb-4">
+                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
                               <div>
-                                <h3 className="font-black text-purple-800 flex items-center gap-2">
-                                  <Sparkles className="w-5 h-5" />
+                                <h3 className="font-black text-purple-800 flex items-center gap-2 text-sm sm:text-base">
+                                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                                   AI Image Suggestions
                                 </h3>
-                                <p className="text-sm text-purple-600">
+                                <p className="text-xs sm:text-sm text-purple-600">
                                   Generate images based on your content outline
                                 </p>
                               </div>
                               <button
                                 onClick={handleGetImageSuggestions}
                                 disabled={isLoadingSuggestions}
-                                className="px-4 py-2 bg-purple-500 text-white font-bold border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-purple-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                               >
                                 {isLoadingSuggestions ? (
                                   <>
@@ -1710,7 +2292,7 @@ function BuilderContent() {
                             
                             {/* Image Suggestions Grid */}
                             {imageSuggestions.length > 0 && (
-                              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-4">
                                 {imageSuggestions.map((suggestion) => (
                                   <div key={suggestion.id} className="bg-white border-2 border-purple-200 rounded-lg p-4">
                                     <div className="flex items-start justify-between mb-2">
@@ -1737,9 +2319,9 @@ function BuilderContent() {
                         )}
                         
                         {/* Upload Section */}
-                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                           {/* File Upload */}
-                          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-uvz-orange transition-colors">
+                          <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-6 text-center hover:border-uvz-orange transition-colors">
                             <input
                               ref={fileInputRef}
                               type="file"
@@ -1748,41 +2330,41 @@ function BuilderContent() {
                               onChange={handleFileUpload}
                               className="hidden"
                             />
-                            <Upload className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                            <p className="font-bold mb-1">Upload Files</p>
-                            <p className="text-sm text-gray-500 mb-4">
-                              Drag & drop or click to upload images, videos, PDFs
+                            <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
+                            <p className="font-bold mb-1 text-sm sm:text-base">Upload Files</p>
+                            <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
+                              Drag & drop or click to upload
                             </p>
                             <button
                               onClick={() => fileInputRef.current?.click()}
                               disabled={isUploadingAsset}
-                              className="px-4 py-2 bg-gray-100 text-black font-bold border-2 border-black rounded-lg hover:bg-gray-200 transition-colors"
+                              className="px-3 sm:px-4 py-2 bg-gray-100 text-black font-bold text-sm border-2 border-black rounded-lg hover:bg-gray-200 transition-colors"
                             >
                               {isUploadingAsset ? 'Uploading...' : 'Choose Files'}
                             </button>
                           </div>
                           
                           {/* Custom AI Image Generation */}
-                          <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-6">
-                            <div className="flex items-center gap-2 text-purple-800 font-bold mb-2">
-                              <ImageIcon className="w-5 h-5" />
+                          <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 sm:p-6">
+                            <div className="flex items-center gap-2 text-purple-800 font-bold mb-2 text-sm sm:text-base">
+                              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                               Custom AI Image
                             </div>
-                            <p className="text-sm text-purple-700 mb-3">
+                            <p className="text-xs sm:text-sm text-purple-700 mb-3">
                               Generate custom images with your own prompt
                             </p>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                               <input
                                 type="text"
                                 value={assetGenerationPrompt}
                                 onChange={(e) => setAssetGenerationPrompt(e.target.value)}
-                                placeholder="Describe the image you want..."
+                                placeholder="Describe the image..."
                                 className="flex-1 px-3 py-2 border-2 border-purple-300 rounded-lg text-sm focus:outline-none focus:border-purple-500"
                               />
                               <button
                                 onClick={handleGenerateImage}
                                 disabled={isGeneratingImage || !assetGenerationPrompt.trim()}
-                                className="px-4 py-2 bg-purple-500 text-white font-bold border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50"
+                                className="w-full sm:w-auto px-4 py-2 bg-purple-500 text-white font-bold border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center justify-center"
                               >
                                 {isGeneratingImage ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1797,20 +2379,67 @@ function BuilderContent() {
                         {/* Assets Grid */}
                         {assets.length > 0 ? (
                           <div>
-                            <h3 className="font-bold mb-3">Your Assets ({assets.length})</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                              <h3 className="font-bold text-sm sm:text-base">Your Assets ({assets.length})</h3>
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                                {assets.some(a => a.status !== 'saved') && (
+                                  <>
+                                    <span className="text-xs sm:text-sm text-gray-500">
+                                      {assets.filter(a => a.isSelected && a.status !== 'saved').length} selected
+                                    </span>
+                                    <button
+                                      onClick={handleSaveSelectedAssets}
+                                      disabled={isSavingAssets || !assets.some(a => a.isSelected && a.status !== 'saved')}
+                                      className="px-3 sm:px-4 py-2 bg-green-500 text-white font-bold text-xs sm:text-sm border-2 border-black rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                      {isSavingAssets ? (
+                                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                                      ) : (
+                                        <Save className="w-3 h-3 sm:w-4 sm:h-4" />
+                                      )}
+                                      <span className="hidden sm:inline">Save Selected to Library</span>
+                                      <span className="sm:hidden">Save Selected</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                               {assets.map((asset) => (
                                 <div 
                                   key={asset.id} 
-                                  className="relative group border-2 border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow"
+                                  className={`relative group border-2 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                                    asset.isSelected ? 'border-green-500 ring-2 ring-green-200' : 
+                                    asset.status === 'saved' ? 'border-green-300' : 'border-gray-200'
+                                  }`}
+                                  onClick={() => asset.status !== 'saved' && toggleAssetSelection(asset.id)}
                                 >
+                                  {/* Selection checkbox for unsaved assets */}
+                                  {asset.status !== 'saved' && (
+                                    <div className="absolute top-2 left-2 z-10">
+                                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                        asset.isSelected ? 'bg-green-500 border-green-500' : 'bg-white/90 border-gray-300'
+                                      }`}>
+                                        {asset.isSelected && <Check className="w-4 h-4 text-white" />}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Saved badge */}
+                                  {asset.status === 'saved' && (
+                                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
+                                      <Check className="w-3 h-3" />
+                                      Saved
+                                    </div>
+                                  )}
+                                  
                                   {asset.type === 'image' ? (
                                     (asset.thumbnailUrl || asset.url) ? (
                                       <div className="relative">
                                         <img 
                                           src={asset.thumbnailUrl || asset.url} 
                                           alt={asset.name}
-                                          className="w-full h-40 object-cover"
+                                          className="w-full h-32 sm:h-40 object-cover"
                                           onError={(e) => {
                                             (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12">Loading...</text></svg>';
                                           }}
@@ -1823,9 +2452,20 @@ function BuilderContent() {
                                             </div>
                                           </div>
                                         )}
-                                        {asset.fullUrl && (
+                                        {savingAssetId === asset.id && (
+                                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                            <div className="bg-white rounded-lg px-3 py-2 flex items-center gap-2">
+                                              <Loader2 className="w-4 h-4 animate-spin text-green-500" />
+                                              <span className="text-sm font-bold">Saving...</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {asset.fullUrl && asset.status === 'saved' && (
                                           <button
-                                            onClick={() => window.open(asset.fullUrl, '_blank')}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(asset.fullUrl, '_blank');
+                                            }}
                                             className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 text-white text-xs rounded hover:bg-black transition-colors"
                                           >
                                             View Full Size
@@ -1854,20 +2494,44 @@ function BuilderContent() {
                                         "{asset.prompt}"
                                       </p>
                                     )}
-                                    <p className={`text-xs capitalize mt-1 ${
-                                      asset.status === 'uploaded' ? 'text-green-600' :
-                                      asset.status === 'generating' ? 'text-purple-600' :
-                                      asset.status === 'error' ? 'text-red-600' :
-                                      'text-gray-500'
-                                    }`}>
-                                      {asset.status === 'generating' ? '🎨 Generating...' : 
-                                       asset.status === 'uploaded' ? '✓ Ready' : asset.status}
-                                    </p>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <p className={`text-xs capitalize ${
+                                        asset.status === 'saved' ? 'text-green-600' :
+                                        asset.status === 'uploaded' ? 'text-orange-600' :
+                                        asset.status === 'generating' ? 'text-purple-600' :
+                                        asset.status === 'error' ? 'text-red-600' :
+                                        'text-gray-500'
+                                      }`}>
+                                        {asset.status === 'generating' ? '🎨 Generating...' : 
+                                         asset.status === 'saved' ? '✓ In Library' :
+                                         asset.status === 'uploaded' ? '⏳ Not Saved' : asset.status}
+                                      </p>
+                                      {asset.status !== 'saved' && asset.status !== 'generating' && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSaveAssetToStorage(asset);
+                                          }}
+                                          disabled={savingAssetId === asset.id}
+                                          className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                        >
+                                          {savingAssetId === asset.id ? (
+                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                          ) : (
+                                            <Save className="w-3 h-3" />
+                                          )}
+                                          Save
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                   
                                   {/* Delete button */}
                                   <button
-                                    onClick={() => handleDeleteAsset(asset.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteAsset(asset.id);
+                                    }}
                                     className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 shadow"
                                   >
                                     <X className="w-4 h-4 text-red-500" />
@@ -1877,10 +2541,10 @@ function BuilderContent() {
                             </div>
                           </div>
                         ) : (
-                          <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                            <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                            <p className="font-bold mb-1">No assets yet</p>
-                            <p className="text-sm">
+                          <div className="text-center py-8 sm:py-12 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                            <ImageIcon className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-gray-300" />
+                            <p className="font-bold mb-1 text-sm sm:text-base">No assets yet</p>
+                            <p className="text-xs sm:text-sm px-4">
                               {currentProduct.raw_analysis?.outline 
                                 ? 'Click "Auto-Suggest Images" above to get AI recommendations'
                                 : 'Upload files or generate images using the options above'}
@@ -1892,33 +2556,32 @@ function BuilderContent() {
 
                     {currentStep === 4 && (
                       <div>
-                        <h2 className="text-xl font-black mb-4">Launch Your Product</h2>
+                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Launch Your Product</h2>
                         <p className="text-gray-600 mb-6">
                           Review everything and launch your product on the marketplace.
                         </p>
                         
                         {/* Pricing Section */}
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-6 mb-6">
-                          <h3 className="font-black mb-4 flex items-center gap-2">
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
                             💰 Set Your Price
                           </h3>
-                          <div className="grid md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-bold text-gray-700 mb-2">Product Price</label>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Price</label>
                               <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
                                 <input
                                   type="text"
                                   value={productPrice}
                                   onChange={(e) => {
                                     setProductPrice(e.target.value);
-                                    // Auto-check pricing if a valid price is entered
                                     if (e.target.value && parseFloat(e.target.value) > 0) {
                                       setLaunchChecklist(prev => ({ ...prev, pricingSet: true }));
                                     }
                                   }}
                                   placeholder="49.00"
-                                  className="w-full pl-8 pr-4 py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-xl font-bold"
+                                  className="w-full pl-7 sm:pl-8 pr-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg sm:text-xl font-bold"
                                 />
                               </div>
                               <p className="text-xs text-gray-500 mt-2">
@@ -1926,7 +2589,7 @@ function BuilderContent() {
                               </p>
                             </div>
                             <div className="flex flex-col justify-center">
-                              <div className="space-y-2 text-sm">
+                              <div className="space-y-2 text-xs sm:text-sm">
                                 <p className="flex items-center gap-2">
                                   <CheckCircle className="w-4 h-4 text-green-500" />
                                   <span>ManyMarkets takes 0% platform fee</span>
@@ -1945,10 +2608,10 @@ function BuilderContent() {
                         </div>
                         
                         {/* Product Preview Card with Preview Button */}
-                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl p-6 mb-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2 text-gray-600 font-bold">
-                              <Eye className="w-5 h-5" />
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-gray-600 font-bold text-sm sm:text-base">
+                              <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                               Product Preview
                             </div>
                             <button
@@ -1956,22 +2619,22 @@ function BuilderContent() {
                                 setShowPreviewModal(true);
                                 setLaunchChecklist(prev => ({ ...prev, previewReviewed: true }));
                               }}
-                              className="px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2"
+                              className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
                             >
                               <Eye className="w-4 h-4" />
                               View Full Preview
                             </button>
                           </div>
                           
-                          <div className="bg-white border-2 border-black rounded-xl p-6 shadow-brutal">
-                            <div className="flex items-start gap-4">
-                              <div className="w-20 h-20 bg-gradient-to-br from-uvz-orange to-orange-400 border-2 border-black rounded-xl flex items-center justify-center">
-                                <ProductIcon className="w-10 h-10 text-white" />
+                          <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-6 shadow-brutal">
+                            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-uvz-orange to-orange-400 border-2 border-black rounded-xl flex items-center justify-center shrink-0">
+                                <ProductIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                               </div>
-                              <div className="flex-1">
-                                <h3 className="text-xl font-black">{currentProduct.name}</h3>
-                                <p className="text-gray-600 text-sm mb-2">{currentProduct.tagline || 'No tagline set'}</p>
-                                <div className="flex items-center gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg sm:text-xl font-black break-words">{currentProduct.name}</h3>
+                                <p className="text-gray-600 text-xs sm:text-sm mb-2">{currentProduct.tagline || 'No tagline set'}</p>
+                                <div className="flex flex-wrap items-center gap-2">
                                   <span className="px-2 py-0.5 text-xs font-bold bg-uvz-orange/10 text-uvz-orange rounded-full capitalize">
                                     {currentProduct.product_type || 'Product'}
                                   </span>
@@ -1982,8 +2645,8 @@ function BuilderContent() {
                                   )}
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-2xl font-black text-uvz-orange">
+                              <div className="w-full sm:w-auto text-left sm:text-right mt-2 sm:mt-0">
+                                <p className="text-xl sm:text-2xl font-black text-uvz-orange">
                                   ${productPrice || '49'}
                                 </p>
                                 <p className="text-xs text-gray-500">Price</p>
@@ -2014,82 +2677,82 @@ function BuilderContent() {
                         </div>
                         
                         {/* Launch Checklist */}
-                        <div className="bg-white border-2 border-gray-200 rounded-xl p-6 mb-6">
-                          <h3 className="font-black mb-4">Launch Checklist</h3>
-                          <div className="space-y-3">
-                            <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 text-sm sm:text-base">Launch Checklist</h3>
+                          <div className="space-y-2 sm:space-y-3">
+                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={launchChecklist.contentComplete}
                                 onChange={(e) => setLaunchChecklist(prev => ({ ...prev, contentComplete: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500"
+                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
-                              <div className="flex-1">
-                                <p className="font-bold">Content is complete</p>
-                                <p className="text-sm text-gray-500">All chapters/modules are written and reviewed</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm sm:text-base">Content is complete</p>
+                                <p className="text-xs sm:text-sm text-gray-500">All chapters/modules are written and reviewed</p>
                               </div>
-                              {launchChecklist.contentComplete && <Check className="w-5 h-5 text-green-500" />}
+                              {launchChecklist.contentComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
-                            <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={launchChecklist.structureComplete}
                                 onChange={(e) => setLaunchChecklist(prev => ({ ...prev, structureComplete: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500"
+                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
-                              <div className="flex-1">
-                                <p className="font-bold">Structure is finalized</p>
-                                <p className="text-sm text-gray-500">Product structure has been reviewed and organized</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm sm:text-base">Structure is finalized</p>
+                                <p className="text-xs sm:text-sm text-gray-500">Product structure has been reviewed</p>
                               </div>
-                              {launchChecklist.structureComplete && <Check className="w-5 h-5 text-green-500" />}
+                              {launchChecklist.structureComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
-                            <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={launchChecklist.assetsReady}
                                 onChange={(e) => setLaunchChecklist(prev => ({ ...prev, assetsReady: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500"
+                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
-                              <div className="flex-1">
-                                <p className="font-bold">Assets are ready</p>
-                                <p className="text-sm text-gray-500">Cover images, graphics, and files are uploaded</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm sm:text-base">Assets are ready</p>
+                                <p className="text-xs sm:text-sm text-gray-500">Cover images, graphics, and files are uploaded</p>
                               </div>
-                              {launchChecklist.assetsReady && <Check className="w-5 h-5 text-green-500" />}
+                              {launchChecklist.assetsReady && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
-                            <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={launchChecklist.pricingSet}
                                 onChange={(e) => setLaunchChecklist(prev => ({ ...prev, pricingSet: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500"
+                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
-                              <div className="flex-1">
-                                <p className="font-bold">Pricing is set</p>
-                                <p className="text-sm text-gray-500">You&apos;ve decided on your pricing strategy</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm sm:text-base">Pricing is set</p>
+                                <p className="text-xs sm:text-sm text-gray-500">You&apos;ve decided on your pricing strategy</p>
                               </div>
-                              {launchChecklist.pricingSet && <Check className="w-5 h-5 text-green-500" />}
+                              {launchChecklist.pricingSet && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
-                            <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={launchChecklist.previewReviewed}
                                 onChange={(e) => setLaunchChecklist(prev => ({ ...prev, previewReviewed: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500"
+                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
-                              <div className="flex-1">
-                                <p className="font-bold">Preview reviewed</p>
-                                <p className="text-sm text-gray-500">You&apos;ve reviewed how your product will appear</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm sm:text-base">Preview reviewed</p>
+                                <p className="text-xs sm:text-sm text-gray-500">You&apos;ve reviewed how your product will appear</p>
                               </div>
-                              {launchChecklist.previewReviewed && <Check className="w-5 h-5 text-green-500" />}
+                              {launchChecklist.previewReviewed && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                           </div>
                           
                           <div className="mt-4 pt-4 border-t border-gray-200">
-                            <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center justify-between text-xs sm:text-sm">
                               <span className="text-gray-600">Progress</span>
                               <span className="font-bold">
                                 {Object.values(launchChecklist).filter(Boolean).length} of {Object.keys(launchChecklist).length} complete
@@ -2105,38 +2768,38 @@ function BuilderContent() {
                         </div>
                         
                         {/* Notes Section */}
-                        <div className="mb-6">
-                          <label className="block text-sm font-bold text-gray-700 mb-2">Launch Notes</label>
+                        <div className="mb-4 sm:mb-6">
+                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Launch Notes</label>
                           <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             placeholder="Any notes about your launch plan, marketing strategy, etc..."
-                            rows={4}
-                            className="w-full px-4 py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-uvz-orange resize-none"
+                            rows={3}
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-uvz-orange resize-none text-sm sm:text-base"
                           />
                         </div>
                         
                         {/* Launch Button */}
-                        <div className={`rounded-xl p-6 text-center ${
+                        <div className={`rounded-xl p-4 sm:p-6 text-center ${
                           canLaunch() 
                             ? 'bg-green-50 border-2 border-green-300' 
                             : 'bg-gray-50 border-2 border-gray-300'
                         }`}>
-                          <Rocket className={`w-12 h-12 mx-auto mb-3 ${canLaunch() ? 'text-green-600' : 'text-gray-400'}`} />
-                          <h3 className="font-black text-lg mb-2">
+                          <Rocket className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 ${canLaunch() ? 'text-green-600' : 'text-gray-400'}`} />
+                          <h3 className="font-black text-base sm:text-lg mb-2">
                             {canLaunch() ? 'Ready to Launch!' : 'Complete the Checklist'}
                           </h3>
-                          <p className="text-sm text-gray-600 mb-4">
+                          <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 px-2">
                             {canLaunch() 
-                              ? 'Your product will be listed on the marketplace for others to discover and purchase.'
-                              : 'Complete all checklist items above before launching your product.'
+                              ? 'Your product will be listed on the marketplace.'
+                              : 'Complete all checklist items before launching.'
                             }
                           </p>
                           
                           {!canLaunch() && (
-                            <div className="flex items-center justify-center gap-2 text-yellow-700 bg-yellow-100 rounded-lg p-3 mb-4">
-                              <AlertCircle className="w-5 h-5" />
-                              <span className="text-sm font-medium">
+                            <div className="flex items-center justify-center gap-2 text-yellow-700 bg-yellow-100 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
+                              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                              <span className="text-xs sm:text-sm font-medium">
                                 {Object.keys(launchChecklist).length - Object.values(launchChecklist).filter(Boolean).length} items remaining
                               </span>
                             </div>
@@ -2145,13 +2808,13 @@ function BuilderContent() {
                           <button 
                             onClick={() => setShowLaunchModal(true)}
                             disabled={!canLaunch()}
-                            className={`px-8 py-3 font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center gap-2 mx-auto ${
+                            className={`w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-sm sm:text-base border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mx-auto ${
                               canLaunch()
                                 ? 'bg-green-500 text-white hover:bg-green-600'
                                 : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:translate-y-0'
                             }`}
                           >
-                            <Rocket className="w-5 h-5" />
+                            <Rocket className="w-4 h-4 sm:w-5 sm:h-5" />
                             Launch on Marketplace
                           </button>
                         </div>
@@ -2159,11 +2822,11 @@ function BuilderContent() {
                     )}
 
                     {/* Navigation */}
-                    <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                       <button
                         onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
                         disabled={currentStep === 0}
-                        className="px-6 py-3 font-bold text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full sm:w-auto order-2 sm:order-1 px-6 py-2.5 sm:py-3 font-bold text-gray-600 hover:text-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Previous
                       </button>
@@ -2176,39 +2839,37 @@ function BuilderContent() {
                           }
                         }}
                         disabled={isSaving}
-                        className="px-8 py-3 bg-uvz-orange text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
+                        className="w-full sm:w-auto order-1 sm:order-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-uvz-orange text-white font-bold text-sm sm:text-base border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                         {currentStep < PRODUCT_STEPS.length - 1 ? 'Save & Continue' : 'Save'}
                       </button>
                     </div>
                   </div>
-                </>
-              )}
             </div>
-          </div>
+          )}
         </div>
       </main>
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteModal(false)} />
-          <div className="relative bg-white border-4 border-black rounded-2xl p-6 shadow-brutal max-w-md mx-4">
-            <h3 className="text-xl font-black mb-2">Delete Product?</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="relative bg-white border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-brutal w-full max-w-md">
+            <h3 className="text-lg sm:text-xl font-black mb-2">Delete Product?</h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
               This action cannot be undone. The product will be permanently deleted.
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 px-4 py-2 font-bold border-2 border-black rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex-1 px-4 py-2 font-bold text-sm sm:text-base border-2 border-black rounded-lg hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => productToDelete && handleDeleteProduct(productToDelete)}
-                className="flex-1 px-4 py-2 bg-red-500 text-white font-bold border-2 border-black rounded-lg hover:bg-red-600 transition-colors"
+                className="flex-1 px-4 py-2 bg-red-500 text-white font-bold text-sm sm:text-base border-2 border-black rounded-lg hover:bg-red-600 transition-colors"
               >
                 Delete
               </button>
@@ -2217,37 +2878,83 @@ function BuilderContent() {
         </div>
       )}
 
+      {/* Unsaved Changes Confirmation Modal */}
+      {showUnsavedChangesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowUnsavedChangesModal(false)} />
+          <div className="relative bg-white border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-brutal w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black">Unsaved Changes</h3>
+                <p className="text-sm text-gray-500">Your changes haven&apos;t been saved</p>
+              </div>
+            </div>
+            <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
+              You have unsaved changes that will be lost if you continue. Would you like to save them first?
+            </p>
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <button
+                onClick={handleSaveAndProceed}
+                disabled={isSaving}
+                className="w-full px-4 py-2.5 bg-uvz-orange text-white font-bold text-sm sm:text-base border-2 border-black rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                Save Changes
+              </button>
+              <button
+                onClick={handleDiscardChanges}
+                className="w-full px-4 py-2.5 bg-red-50 text-red-600 font-bold text-sm sm:text-base border-2 border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+              >
+                Discard Changes
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnsavedChangesModal(false);
+                  setPendingAction(null);
+                }}
+                className="w-full px-4 py-2 font-bold text-sm sm:text-base text-gray-600 hover:text-black transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Launch Confirmation Modal */}
       {showLaunchModal && currentProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowLaunchModal(false)} />
-          <div className="relative bg-white border-4 border-black rounded-2xl p-8 shadow-brutal max-w-lg mx-4">
+          <div className="relative bg-white border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-4 sm:p-8 shadow-brutal w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowLaunchModal(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
             
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Rocket className="w-8 h-8 text-white" />
+            <div className="text-center mb-4 sm:mb-6">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <Rocket className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-black mb-2">Launch Your Product</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl sm:text-2xl font-black mb-2">Launch Your Product</h3>
+              <p className="text-sm sm:text-base text-gray-600">
                 You&apos;re about to list <strong>{currentProduct.name}</strong> on the ManyMarkets marketplace.
               </p>
             </div>
             
-            <div className="bg-gray-50 rounded-xl p-4 mb-6">
-              <h4 className="font-bold mb-3">What happens next:</h4>
-              <ul className="space-y-2 text-sm">
+            <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+              <h4 className="font-bold mb-2 sm:mb-3 text-sm sm:text-base">What happens next:</h4>
+              <ul className="space-y-2 text-xs sm:text-sm">
                 <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0 mt-0.5" />
                   <span>Your product will be visible on the marketplace</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0 mt-0.5" />
                   <span>Buyers can discover and purchase your product</span>
                 </li>
                 <li className="flex items-start gap-2">

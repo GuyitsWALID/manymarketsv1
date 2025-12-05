@@ -75,7 +75,7 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -83,12 +83,12 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
       />
       
       {/* Modal */}
-      <div className="relative bg-white border-4 border-black rounded-lg w-full max-w-lg shadow-brutal overflow-hidden">
+      <div className="relative bg-white border-2 sm:border-4 border-black rounded-lg w-full max-w-lg shadow-brutal overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b-2 border-black bg-uvz-orange">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b-2 border-black bg-uvz-orange">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-white" />
-            <h2 className="font-black text-white">New UVZ Research Session</h2>
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <h2 className="font-black text-white text-sm sm:text-base">New UVZ Research Session</h2>
           </div>
           <button 
             onClick={resetAndClose}
@@ -99,46 +99,46 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
         </div>
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 p-4 bg-gray-50 border-b-2 border-black">
+        <div className="flex items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-gray-50 border-b-2 border-black">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full border-2 border-black flex items-center justify-center font-bold text-sm transition-colors ${
+            <div key={s} className="flex items-center gap-1 sm:gap-2">
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-black flex items-center justify-center font-bold text-xs sm:text-sm transition-colors ${
                 step >= s ? 'bg-uvz-orange text-white' : 'bg-white text-gray-400'
               }`}>
                 {s}
               </div>
               {s < 3 && (
-                <div className={`w-8 h-0.5 ${step > s ? 'bg-uvz-orange' : 'bg-gray-300'}`} />
+                <div className={`w-4 sm:w-8 h-0.5 ${step > s ? 'bg-uvz-orange' : 'bg-gray-300'}`} />
               )}
             </div>
           ))}
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content - Scrollable */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           {/* Step 1: Industry Selection */}
           {step === 1 && (
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Briefcase className="w-5 h-5 text-uvz-orange" />
-                <h3 className="font-bold text-lg">What industry interests you?</h3>
+              <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-uvz-orange" />
+                <h3 className="font-bold text-base sm:text-lg">What industry interests you?</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 Select the market area you want to explore for your UVZ discovery.
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {INDUSTRIES.map((industry) => (
                   <button
                     key={industry.id}
                     onClick={() => setSelectedIndustry(industry.id)}
-                    className={`p-3 border-2 border-black rounded text-center transition-all hover:shadow-brutal ${
+                    className={`p-2 sm:p-3 border-2 border-black rounded text-center transition-all hover:shadow-brutal ${
                       selectedIndustry === industry.id 
                         ? 'bg-uvz-orange text-white shadow-brutal' 
                         : 'bg-white hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-2xl block mb-1">{industry.icon}</span>
-                    <span className="text-xs font-bold block leading-tight">{industry.name}</span>
+                    <span className="text-xl sm:text-2xl block mb-1">{industry.icon}</span>
+                    <span className="text-[10px] sm:text-xs font-bold block leading-tight">{industry.name}</span>
                   </button>
                 ))}
               </div>
@@ -148,7 +148,7 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
                   value={customIndustry}
                   onChange={(e) => setCustomIndustry(e.target.value)}
                   placeholder="Enter your industry..."
-                  className="w-full mt-4 p-3 border-2 border-black rounded font-medium focus:outline-none focus:ring-2 focus:ring-uvz-orange"
+                  className="w-full mt-3 sm:mt-4 p-2 sm:p-3 border-2 border-black rounded font-medium text-sm focus:outline-none focus:ring-2 focus:ring-uvz-orange"
                 />
               )}
             </div>
@@ -157,26 +157,26 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
           {/* Step 2: Goal Selection */}
           {step === 2 && (
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Target className="w-5 h-5 text-uvz-orange" />
-                <h3 className="font-bold text-lg">What's your goal?</h3>
+              <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-uvz-orange" />
+                <h3 className="font-bold text-base sm:text-lg">What&apos;s your goal?</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 This helps me guide you through the right UVZ discovery process.
               </p>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {GOALS.map((goal) => (
                   <button
                     key={goal.id}
                     onClick={() => setSelectedGoal(goal.id)}
-                    className={`w-full p-4 border-2 border-black rounded text-left transition-all hover:shadow-brutal ${
+                    className={`w-full p-3 sm:p-4 border-2 border-black rounded text-left transition-all hover:shadow-brutal ${
                       selectedGoal === goal.id 
                         ? 'bg-uvz-orange text-white shadow-brutal' 
                         : 'bg-white hover:bg-gray-50'
                     }`}
                   >
-                    <span className="font-bold block">{goal.label}</span>
-                    <span className={`text-sm ${selectedGoal === goal.id ? 'text-white/80' : 'text-gray-500'}`}>
+                    <span className="font-bold block text-sm sm:text-base">{goal.label}</span>
+                    <span className={`text-xs sm:text-sm ${selectedGoal === goal.id ? 'text-white/80' : 'text-gray-500'}`}>
                       {goal.description}
                     </span>
                   </button>
@@ -188,11 +188,11 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
           {/* Step 3: Session Name */}
           {step === 3 && (
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Lightbulb className="w-5 h-5 text-uvz-orange" />
-                <h3 className="font-bold text-lg">Name your session</h3>
+              <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-uvz-orange" />
+                <h3 className="font-bold text-base sm:text-lg">Name your session</h3>
               </div>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 Give your research session a name to easily find it later.
               </p>
               <input
@@ -200,13 +200,13 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
                 value={sessionTitle}
                 onChange={(e) => setSessionTitle(e.target.value)}
                 placeholder={`${INDUSTRIES.find(i => i.id === selectedIndustry)?.name || 'My'} Research`}
-                className="w-full p-4 border-2 border-black rounded font-bold text-lg focus:outline-none focus:ring-2 focus:ring-uvz-orange"
+                className="w-full p-3 sm:p-4 border-2 border-black rounded font-bold text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-uvz-orange"
               />
               
               {/* Summary */}
-              <div className="mt-6 p-4 bg-gray-50 border-2 border-black rounded">
-                <h4 className="font-bold text-sm text-gray-600 mb-2">Session Summary</h4>
-                <div className="space-y-1 text-sm">
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 border-2 border-black rounded">
+                <h4 className="font-bold text-xs sm:text-sm text-gray-600 mb-2">Session Summary</h4>
+                <div className="space-y-1 text-xs sm:text-sm">
                   <p><span className="font-bold">Industry:</span> {selectedIndustry === 'other' ? customIndustry : INDUSTRIES.find(i => i.id === selectedIndustry)?.name}</p>
                   <p><span className="font-bold">Goal:</span> {GOALS.find(g => g.id === selectedGoal)?.label}</p>
                 </div>
@@ -216,10 +216,10 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t-2 border-black bg-gray-50">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-t-2 border-black bg-gray-50">
           <button
             onClick={step === 1 ? resetAndClose : handleBack}
-            className="px-4 py-2 border-2 border-black rounded font-bold hover:bg-gray-100 transition-colors"
+            className="px-3 sm:px-4 py-2 border-2 border-black rounded font-bold text-sm hover:bg-gray-100 transition-colors"
           >
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
@@ -228,7 +228,7 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className="px-6 py-2 bg-uvz-orange text-white border-2 border-black rounded font-bold flex items-center gap-2 hover:shadow-brutal transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 sm:px-6 py-2 bg-uvz-orange text-white border-2 border-black rounded font-bold text-sm flex items-center gap-2 hover:shadow-brutal transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
               <ArrowRight className="w-4 h-4" />
@@ -237,17 +237,19 @@ export default function NewSessionModal({ isOpen, onClose, onCreateSession, isCr
             <button
               onClick={handleCreate}
               disabled={isCreating}
-              className="px-6 py-2 bg-uvz-orange text-white border-2 border-black rounded font-bold flex items-center gap-2 hover:shadow-brutal transition-all disabled:opacity-50"
+              className="px-4 sm:px-6 py-2 bg-uvz-orange text-white border-2 border-black rounded font-bold text-sm flex items-center gap-2 hover:shadow-brutal transition-all disabled:opacity-50"
             >
               {isCreating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating...
+                  <span className="hidden sm:inline">Creating...</span>
+                  <span className="sm:hidden">...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Start Research
+                  <span className="hidden sm:inline">Start Research</span>
+                  <span className="sm:hidden">Start</span>
                 </>
               )}
             </button>

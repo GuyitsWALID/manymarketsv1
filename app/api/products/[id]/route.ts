@@ -60,8 +60,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is Pro via Autumn
-    const isPro = await checkProStatus(user.id);
+    // Check if user is Pro - first check database, then Autumn as fallback
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .single();
+    
+    const isProInDb = profile?.subscription_tier === 'pro' || profile?.subscription_tier === 'enterprise';
+    
+    // If not Pro in DB, check Autumn
+    let isPro = isProInDb;
+    if (!isPro) {
+      isPro = await checkProStatus(user.id);
+    }
     
     if (!isPro) {
       return NextResponse.json({ error: 'Pro subscription required' }, { status: 403 });
@@ -94,17 +106,119 @@ export async function PATCH(
 
     if (error) {
       console.error('Error updating product:', error);
-      return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+      return NextResponse.json({ error: error.message || 'Failed to update product' }, { status: 500 });
     }
 
     if (!data) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    // If status is being set to 'launched', also create/update marketplace listing
+    if (updates.status === 'launched') {
+      // Generate a URL-friendly slug from the product name
+      const slug = data.name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim() + '-' + id.slice(0, 8);
+
+      // Get product assets for thumbnail
+      const { data: assets } = await supabase
+        .from('product_assets')
+        .select('url, category')
+        .eq('product_id', id)
+        .order('created_at', { ascending: true });
+
+      // Find cover image or first image as thumbnail
+      const coverAsset = assets?.find(a => a.category === 'cover');
+      const thumbnailUrl = coverAsset?.url || assets?.[0]?.url || null;
+      const imageUrls = assets?.map(a => a.url) || [];
+
+      // Map pricing_model to price_type
+      const priceTypeMap: Record<string, string> = {
+        'one_time': 'one_time',
+        'subscription': 'subscription',
+        'freemium': 'free',
+        'usage_based': 'subscription',
+        'other': 'one_time'
+      };
+      const priceType = priceTypeMap[data.pricing_model] || 'one_time';
+
+      // Check if marketplace listing already exists
+      const { data: existingListing } = await supabase
+        .from('marketplace_products')
+        .select('id')
+        .eq('seller_id', user.id)
+        .eq('name', data.name)
+        .single();
+
+      const marketplaceData = {
+        seller_id: user.id,
+        name: data.name,
+        slug: slug,
+        tagline: data.tagline || null,
+        description: data.description || null,
+        thumbnail_url: thumbnailUrl,
+        images: imageUrls,
+        price_type: priceType,
+        price: data.price_point ? parseFloat(data.price_point.replace(/[^0-9.]/g, '')) || 0 : 0,
+        features: data.core_features || [],
+        tech_stack: data.tech_stack || [],
+        status: 'published',
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (existingListing) {
+        // Update existing listing
+        const { error: marketplaceError } = await supabase
+          .from('marketplace_products')
+          .update(marketplaceData)
+          .eq('id', existingListing.id);
+
+        if (marketplaceError) {
+          console.error('Error updating marketplace listing:', marketplaceError);
+          // Don't fail the whole request, just log the error
+        }
+      } else {
+        // Create new listing
+        const { error: marketplaceError } = await supabase
+          .from('marketplace_products')
+          .insert({
+            ...marketplaceData,
+            created_at: new Date().toISOString()
+          });
+
+        if (marketplaceError) {
+          console.error('Error creating marketplace listing:', marketplaceError);
+          // Don't fail the whole request, just log the error
+        }
+      }
+    }
+
+    // If status is being changed to 'archived' or anything other than 'launched', 
+    // archive the marketplace listing if one exists
+    if (updates.status && updates.status !== 'launched') {
+      const { error: archiveError } = await supabase
+        .from('marketplace_products')
+        .update({ 
+          status: 'archived',
+          updated_at: new Date().toISOString()
+        })
+        .eq('seller_id', user.id)
+        .eq('name', data.name);
+
+      if (archiveError) {
+        console.error('Error archiving marketplace listing:', archiveError);
+      }
+    }
+
     return NextResponse.json({ product: data });
   } catch (error) {
     console.error('Product API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

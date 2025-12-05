@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, MessageSquare, Trash2, Target, Search, Crosshair, CheckCircle, Lightbulb } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Target, Search, Crosshair, CheckCircle, Lightbulb, Zap } from 'lucide-react';
 
 interface Session {
   id: string;
@@ -115,16 +115,30 @@ export default function ChatSidebar({
                   const { index: phaseIndex } = getPhaseProgress(session.phase);
                   const PhaseIcon = PHASES[phaseIndex]?.icon || Search;
                   const phaseColor = PHASES[phaseIndex]?.color || 'text-gray-500';
+                  const isActive = currentSessionId === session.id;
                   
                   return (
                   <div
                     key={session.id}
-                    className={`group relative bg-white border-2 border-black rounded p-3 cursor-pointer transition-all hover:shadow-brutal ${
-                      currentSessionId === session.id ? 'ring-2 ring-uvz-orange' : ''
+                    role="button"
+                    tabIndex={0}
+                    className={`group relative w-full text-left bg-white border-2 border-black rounded p-3 cursor-pointer transition-all active:scale-[0.98] hover:shadow-brutal ${
+                      isActive ? 'ring-2 ring-uvz-orange shadow-brutal' : ''
                     }`}
                     onClick={() => {
-                      onSelectSession?.(session.id);
+                      if (!isActive) {
+                        onSelectSession?.(session.id);
+                      }
                       if (isMobile) onClose();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (!isActive) {
+                          onSelectSession?.(session.id);
+                        }
+                        if (isMobile) onClose();
+                      }
                     }}
                   >
                     <div className="flex items-start gap-2">
@@ -142,11 +156,13 @@ export default function ChatSidebar({
                     </div>
                     {/* Delete button */}
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         onDeleteSession?.(session.id);
                       }}
-                      className="absolute top-2 right-2 p-1 bg-red-100 border border-red-300 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200"
+                      className="absolute top-2 right-2 p-1.5 bg-red-100 border border-red-300 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200 active:bg-red-300"
                       aria-label="Delete session"
                     >
                       <Trash2 className="w-3 h-3 text-red-600" />
@@ -157,86 +173,6 @@ export default function ChatSidebar({
               </div>
             </div>
           )}
-
-          {/* Phase Progress - UVZ Journey Tracker */}
-          <div className="mt-6">
-              <h3 className="text-xs font-bold uppercase text-gray-500 mb-2">
-                🎯 UVZ Journey
-              </h3>
-              {(() => {
-                const currentSession = sessions.find(s => s.id === currentSessionId);
-                const currentPhase = currentSession?.phase || 'discovery';
-                const { index: currentIndex, percentage } = getPhaseProgress(currentPhase);
-                const CurrentPhaseIcon = PHASES[currentIndex]?.icon || Search;
-                
-                return (
-                  <div className="bg-white border-2 border-black p-3 rounded">
-                    {/* Current Phase Display */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={`p-1.5 rounded border-2 border-black ${PHASES[currentIndex]?.color || 'text-gray-600'} bg-gray-50`}>
-                        <CurrentPhaseIcon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-black text-sm">{PHASES[currentIndex]?.name || 'Discovery'}</p>
-                        <p className="text-xs text-gray-500">{PHASES[currentIndex]?.description || 'Explore industries'}</p>
-                      </div>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="relative mb-3">
-                      <div className="h-2.5 bg-gray-200 border border-black rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-uvz-orange transition-all duration-500" 
-                          style={{ width: `${percentage}%` }} 
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1 text-right">{Math.round(percentage)}% to UVZ</p>
-                    </div>
-                    
-                    {/* Phase Steps - hide 'completed' unless we're there */}
-                    <div className="space-y-1.5">
-                      {PHASES.filter(phase => phase.id !== 'completed' || currentIndex === PHASES.length - 1).map((phase, idx) => {
-                        const PhaseIcon = phase.icon;
-                        const isCompleted = idx < currentIndex;
-                        const isCurrent = idx === currentIndex;
-                        
-                        return (
-                          <div 
-                            key={phase.id}
-                            className={`flex items-center gap-2 text-xs py-1 px-2 rounded transition-colors ${
-                              isCurrent 
-                                ? 'bg-uvz-orange/10 border border-uvz-orange' 
-                                : isCompleted 
-                                  ? 'bg-green-50' 
-                                  : 'bg-gray-50'
-                            }`}
-                          >
-                            <PhaseIcon className={`w-3 h-3 ${
-                              isCurrent 
-                                ? phase.color 
-                                : isCompleted 
-                                  ? 'text-green-600' 
-                                  : 'text-gray-400'
-                            }`} />
-                            <span className={`font-medium ${
-                              isCurrent 
-                                ? 'text-black' 
-                                : isCompleted 
-                                  ? 'text-green-700' 
-                                  : 'text-gray-400'
-                            }`}>
-                              {phase.name}
-                            </span>
-                            {isCompleted && <CheckCircle className="w-3 h-3 text-green-600 ml-auto" />}
-                            {isCurrent && <span className="ml-auto text-uvz-orange font-bold">●</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
 
           {/* Insights */}
           <div className="mt-6">
@@ -259,6 +195,14 @@ export default function ChatSidebar({
                 Quick Actions
               </h3>
               <div className="space-y-2">
+                <Link
+                  href="/idea-score"
+                  onClick={() => isMobile && onClose()}
+                  className="flex items-center justify-center gap-2 text-sm font-bold text-center py-2 bg-uvz-orange text-white border-2 border-black rounded hover:shadow-brutal transition-shadow"
+                >
+                  <Zap className="w-4 h-4" />
+                  Idea Score
+                </Link>
                 <Link
                   href="/marketplace"
                   onClick={() => isMobile && onClose()}

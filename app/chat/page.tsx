@@ -22,6 +22,24 @@ interface Session {
   last_message_at: string;
 }
 
+// Helper: strip common markdown formatting (bold/italic/code/blocks) to show clean plain text
+function cleanMarkdown(input: string) {
+  if (!input) return input;
+  let s = input;
+  // Remove fenced code blocks
+  s = s.replace(/```[\s\S]*?```/g, '');
+  // Remove inline code
+  s = s.replace(/`([^`]*)`/g, '$1');
+  // Unwrap bold/italic markers **text**, __text__, *text*, _text_
+  s = s.replace(/\*\*([^*]+)\*\*/g, '$1');
+  s = s.replace(/__([^_]+)__/g, '$1');
+  s = s.replace(/\*([^*]+)\*/g, '$1');
+  s = s.replace(/_([^_]+)_/g, '$1');
+  // Collapse excessive newlines
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
+
 export default function ChatPage() {
   const [input, setInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -95,10 +113,14 @@ export default function ChatPage() {
     loadUserAndSessions();
   }, [supabase.auth]);
 
-  // Auto-scroll
+  // Auto-scroll - use instant scroll when loading, smooth when chatting
+  const isLoadingRef = useRef(false);
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    if (messagesEndRef.current && messages.length > 0) {
+      // Use instant scroll when loading a session, smooth for new messages
+      const behavior = isLoadingRef.current ? 'instant' : 'smooth';
+      messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+      isLoadingRef.current = false;
     }
   }, [messages]);
 
@@ -118,6 +140,7 @@ export default function ChatPage() {
       if (response.ok) {
         const { session } = await response.json();
         setDbSessionId(session.id);
+        if (typeof window !== 'undefined') localStorage.setItem('uvz_active_session', session.id);
         setSessions(prev => [session, ...prev]);
         return session.id;
       }
@@ -357,33 +380,33 @@ export default function ChatPage() {
       const { session } = responseData;
       console.log('Session created:', session);
       
-      // Reset chat state
-      const newChatId = `uvz-chat-${Date.now()}`;
-      setChatSessionId(newChatId);
-      setDbSessionId(session.id);
-      setMessages([]);
-      setInput('');
-      setSessions(prev => [session, ...prev]);
-      setIsNewSessionModalOpen(false);
-      
       // Build initial greeting with context
       const initialMessage = data.goal 
         ? `I'm interested in the ${data.industry} industry and my goal is to ${data.goal.toLowerCase()}. Can you help me discover my Unique Value Zone?`
         : `I want to explore opportunities in the ${data.industry} industry. Help me find my Unique Value Zone.`;
       
-      // Small delay to ensure chat is ready, then send message
-      setTimeout(async () => {
-        console.log('Sending initial message:', initialMessage);
+      // Reset chat state and prepare for new session
+      const newChatId = `uvz-chat-${Date.now()}`;
+      
+      // Close modal first for better UX
+      setIsNewSessionModalOpen(false);
+      
+      // Update state synchronously
+      setMessages([]);
+      setInput('');
+      setDbSessionId(session.id);
+      if (typeof window !== 'undefined') localStorage.setItem('uvz_active_session', session.id);
+      setChatSessionId(newChatId);
+      setSessions(prev => [session, ...prev]);
+      
+      // Send message immediately - use requestAnimationFrame to ensure state is updated
+      requestAnimationFrame(() => {
         sendMessage({ text: initialMessage });
-        
-        // Save user message to database
-        try {
-          await saveMessageToDb(session.id, 'user', initialMessage);
-          console.log('Message saved to database');
-        } catch (err) {
-          console.error('Error saving message to db:', err);
-        }
-      }, 200);
+        // Save user message to database (fire and forget)
+        saveMessageToDb(session.id, 'user', initialMessage).catch(err => 
+          console.error('Error saving message to db:', err)
+        );
+      });
       
     } catch (error) {
       console.error('Error creating session:', error);
@@ -398,6 +421,8 @@ export default function ChatPage() {
     if (dbSessionId === sessionId) return;
     
     setIsLoadingSession(true);
+    isLoadingRef.current = true; // Flag for instant scroll
+    
     try {
       // Fetch messages for session
       const response = await fetch(`/api/sessions/${sessionId}/messages`);
@@ -412,21 +437,19 @@ export default function ChatPage() {
           createdAt: new Date(msg.created_at),
         }));
 
-        // Clear messages first
-        setMessages([]);
-        
-        // Set DB session ID
-        setDbSessionId(sessionId);
-        
         // Set new chat ID - this creates a fresh transport and chat state
         const newChatId = `session-${sessionId}-${Date.now()}`;
+        
+        // Update all state at once
+        setDbSessionId(sessionId);
+        if (typeof window !== 'undefined') localStorage.setItem('uvz_active_session', sessionId);
         setChatSessionId(newChatId);
         
-        // Set the loaded messages after a brief delay to let the new chat state initialize
-        setTimeout(() => {
+        // Use requestAnimationFrame to ensure state updates are processed
+        requestAnimationFrame(() => {
           setMessages(uiMessages);
           setIsLoadingSession(false);
-        }, 150);
+        });
       } else {
         setIsLoadingSession(false);
       }
@@ -436,6 +459,22 @@ export default function ChatPage() {
     }
   }, [setMessages, dbSessionId]);
 
+  // Restore last active session on refresh
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const last = localStorage.getItem('uvz_active_session');
+    if (last) {
+      (async () => {
+        try {
+          await loadSession(last);
+        } catch (e) {
+          console.error('Failed to restore session:', e);
+          localStorage.removeItem('uvz_active_session');
+        }
+      })();
+    }
+  }, [loadSession]);
+
   // Delete session
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -444,6 +483,7 @@ export default function ChatPage() {
         setSessions(prev => prev.filter(s => s.id !== sessionId));
         if (dbSessionId === sessionId) {
           createNewChat();
+          if (typeof window !== 'undefined') localStorage.removeItem('uvz_active_session');
         }
       }
     } catch (error) {
@@ -456,9 +496,11 @@ export default function ChatPage() {
       await supabase.auth.signOut();
       await fetch('/api/auth/session', { method: 'DELETE' });
       setIsLogoutOpen(false);
+      if (typeof window !== 'undefined') localStorage.removeItem('uvz_active_session');
       router.push('/login');
     } catch {
       setIsLogoutOpen(false);
+      if (typeof window !== 'undefined') localStorage.removeItem('uvz_active_session');
       router.push('/login');
     }
   };
@@ -551,6 +593,7 @@ export default function ChatPage() {
                   .filter((part: any) => part.type === 'text')
                   .map((part: any) => part.text)
                   .join('');
+                const cleanText = cleanMarkdown(textContent);
                 const toolParts = message.parts.filter((part: any) => part.type === 'tool-call' || part.type === 'tool-result');
 
                 return (
@@ -574,9 +617,9 @@ export default function ChatPage() {
                           ? 'bg-blue-600 text-white rounded-br-md'
                           : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md'
                       }`}>
-                        {textContent && (
+                        {cleanText && (
                           <p className="font-medium whitespace-pre-wrap break-words leading-relaxed">
-                            {textContent}
+                            {cleanText}
                           </p>
                         )}
 
