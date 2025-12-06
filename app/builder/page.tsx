@@ -5,6 +5,25 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
+import ProductTypeBuilder from '@/components/builder/ProductTypeBuilder';
+import AIToolSelector from '@/components/builder/AIToolSelector';
+import { PRODUCT_TYPES, ProductTypeConfig } from '@/lib/product-types';
+import { 
+  generateComprehensiveSaaSPrompt, 
+  createPromptConfigFromProduct,
+  SAAS_TEMPLATES,
+  PromptMode
+} from '@/lib/prompt-generator';
+import {
+  PLATFORM_CONFIG,
+  MarketplacePlatform,
+  PlatformConnection,
+  savePlatformConnection,
+  getPlatformConnections,
+  disconnectPlatform,
+  isPlatformConnected,
+  LaunchResult,
+} from '@/lib/marketplace-integrations';
 import { 
   ArrowLeft, 
   Sparkles, 
@@ -46,7 +65,8 @@ import {
   List,
   TrendingUp,
   BarChart3,
-  Pencil
+  Pencil,
+  Wrench
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -189,13 +209,37 @@ interface Product {
   updated_at: string;
 }
 
-const PRODUCT_STEPS = [
+// Default steps for content-based products (ebook, course, etc.)
+const CONTENT_PRODUCT_STEPS = [
   { id: 'overview', name: 'Overview', icon: Target },
   { id: 'content', name: 'Content Plan', icon: FileText },
   { id: 'structure', name: 'Structure', icon: Lightbulb },
   { id: 'assets', name: 'Assets', icon: Zap },
   { id: 'launch', name: 'Launch', icon: Rocket },
 ];
+
+// Steps for software/SaaS products (no assets step - they build externally)
+const SOFTWARE_PRODUCT_STEPS = [
+  { id: 'overview', name: 'Overview', icon: Target },
+  { id: 'features', name: 'Features', icon: Lightbulb },
+  { id: 'build', name: 'Build', icon: Wrench },
+  { id: 'launch', name: 'Deploy', icon: Rocket },
+];
+
+// Get steps based on product type
+const getProductSteps = (productType: string | undefined) => {
+  const softwareTypes = ['saas', 'software-tool', 'mobile-app'];
+  if (productType && softwareTypes.includes(productType)) {
+    return SOFTWARE_PRODUCT_STEPS;
+  }
+  return CONTENT_PRODUCT_STEPS;
+};
+
+// Get product type config
+const getProductTypeConfig = (productType: string | undefined): ProductTypeConfig | null => {
+  if (!productType) return null;
+  return PRODUCT_TYPES.find(pt => pt.id === productType) || null;
+};
 
 const PRODUCT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   ebook: Book,
@@ -253,6 +297,9 @@ function BuilderContent() {
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set());
   
+  // Prompt mode state for software products
+  const [promptMode, setPromptMode] = useState<PromptMode>('full-build');
+  
   // Assets state
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isUploadingAsset, setIsUploadingAsset] = useState(false);
@@ -278,6 +325,13 @@ function BuilderContent() {
     previewReviewed: false,
   });
   const [isLaunching, setIsLaunching] = useState(false);
+  
+  // Multi-platform launch state
+  const [selectedPlatforms, setSelectedPlatforms] = useState<MarketplacePlatform[]>(['manymarkets']);
+  const [platformConnections, setPlatformConnections] = useState<PlatformConnection[]>([]);
+  const [launchResults, setLaunchResults] = useState<LaunchResult[]>([]);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [connectingPlatform, setConnectingPlatform] = useState<MarketplacePlatform | null>(null);
   
   // Notification modal state
   const [notification, setNotification] = useState<{
@@ -308,6 +362,9 @@ function BuilderContent() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
+  // Computed values for product type
+  const isSoftwareProduct = ['software-tool', 'mobile-app', 'saas'].includes(currentProduct?.product_type || '');
+
   useEffect(() => {
     function handleResize() {
       setIsDesktop(window.innerWidth >= 768);
@@ -315,6 +372,47 @@ function BuilderContent() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Load platform connections and handle OAuth callbacks
+  useEffect(() => {
+    // Load saved connections
+    const connections = getPlatformConnections();
+    setPlatformConnections(connections);
+    
+    // Check for OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    const connectionStatus = params.get('connection');
+    const platform = params.get('platform') as MarketplacePlatform | null;
+    const data = params.get('data');
+    
+    if (connectionStatus === 'success' && platform && data) {
+      try {
+        const connectionData = JSON.parse(decodeURIComponent(data));
+        const newConnection: PlatformConnection = {
+          platform,
+          connected: true,
+          accessToken: connectionData.accessToken,
+          accountId: connectionData.accountId,
+          accountEmail: connectionData.accountEmail,
+          connectedAt: connectionData.connectedAt,
+        };
+        savePlatformConnection(newConnection);
+        setPlatformConnections(prev => {
+          const filtered = prev.filter(c => c.platform !== platform);
+          return [...filtered, newConnection];
+        });
+        showNotification('success', 'Platform Connected!', `Successfully connected to ${PLATFORM_CONFIG[platform].name}`);
+        
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch (e) {
+        console.error('Failed to parse connection data:', e);
+      }
+    } else if (connectionStatus === 'error' && platform) {
+      showNotification('error', 'Connection Failed', `Failed to connect to ${PLATFORM_CONFIG[platform].name}. Please try again.`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   useEffect(() => {
@@ -1134,39 +1232,138 @@ function BuilderContent() {
     setAssets(prev => prev.filter(a => a.id !== assetId));
   };
 
-  // Handle launch product
+  // Handle launch product to multiple platforms
   const handleLaunchProduct = async () => {
     if (!currentProduct) return;
     
     setIsLaunching(true);
+    setLaunchResults([]);
+    
     try {
-      // Update product status to 'launched'
-      const response = await fetch(`/api/products/${currentProduct.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'launched' }),
+      // Build connections map for external platforms
+      const connectionsMap: Record<string, { accessToken: string }> = {};
+      platformConnections.forEach(conn => {
+        if (conn.accessToken) {
+          connectionsMap[conn.platform] = { accessToken: conn.accessToken };
+        }
       });
 
-      if (!response.ok) throw new Error('Failed to launch');
+      // Call the multi-platform launch API
+      const response = await fetch('/api/integrations/launch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: currentProduct.id,
+          platforms: selectedPlatforms,
+          productData: {
+            name: currentProduct.name,
+            description: formData.description || currentProduct.description || '',
+            price: parseFloat(productPrice) || 0,
+            currency: 'USD',
+            tags: currentProduct.core_features?.slice(0, 5) || [],
+          },
+          connections: connectionsMap,
+        }),
+      });
+
+      const data = await response.json();
       
-      const { product } = await response.json();
-      setCurrentProduct(product);
-      setProducts(prev => prev.map(p => p.id === product.id ? product : p));
+      if (!response.ok) throw new Error(data.error || 'Failed to launch');
+      
+      setLaunchResults(data.results || []);
+      
+      // Update local state for ManyMarkets launch
+      const manyMarketsResult = data.results?.find((r: LaunchResult) => r.platform === 'manymarkets');
+      if (manyMarketsResult?.success) {
+        const updatedProduct = { ...currentProduct, status: 'launched' };
+        setCurrentProduct(updatedProduct);
+        setProducts(prev => prev.map(p => p.id === currentProduct.id ? updatedProduct : p));
+      }
       
       setShowLaunchModal(false);
       
-      // Show success notification
-      showNotification('success', 'Product Launched!', 'Your product is now live on the marketplace.', [
-        '🎉 Congratulations!',
-        '👀 Customers can now discover your product',
-        '💰 You\'ll be notified when you make sales'
-      ]);
+      // Show appropriate notification
+      if (data.allSuccess) {
+        const platformNames = selectedPlatforms.map(p => PLATFORM_CONFIG[p].name).join(', ');
+        showNotification('success', 'Product Launched!', `Your product is now live on: ${platformNames}`, [
+          '🎉 Congratulations!',
+          ...data.results.map((r: LaunchResult) => 
+            r.success 
+              ? `✅ ${PLATFORM_CONFIG[r.platform].name}: ${r.productUrl || 'Success'}` 
+              : `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`
+          ),
+        ]);
+      } else if (data.anySuccess) {
+        showNotification('info', 'Partial Launch', 'Product launched to some platforms with issues.', 
+          data.results.map((r: LaunchResult) => 
+            r.success 
+              ? `✅ ${PLATFORM_CONFIG[r.platform].name}: Success` 
+              : `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`
+          )
+        );
+      } else {
+        showNotification('error', 'Launch Failed', 'Failed to launch to any platform.', 
+          data.results.map((r: LaunchResult) => `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`)
+        );
+      }
     } catch (error) {
       console.error('Launch error:', error);
       showNotification('error', 'Launch Failed', 'Failed to launch product. Please try again.');
     } finally {
       setIsLaunching(false);
     }
+  };
+
+  // Handle platform connection
+  const handleConnectPlatform = (platform: MarketplacePlatform) => {
+    if (platform === 'manymarkets') return; // Always connected
+    
+    // Get OAuth URL and redirect
+    const clientId = platform === 'gumroad' 
+      ? process.env.NEXT_PUBLIC_GUMROAD_CLIENT_ID 
+      : process.env.NEXT_PUBLIC_PAYHIP_CLIENT_ID;
+    
+    const redirectUri = `${window.location.origin}/api/integrations/${platform}/callback`;
+    
+    const params = new URLSearchParams({
+      client_id: clientId || '',
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: platform === 'gumroad' ? 'edit_products view_profile' : 'products:write account:read',
+    });
+    
+    const oauthUrl = platform === 'gumroad' 
+      ? `https://gumroad.com/oauth/authorize?${params.toString()}`
+      : `https://payhip.com/oauth/authorize?${params.toString()}`;
+    
+    window.location.href = oauthUrl;
+  };
+
+  // Handle platform disconnection
+  const handleDisconnectPlatform = (platform: MarketplacePlatform) => {
+    disconnectPlatform(platform);
+    setPlatformConnections(prev => prev.filter(c => c.platform !== platform));
+    setSelectedPlatforms(prev => prev.filter(p => p !== platform));
+    showNotification('info', 'Disconnected', `Disconnected from ${PLATFORM_CONFIG[platform].name}`);
+  };
+
+  // Toggle platform selection
+  const togglePlatformSelection = (platform: MarketplacePlatform) => {
+    if (platform !== 'manymarkets' && !isPlatformConnected(platform)) {
+      // Need to connect first
+      handleConnectPlatform(platform);
+      return;
+    }
+    
+    setSelectedPlatforms(prev => {
+      if (prev.includes(platform)) {
+        // Don't allow deselecting all platforms
+        if (prev.length === 1) return prev;
+        return prev.filter(p => p !== platform);
+      } else {
+        return [...prev, platform];
+      }
+    });
   };
 
   // Toggle chapter expansion
@@ -1294,13 +1491,22 @@ function BuilderContent() {
                 <p className="text-gray-600 text-sm">Build and manage your digital products</p>
               </div>
             </div>
-            <Link
-              href="/chat"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              New Research
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/builder/create"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all text-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                Create Product
+              </Link>
+              <Link
+                href="/chat"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black rounded-xl hover:bg-gray-50 transition-all text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Research
+              </Link>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -1649,7 +1855,7 @@ function BuilderContent() {
                   {/* Progress Steps */}
                   <div className="bg-white border-2 border-black rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 overflow-x-auto">
                     <div className="flex items-center justify-between min-w-max sm:min-w-0">
-                      {PRODUCT_STEPS.map((step, index) => {
+                      {getProductSteps(currentProduct?.product_type).map((step, index) => {
                         const StepIcon = step.icon;
                         const isActive = index === currentStep;
                         const isCompleted = index < currentStep;
@@ -1673,7 +1879,7 @@ function BuilderContent() {
                               )}
                               <span className="text-[10px] sm:text-xs font-bold">{step.name}</span>
                             </button>
-                            {index < PRODUCT_STEPS.length - 1 && (
+                            {index < getProductSteps(currentProduct?.product_type).length - 1 && (
                               <div className={`w-4 sm:w-8 h-1 mx-1 sm:mx-2 rounded shrink-0 ${
                                 index < currentStep ? 'bg-green-400' : 'bg-gray-200'
                               }`} />
@@ -1728,7 +1934,45 @@ function BuilderContent() {
                           </div>
                           
                           <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Target Audience</label>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-sm font-bold text-gray-700 flex items-center gap-1">
+                                Target Audience
+                                <Sparkles className="w-4 h-4 text-yellow-500" title="AI suggestion available" />
+                              </label>
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-yellow-700 bg-yellow-100 border border-yellow-300 rounded hover:bg-yellow-200 transition-colors"
+                                onClick={async () => {
+                                  setIsGeneratingOutline(true);
+                                  try {
+                                    const response = await fetch('/api/builder/generate', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        taskId: 'targetAudience',
+                                        prompt: 'Suggest a target audience for this product based on its name, tagline, and description.',
+                                        context: {
+                                          name: formData.name,
+                                          tagline: formData.tagline,
+                                          description: formData.description,
+                                        },
+                                        productType: currentProduct?.product_type || '',
+                                      }),
+                                    });
+                                    if (response.ok) {
+                                      const { content } = await response.json();
+                                      setFormData(prev => ({ ...prev, targetAudience: content }));
+                                    }
+                                  } finally {
+                                    setIsGeneratingOutline(false);
+                                  }
+                                }}
+                                disabled={isGeneratingOutline}
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                {isGeneratingOutline ? 'Filling...' : 'AI Fill'}
+                              </button>
+                            </div>
                             <textarea
                               value={formData.targetAudience}
                               onChange={(e) => setFormData(prev => ({ ...prev, targetAudience: e.target.value }))}
@@ -1739,7 +1983,45 @@ function BuilderContent() {
                           </div>
                           
                           <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Problem Solved</label>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-sm font-bold text-gray-700 flex items-center gap-1">
+                                Problem Solved
+                                <Sparkles className="w-4 h-4 text-yellow-500" title="AI suggestion available" />
+                              </label>
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-bold text-yellow-700 bg-yellow-100 border border-yellow-300 rounded hover:bg-yellow-200 transition-colors"
+                                onClick={async () => {
+                                  setIsGeneratingOutline(true);
+                                  try {
+                                    const response = await fetch('/api/builder/generate', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        taskId: 'problemSolved',
+                                        prompt: 'Suggest the main problem this product solves based on its name, tagline, and description.',
+                                        context: {
+                                          name: formData.name,
+                                          tagline: formData.tagline,
+                                          description: formData.description,
+                                        },
+                                        productType: currentProduct?.product_type || '',
+                                      }),
+                                    });
+                                    if (response.ok) {
+                                      const { content } = await response.json();
+                                      setFormData(prev => ({ ...prev, problemSolved: content }));
+                                    }
+                                  } finally {
+                                    setIsGeneratingOutline(false);
+                                  }
+                                }}
+                                disabled={isGeneratingOutline}
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                {isGeneratingOutline ? 'Filling...' : 'AI Fill'}
+                              </button>
+                            </div>
                             <textarea
                               value={formData.problemSolved}
                               onChange={(e) => setFormData(prev => ({ ...prev, problemSolved: e.target.value }))}
@@ -1752,7 +2034,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {currentStep === 1 && (
+                    {/* Step 1: Content Plan (for content products) or Features (for software) */}
+                    {currentStep === 1 && !['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Content Plan</h2>
                         <p className="text-gray-600 mb-6">
@@ -2060,7 +2343,189 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {currentStep === 2 && (
+                    {/* Step 1: Features (for software products) */}
+                    {currentStep === 1 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">Features & Requirements</h2>
+                        <p className="text-gray-600 mb-6">
+                          Define the core features and requirements for your {currentProduct.product_type?.replace('-', ' ') || 'software'}.
+                        </p>
+                        
+                        {/* AI Features Generation */}
+                        <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 mb-6">
+                          <div className="flex items-center gap-2 text-purple-800 font-bold mb-2">
+                            <Sparkles className="w-5 h-5" />
+                            AI Feature Planner
+                          </div>
+                          <p className="text-sm text-purple-700 mb-3">
+                            Let AI help you plan features based on your product description and target audience.
+                          </p>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'features',
+                                    prompt: 'Generate a list of 5-7 core MVP features for this software product. Format as a simple numbered list.',
+                                    context: {
+                                      name: formData.name,
+                                      tagline: formData.tagline,
+                                      description: formData.description,
+                                      targetAudience: formData.targetAudience,
+                                      problemSolved: formData.problemSolved,
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  // Parse features from the response
+                                  const features = content.split('\n').filter((line: string) => line.trim()).slice(0, 7);
+                                  // Update raw_analysis with features
+                                  const updatedAnalysis = {
+                                    ...currentProduct.raw_analysis,
+                                    generatedFeatures: features,
+                                  };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                }
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-purple-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4" />
+                                Generate Features
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Display Generated Features */}
+                        {currentProduct.raw_analysis?.generatedFeatures && (
+                          <div className="space-y-3 mb-6">
+                            <h3 className="font-bold">Generated Features</h3>
+                            <ul className="space-y-2">
+                              {currentProduct.raw_analysis.generatedFeatures.map((feature: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                  <CheckCircle className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
+                                  <span className="text-sm">{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Existing MVP Features */}
+                        {currentProduct.core_features && currentProduct.core_features.length > 0 && (
+                          <div>
+                            <h3 className="font-bold mb-3">Core Features (from research)</h3>
+                            <ul className="space-y-2">
+                              {currentProduct.core_features.map((feature: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
+                                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 2: Build (for software products) */}
+                    {currentStep === 2 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">Build Your Product</h2>
+                        <p className="text-gray-600 mb-6">
+                          Use AI-powered tools to build your {currentProduct.product_type?.replace('-', ' ') || 'software'}. 
+                          Select a prompt mode and we&apos;ll generate a comprehensive build prompt.
+                        </p>
+                        
+                        {/* Prompt Mode Selector */}
+                        <div className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-4">
+                          <div className="flex items-center gap-2 text-purple-800 font-bold mb-3">
+                            <Zap className="w-5 h-5" />
+                            Prompt Mode
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {[
+                              { mode: 'full-build' as PromptMode, label: 'Full Build', desc: 'Complete app with all features', icon: '🚀' },
+                              { mode: 'spec-only' as PromptMode, label: 'Spec Only', desc: 'Detailed product specification', icon: '📋' },
+                              { mode: 'database-design' as PromptMode, label: 'Database', desc: 'Generate database schema', icon: '🗃️' },
+                              { mode: 'api-design' as PromptMode, label: 'API Design', desc: 'Design API endpoints', icon: '🔌' },
+                              { mode: 'ui-design' as PromptMode, label: 'UI Design', desc: 'Generate UI components', icon: '🎨' },
+                            ].map(({ mode, label, desc, icon }) => (
+                              <button
+                                key={mode}
+                                onClick={() => setPromptMode(mode)}
+                                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                  promptMode === mode
+                                    ? 'border-purple-500 bg-purple-100 shadow-md'
+                                    : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{icon}</span>
+                                  <span className="font-bold text-sm">{label}</span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">{desc}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {(() => {
+                          const productTypeConfig = getProductTypeConfig(currentProduct.product_type);
+                          
+                          // Create comprehensive prompt config from product data
+                          const promptConfig = createPromptConfigFromProduct(
+                            {
+                              name: currentProduct.name,
+                              description: formData.description || currentProduct.description || '',
+                              targetAudience: formData.targetAudience,
+                              problemSolved: formData.problemSolved,
+                              coreFeatures: currentProduct.core_features || [],
+                              additionalFeatures: currentProduct.raw_analysis?.generatedFeatures || [],
+                              productType: currentProduct.product_type || 'saas',
+                            },
+                            promptMode
+                          );
+                          
+                          // Generate the comprehensive SaaS prompt
+                          const buildPrompt = generateComprehensiveSaaSPrompt(promptConfig);
+
+                          return (
+                            <AIToolSelector
+                              recommendedTools={productTypeConfig?.aiTools || ['lovable', 'v0', 'bolt', 'cursor', 'replit', 'claude']}
+                              buildPrompt={buildPrompt}
+                              productName={currentProduct.name}
+                              productType={currentProduct.product_type || 'SaaS'}
+                              onToolSelect={(tool) => console.log('Selected tool:', tool)}
+                            />
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Step 2: Structure (for content products) */}
+                    {currentStep === 2 && !['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Product Structure</h2>
                         <p className="text-gray-600 mb-6">
@@ -2251,7 +2716,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {currentStep === 3 && (
+                    {/* Step 3: Assets (for content products only) */}
+                    {currentStep === 3 && !isSoftwareProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Assets & Resources</h2>
                         <p className="text-gray-600 mb-6">
@@ -2554,12 +3020,214 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {currentStep === 4 && (
+                    {/* Step 3: Deploy (for software products) */}
+                    {currentStep === 3 && isSoftwareProduct && (
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Deploy Your App</h2>
+                        <p className="text-gray-600 mb-6">
+                          Connect your deployed application and set up your marketplace listing.
+                        </p>
+                        
+                        {/* Production URL Section */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            🌐 Production URL
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Enter the URL where your app is deployed. This is where customers will access your product.
+                          </p>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">App URL</label>
+                              <input
+                                type="url"
+                                value={formData.notes?.includes('Production URL:') 
+                                  ? formData.notes.split('Production URL:')[1]?.split('\n')[0]?.trim() || ''
+                                  : ''}
+                                onChange={(e) => {
+                                  const url = e.target.value;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    notes: prev.notes?.includes('Production URL:') 
+                                      ? prev.notes.replace(/Production URL:.*(\n|$)/, `Production URL: ${url}\n`)
+                                      : `Production URL: ${url}\n${prev.notes || ''}`
+                                  }));
+                                  if (url) {
+                                    setLaunchChecklist(prev => ({ ...prev, assetsReady: true }));
+                                  }
+                                }}
+                                placeholder="https://your-app.vercel.app"
+                                className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>Deploy to Vercel, Railway, or any host</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                <span>We&apos;ll redirect customers to your app</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pricing Section */}
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            💰 Set Your Price
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Price</label>
+                              <div className="relative">
+                                <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                <input
+                                  type="text"
+                                  value={productPrice}
+                                  onChange={(e) => {
+                                    setProductPrice(e.target.value);
+                                    if (e.target.value && parseFloat(e.target.value) > 0) {
+                                      setLaunchChecklist(prev => ({ ...prev, pricingSet: true }));
+                                    }
+                                  }}
+                                  placeholder="49.00"
+                                  className="w-full pl-7 sm:pl-8 pr-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg sm:text-xl font-bold"
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-2">
+                                Suggested: {currentProduct.pricing_model || '$29 - $199/mo'}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Pricing Model</label>
+                              <select
+                                className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                                defaultValue="one-time"
+                              >
+                                <option value="one-time">One-time Purchase</option>
+                                <option value="subscription">Monthly Subscription</option>
+                                <option value="freemium">Freemium + Premium</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Preview & Launch */}
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-gray-600 font-bold text-sm sm:text-base">
+                              <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                              App Preview
+                            </div>
+                            <button
+                              onClick={() => {
+                                setShowPreviewModal(true);
+                                setLaunchChecklist(prev => ({ ...prev, previewReviewed: true }));
+                              }}
+                              className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Full Preview
+                            </button>
+                          </div>
+                          
+                          <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-6 shadow-brutal">
+                            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-indigo-500 border-2 border-black rounded-xl flex items-center justify-center shrink-0">
+                                <Code className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg sm:text-xl font-black break-words">{currentProduct.name}</h3>
+                                <p className="text-gray-600 text-xs sm:text-sm mb-2">{currentProduct.tagline || 'No tagline set'}</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 rounded-full capitalize">
+                                    {currentProduct.product_type?.replace('-', ' ') || 'Software'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-full sm:w-auto text-left sm:text-right mt-2 sm:mt-0">
+                                <p className="text-xl sm:text-2xl font-black text-green-600">
+                                  ${productPrice || '49'}
+                                </p>
+                                <p className="text-xs text-gray-500">Price</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Launch Button */}
+                        <div className="flex justify-center">
+                          <button
+                            onClick={handleLaunchProduct}
+                            disabled={isLaunching || !productPrice}
+                            className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
+                          >
+                            {isLaunching ? (
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                Launching...
+                              </>
+                            ) : (
+                              <>
+                                <Rocket className="w-6 h-6" />
+                                Launch to Marketplace
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: Launch (for content products only) */}
+                    {currentStep === 4 && !isSoftwareProduct && (
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Launch Your Product</h2>
                         <p className="text-gray-600 mb-6">
-                          Review everything and launch your product on the marketplace.
+                          Upload your deliverable files, set your price, and launch to the marketplace.
                         </p>
+
+                        {/* Deliverable Files Section */}
+                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            📦 Product Files
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Upload the files customers will receive after purchase (PDF, templates, assets, etc.)
+                          </p>
+                          
+                          {/* Upload Area */}
+                          <div 
+                            className="border-2 border-dashed border-purple-300 rounded-xl p-6 text-center hover:border-purple-500 transition-colors cursor-pointer bg-white"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Upload className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                            <p className="font-bold text-purple-700 mb-1">Click to upload deliverable files</p>
+                            <p className="text-xs text-gray-500">PDF, ZIP, DOCX, PPTX, or any digital file</p>
+                          </div>
+                          
+                          {/* Uploaded Files List */}
+                          {assets.filter(a => a.type === 'file').length > 0 && (
+                            <div className="mt-4 space-y-2">
+                              <p className="text-sm font-bold text-gray-700">Uploaded Files:</p>
+                              {assets.filter(a => a.type === 'file').map((asset) => (
+                                <div key={asset.id} className="flex items-center justify-between p-3 bg-white border-2 border-gray-200 rounded-lg">
+                                  <div className="flex items-center gap-3">
+                                    <FileText className="w-5 h-5 text-purple-500" />
+                                    <span className="text-sm font-medium">{asset.name}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteAsset(asset.id)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         
                         {/* Pricing Section */}
                         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
@@ -2791,7 +3459,7 @@ function BuilderContent() {
                           </h3>
                           <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 px-2">
                             {canLaunch() 
-                              ? 'Your product will be listed on the marketplace.'
+                              ? 'Choose where to publish your product.'
                               : 'Complete all checklist items before launching.'
                             }
                           </p>
@@ -2815,7 +3483,7 @@ function BuilderContent() {
                             }`}
                           >
                             <Rocket className="w-4 h-4 sm:w-5 sm:h-5" />
-                            Launch on Marketplace
+                            Launch Product
                           </button>
                         </div>
                       </div>
@@ -2834,7 +3502,7 @@ function BuilderContent() {
                       <button
                         onClick={() => {
                           handleSaveProduct();
-                          if (currentStep < PRODUCT_STEPS.length - 1) {
+                          if (currentStep < getProductSteps(currentProduct?.product_type).length - 1) {
                             setCurrentStep(currentStep + 1);
                           }
                         }}
@@ -2842,7 +3510,7 @@ function BuilderContent() {
                         className="w-full sm:w-auto order-1 sm:order-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-uvz-orange text-white font-bold text-sm sm:text-base border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {currentStep < PRODUCT_STEPS.length - 1 ? 'Save & Continue' : 'Save'}
+                        {currentStep < getProductSteps(currentProduct?.product_type).length - 1 ? 'Save & Continue' : 'Save'}
                       </button>
                     </div>
                   </div>
@@ -2942,43 +3610,138 @@ function BuilderContent() {
               </div>
               <h3 className="text-xl sm:text-2xl font-black mb-2">Launch Your Product</h3>
               <p className="text-sm sm:text-base text-gray-600">
-                You&apos;re about to list <strong>{currentProduct.name}</strong> on the ManyMarkets marketplace.
+                Choose where to publish <strong>{currentProduct.name}</strong>
               </p>
             </div>
             
-            <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
-              <h4 className="font-bold mb-2 sm:mb-3 text-sm sm:text-base">What happens next:</h4>
-              <ul className="space-y-2 text-xs sm:text-sm">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0 mt-0.5" />
-                  <span>Your product will be visible on the marketplace</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 shrink-0 mt-0.5" />
-                  <span>Buyers can discover and purchase your product</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-                  <span>You&apos;ll receive notifications for each sale</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <ExternalLink className="w-5 h-5 text-blue-500 shrink-0" />
-                  <span>You can share your product link on social media</span>
-                </li>
-              </ul>
+            {/* Platform Selection */}
+            <div className="mb-4 sm:mb-6">
+              <h4 className="font-bold mb-3 text-sm sm:text-base">Select Platforms:</h4>
+              <div className="space-y-3">
+                {(['manymarkets', 'gumroad'] as MarketplacePlatform[]).map((platform) => {
+                  const config = PLATFORM_CONFIG[platform];
+                  const connection = platformConnections.find(c => c.platform === platform);
+                  const isConnected = platform === 'manymarkets' || connection?.connected;
+                  const isSelected = selectedPlatforms.includes(platform);
+                  
+                  return (
+                    <div
+                      key={platform}
+                      className={`relative border-2 rounded-xl p-4 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-green-500 bg-green-50 shadow-md'
+                          : isConnected
+                            ? 'border-gray-200 bg-white hover:border-green-300'
+                            : 'border-dashed border-gray-300 bg-gray-50'
+                      }`}
+                      onClick={() => isConnected && togglePlatformSelection(platform)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div
+                            className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                              isSelected
+                                ? 'bg-green-500 border-green-500 text-white'
+                                : isConnected
+                                  ? 'border-gray-300'
+                                  : 'border-gray-200 bg-gray-100'
+                            }`}
+                          >
+                            {isSelected && <Check className="w-4 h-4" />}
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xl">{config.icon}</span>
+                              <span className="font-bold">{config.name}</span>
+                              {platform === 'manymarkets' && (
+                                <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
+                                  Native
+                                </span>
+                              )}
+                              {isConnected && platform !== 'manymarkets' && (
+                                <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                                  Connected
+                                </span>
+                              )}
+                              {!isConnected && platform !== 'manymarkets' && (
+                                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full font-medium">
+                                  Not Connected
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">{config.description}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Fee: {config.fee}</p>
+                          </div>
+                        </div>
+                        
+                        {platform !== 'manymarkets' && !isConnected && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConnectPlatform(platform);
+                            }}
+                            className="px-3 py-1.5 text-xs bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition-colors shrink-0"
+                          >
+                            Connect
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Quick Actions */}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => setSelectedPlatforms(['manymarkets', 'gumroad'].filter(p => 
+                    p === 'manymarkets' || platformConnections.find(c => c.platform === p)?.connected
+                  ) as MarketplacePlatform[])}
+                  className="flex-1 px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                >
+                  Select All Connected
+                </button>
+                <button
+                  onClick={() => setSelectedPlatforms(['manymarkets'])}
+                  className="flex-1 px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  ManyMarkets Only
+                </button>
+              </div>
             </div>
             
+            {/* Price Summary */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-600">Product Price:</span>
+                <span className="font-black text-xl text-green-600">${productPrice || '0'}</span>
+              </div>
+              {selectedPlatforms.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-green-200">
+                  <p className="text-xs text-gray-500">
+                    Launching to: {selectedPlatforms.map(p => PLATFORM_CONFIG[p].name).join(' + ')}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Launch Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={() => setShowLaunchModal(false)}
                 className="flex-1 px-4 py-3 font-bold border-2 border-black rounded-xl hover:bg-gray-100 transition-colors"
               >
-                Not Yet
+                Cancel
               </button>
               <button
                 onClick={handleLaunchProduct}
-                disabled={isLaunching}
-                className="flex-1 px-4 py-3 bg-green-500 text-white font-bold border-2 border-black rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                disabled={isLaunching || selectedPlatforms.length === 0}
+                className={`flex-1 px-4 py-3 font-bold border-2 border-black rounded-xl transition-colors flex items-center justify-center gap-2 ${
+                  selectedPlatforms.length === 0
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                } disabled:opacity-50`}
               >
                 {isLaunching ? (
                   <>
@@ -2988,7 +3751,12 @@ function BuilderContent() {
                 ) : (
                   <>
                     <Rocket className="w-5 h-5" />
-                    Launch Now!
+                    {selectedPlatforms.length === 0 
+                      ? 'Select Platform' 
+                      : selectedPlatforms.length === 1 
+                        ? `Launch on ${PLATFORM_CONFIG[selectedPlatforms[0]].name}`
+                        : `Launch to ${selectedPlatforms.length} Platforms`
+                    }
                   </>
                 )}
               </button>
