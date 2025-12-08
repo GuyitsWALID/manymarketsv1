@@ -806,7 +806,7 @@ function BuilderContent() {
       ));
 
       // Mark content as complete in checklist
-      setexportChecklist(prev => ({ ...prev, contentComplete: true }));
+      setExportChecklist(prev => ({ ...prev, contentComplete: true }));
       
       // Show success modal
       showNotification('success', 'Content Generated!', 'Your ebook content has been written successfully.', [
@@ -866,7 +866,7 @@ function BuilderContent() {
       // Check if all chapters now have content
       const allHaveContent = data.outline.chapters?.every((ch: Chapter) => ch.content);
       if (allHaveContent) {
-        setexportChecklist(prev => ({ ...prev, contentComplete: true }));
+        setExportChecklist(prev => ({ ...prev, contentComplete: true }));
       }
     } catch (error) {
       console.error('Generate chapter content error:', error);
@@ -3055,7 +3055,7 @@ function BuilderContent() {
                                       : `Production URL: ${url}\n${prev.notes || ''}`
                                   }));
                                   if (url) {
-                                    setexportChecklist(prev => ({ ...prev, assetsReady: true }));
+                                    setExportChecklist(prev => ({ ...prev, assetsReady: true }));
                                   }
                                 }}
                                 placeholder="https://your-app.vercel.app"
@@ -3091,7 +3091,7 @@ function BuilderContent() {
                                   onChange={(e) => {
                                     setProductPrice(e.target.value);
                                     if (e.target.value && parseFloat(e.target.value) > 0) {
-                                      setexportChecklist(prev => ({ ...prev, pricingSet: true }));
+                                      setExportChecklist(prev => ({ ...prev, pricingSet: true }));
                                     }
                                   }}
                                   placeholder="49.00"
@@ -3297,7 +3297,7 @@ function BuilderContent() {
                                   onChange={(e) => {
                                     setProductPrice(e.target.value);
                                     if (e.target.value && parseFloat(e.target.value) > 0) {
-                                      setexportChecklist(prev => ({ ...prev, pricingSet: true }));
+                                      setExportChecklist(prev => ({ ...prev, pricingSet: true }));
                                     }
                                   }}
                                   placeholder="49.00"
@@ -3362,7 +3362,7 @@ function BuilderContent() {
                             <button
                               onClick={() => {
                                 setShowPreviewModal(true);
-                                setexportChecklist(prev => ({ ...prev, previewReviewed: true }));
+                                setExportChecklist(prev => ({ ...prev, previewReviewed: true }));
                               }}
                               className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
                             >
@@ -3429,7 +3429,7 @@ function BuilderContent() {
                               <input
                                 type="checkbox"
                                 checked={exportChecklist.contentComplete}
-                                onChange={(e) => setexportChecklist(prev => ({ ...prev, contentComplete: e.target.checked }))}
+                                onChange={(e) => setExportChecklist(prev => ({ ...prev, contentComplete: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
@@ -3443,7 +3443,7 @@ function BuilderContent() {
                               <input
                                 type="checkbox"
                                 checked={exportChecklist.structureComplete}
-                                onChange={(e) => setexportChecklist(prev => ({ ...prev, structureComplete: e.target.checked }))}
+                                onChange={(e) => setExportChecklist(prev => ({ ...prev, structureComplete: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
@@ -3457,7 +3457,7 @@ function BuilderContent() {
                               <input
                                 type="checkbox"
                                 checked={exportChecklist.assetsReady}
-                                onChange={(e) => setexportChecklist(prev => ({ ...prev, assetsReady: e.target.checked }))}
+                                onChange={(e) => setExportChecklist(prev => ({ ...prev, assetsReady: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
@@ -3471,7 +3471,7 @@ function BuilderContent() {
                               <input
                                 type="checkbox"
                                 checked={exportChecklist.pricingSet}
-                                onChange={(e) => setexportChecklist(prev => ({ ...prev, pricingSet: e.target.checked }))}
+                                onChange={(e) => setExportChecklist(prev => ({ ...prev, pricingSet: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
@@ -3485,7 +3485,7 @@ function BuilderContent() {
                               <input
                                 type="checkbox"
                                 checked={exportChecklist.previewReviewed}
-                                onChange={(e) => setexportChecklist(prev => ({ ...prev, previewReviewed: e.target.checked }))}
+                                onChange={(e) => setExportChecklist(prev => ({ ...prev, previewReviewed: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
