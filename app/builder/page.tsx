@@ -204,6 +204,7 @@ interface Product {
     outline?: ContentOutline;
     structure?: ProductStructure;
     assets?: Asset[];
+    generatedFeatures?: string[];
   };
   created_at: string;
   updated_at: string;
@@ -3208,10 +3209,10 @@ function BuilderContent() {
                           </div>
                           
                           {/* Uploaded Files List */}
-                          {assets.filter(a => a.type === 'file').length > 0 && (
+                          {assets.filter(a => a.category === 'uploaded').length > 0 && (
                             <div className="mt-4 space-y-2">
                               <p className="text-sm font-bold text-gray-700">Uploaded Files:</p>
-                              {assets.filter(a => a.type === 'file').map((asset) => (
+                              {assets.filter(a => a.category === 'uploaded').map((asset) => (
                                 <div key={asset.id} className="flex items-center justify-between p-3 bg-white border-2 border-gray-200 rounded-lg">
                                   <div className="flex items-center gap-3">
                                     <FileText className="w-5 h-5 text-purple-500" />
@@ -3659,12 +3660,12 @@ function BuilderContent() {
                                   Native
                                 </span>
                               )}
-                              {isConnected && platform !== 'manymarkets' && (
+                              {isConnected && platform === 'gumroad' && (
                                 <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
                                   Connected
                                 </span>
                               )}
-                              {!isConnected && platform !== 'manymarkets' && (
+                              {!isConnected && platform === 'gumroad' && (
                                 <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full font-medium">
                                   Not Connected
                                 </span>
@@ -3675,7 +3676,7 @@ function BuilderContent() {
                           </div>
                         </div>
                         
-                        {platform !== 'manymarkets' && !isConnected && (
+                        {platform === 'gumroad' && !isConnected && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
