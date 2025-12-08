@@ -1937,7 +1937,7 @@ function BuilderContent() {
                             <div className="flex items-center justify-between mb-2">
                               <label className="text-sm font-bold text-gray-700 flex items-center gap-1">
                                 Target Audience
-                                <Sparkles className="w-4 h-4 text-yellow-500" title="AI suggestion available" />
+                                <Sparkles className="w-4 h-4 text-yellow-500" />
                               </label>
                               <button
                                 type="button"
@@ -1986,7 +1986,7 @@ function BuilderContent() {
                             <div className="flex items-center justify-between mb-2">
                               <label className="text-sm font-bold text-gray-700 flex items-center gap-1">
                                 Problem Solved
-                                <Sparkles className="w-4 h-4 text-yellow-500" title="AI suggestion available" />
+                                <Sparkles className="w-4 h-4 text-yellow-500" />
                               </label>
                               <button
                                 type="button"
