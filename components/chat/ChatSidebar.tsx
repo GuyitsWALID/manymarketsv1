@@ -204,13 +204,6 @@ export default function ChatSidebar({
                   Idea Score
                 </Link>
                 <Link
-                  href="/marketplace"
-                  onClick={() => isMobile && onClose()}
-                  className="block text-sm font-bold text-center py-2 bg-white border-2 border-black rounded hover:shadow-brutal transition-shadow"
-                >
-                  Browse Marketplace
-                </Link>
-                <Link
                   href="/builder"
                   onClick={() => isMobile && onClose()}
                   className="block text-sm font-bold text-center py-2 bg-white border-2 border-black rounded hover:shadow-brutal transition-shadow"

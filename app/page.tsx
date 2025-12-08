@@ -137,9 +137,9 @@ export default function Home() {
     },
     { 
       icon: TrendingUp, 
-      title: "Instant Marketplace Launch", 
-      desc: "Sell your products immediately in our built-in marketplace. Automatic payment processing, delivery, and revenue tracking—we handle everything.",
-      detail: "Start earning from day one with zero setup friction."
+      title: "Idea Validation & Scoring", 
+      desc: "Score your product ideas instantly with AI-powered analysis. Get detailed feedback on market demand, competition, and profitability potential.",
+      detail: "Know if your idea will succeed before you build it."
     }
   ];
 
@@ -176,8 +176,7 @@ export default function Home() {
         "Full Builder Studio Access",
         "Advanced Market Analytics",
         "Unlimited Products",
-        "Marketplace Listing",
-        "85% Revenue (15% platform fee)",
+        "Idea Scorer Pro",
         "Priority Support",
         "Marketing Asset Generator",
         "Analytics Dashboard"
@@ -195,7 +194,6 @@ export default function Home() {
         "White-Label Options",
         "API Access",
         "Custom Integrations",
-        "90% Revenue (10% platform fee)",
         "Dedicated Account Manager",
         "Custom Training",
         "Advanced Analytics",
@@ -219,8 +217,8 @@ export default function Home() {
     },
     {
       step: "03",
-      title: "Launch & Earn",
-      description: "Publish to our marketplace instantly. We handle payments, delivery, and customer management. You focus on creating and earning."
+      title: "Validate & Build",
+      description: "Score your ideas with AI validation, then build professional digital products with our creation studio. Export and sell anywhere you want."
     }
   ];
 
@@ -235,7 +233,7 @@ export default function Home() {
           <nav className="hidden md:flex items-center gap-6 font-bold text-base">
         <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
         <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
-        <Link href="/marketplace" className="hover:underline decoration-4 decoration-uvz-orange">Marketplace</Link>
+        <Link href="/idea-score" className="hover:underline decoration-4 decoration-uvz-orange">Idea Scorer</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Login</Link>
         <Link href="/login" className="bg-uvz-orange text-black px-6 py-2 border-2 border-black hover:bg-white hover:text-black transition-all shadow-brutal active:translate-x-1 active:translate-y-1 active:shadow-none text-base">
           Get Started
@@ -291,14 +289,14 @@ export default function Home() {
           Pricing
             </Link>
             <Link
-          href="/marketplace"
+          href="/idea-score"
           className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
           onClick={() => {
             const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
             if (el) el.checked = false;
           }}
             >
-          Marketplace
+          Idea Scorer
             </Link>
             <Link
           href="/login"
@@ -424,7 +422,7 @@ export default function Home() {
             >
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 sm:mb-6">
           From Market Insight to{" "}
-          <span className="text-uvz-orange">Marketplace Success</span>
+          <span className="text-uvz-orange">Product Success</span>
               </h2>
             </motion.div>
             
@@ -434,7 +432,7 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium max-w-3xl mx-auto text-left sm:text-center px-2"
             >
-              The only platform that guides you from <strong>"I want to build something"</strong> to <strong>"I'm making sales"</strong>—with AI doing the heavy lifting. Discover profitable niches, create digital products, and launch your marketplace business in days, not months.
+              The only platform that guides you from <strong>"I have an idea"</strong> to <strong>"I'm ready to launch"</strong>—with AI doing the heavy lifting. Discover profitable niches, validate your ideas, and build digital products in days, not months.
             </motion.p>
             
             <motion.div 
@@ -446,8 +444,8 @@ export default function Home() {
               <Link href="/login" className="group bg-uvz-orange text-white text-base sm:text-lg md:text-xl font-bold px-6 sm:px-8 py-3 sm:py-4 border-3 sm:border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center justify-center gap-2">
                 Start Discovery <Zap className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform" />
               </Link>
-              <Link href="/marketplace" className="group bg-white text-black text-base sm:text-lg md:text-xl font-bold px-6 sm:px-8 py-3 sm:py-4 border-3 sm:border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center justify-center gap-2">
-                Browse Marketplace <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform" />
+              <Link href="/builder" className="group bg-white text-black text-base sm:text-lg md:text-xl font-bold px-6 sm:px-8 py-3 sm:py-4 border-3 sm:border-4 border-black shadow-brutal hover:-translate-y-2 hover:shadow-[8px_8px_0px_0px_#000000] transition-all inline-flex items-center justify-center gap-2">
+                Build Your Product <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform" />
               </Link>
             </motion.div>
 
@@ -609,7 +607,7 @@ export default function Home() {
 
             <div className="text-center mt-8 sm:mt-12 max-w-3xl mx-auto px-2">
               <p className="text-xs sm:text-sm font-medium border-2 sm:border-4 border-black p-4 sm:p-6 bg-white shadow-brutal">
-                <strong>💰 Marketplace Fees:</strong> Free users cannot sell on marketplace. Pro users pay 15% commission on sales. Enterprise users pay only 10% commission. All plans include free payment processing through Stripe.
+                <strong>💡 How It Works:</strong> Free users get basic research capabilities. Pro users get unlimited AI research sessions, full builder access, and advanced idea scoring. Enterprise users get everything plus API access and team collaboration.
               </p>
             </div>
           </div>
@@ -624,7 +622,7 @@ export default function Home() {
             className="max-w-4xl mx-auto border-4 sm:border-6 md:border-8 border-black p-6 sm:p-10 md:p-12 lg:p-16 bg-gradient-to-br from-yellow-300 to-yellow-200 shadow-[6px_6px_0px_0px_#000000] sm:shadow-[8px_8px_0px_0px_#000000] md:shadow-[12px_12px_0px_0px_#000000] text-center"
           >
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black mb-4 sm:mb-6 uppercase leading-tight">
-              Ready to Build Your <span className="text-uvz-orange">Marketplace Empire?</span>
+              Ready to Build Your <span className="text-uvz-orange">Next Big Thing?</span>
             </h2>
             <p className="text-base sm:text-lg md:text-xl font-medium mb-6 sm:mb-8 max-w-2xl mx-auto">
               Join thousands of creators who have discovered their profitable niche and launched successful digital product businesses with ManyMarkets.
@@ -656,8 +654,8 @@ export default function Home() {
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/features" className="hover:text-uvz-orange transition-colors">Features</Link></li>
                 <li><Link href="/pricing" className="hover:text-uvz-orange transition-colors">Pricing</Link></li>
-                <li><Link href="/marketplace" className="hover:text-uvz-orange transition-colors">Marketplace</Link></li>
-                <li><Link href="/templates" className="hover:text-uvz-orange transition-colors">Templates</Link></li>
+                <li><Link href="/idea-score" className="hover:text-uvz-orange transition-colors">Idea Scorer</Link></li>
+                <li><Link href="/builder" className="hover:text-uvz-orange transition-colors">Product Builder</Link></li>
               </ul>
             </div>
             

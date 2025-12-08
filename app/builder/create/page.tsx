@@ -321,7 +321,7 @@ function CreateProductContent() {
                 <>
                   <p className="text-gray-600 mb-8 max-w-md mx-auto">
                     Your {selectedProductType?.name} has been created and saved. 
-                    You can now continue building or launch it to the marketplace.
+                    You can now continue building and add more content.
                   </p>
                   
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

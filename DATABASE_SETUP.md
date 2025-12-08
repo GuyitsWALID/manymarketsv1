@@ -694,6 +694,179 @@ VALUES ('YOUR_USER_ID', 'AI Tools Research', 'Artificial Intelligence', 'niche_d
 
 ---
 
+## 14. Marketplace Orders & Purchases
+
+Tables for handling marketplace purchases, orders, and platform fees.
+
+```sql
+-- Marketplace Orders (tracks purchases)
+CREATE TABLE public.marketplace_orders (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  buyer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  
+  -- Financial details
+  total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  platform_fee DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  processing_fee DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  
+  -- Status
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+  payment_method TEXT DEFAULT 'stripe' CHECK (payment_method IN ('stripe', 'paypal', 'free')),
+  
+  -- Stripe references
+  stripe_session_id TEXT,
+  stripe_payment_intent_id TEXT,
+  stripe_subscription_id TEXT,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  payment_confirmed_at TIMESTAMPTZ
+);
+
+-- Order Items (individual products in an order)
+CREATE TABLE public.marketplace_order_items (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  order_id UUID REFERENCES public.marketplace_orders(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES public.marketplace_products(id) ON DELETE SET NULL,
+  seller_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  
+  -- Pricing at time of purchase
+  quantity INTEGER DEFAULT 1,
+  unit_price DECIMAL(10, 2) NOT NULL,
+  total_price DECIMAL(10, 2) NOT NULL,
+  platform_fee DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  
+  -- Status
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'refunded')),
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Marketplace Purchases (grants product access to buyers)
+CREATE TABLE public.marketplace_purchases (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES public.marketplace_products(id) ON DELETE CASCADE NOT NULL,
+  order_id UUID REFERENCES public.marketplace_orders(id) ON DELETE SET NULL,
+  
+  -- Access info
+  access_type TEXT DEFAULT 'purchased' CHECK (access_type IN ('purchased', 'gifted', 'promo')),
+  access_revoked BOOLEAN DEFAULT FALSE,
+  revoked_at TIMESTAMPTZ,
+  
+  -- For subscriptions
+  subscription_renewed_at TIMESTAMPTZ,
+  subscription_expires_at TIMESTAMPTZ,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(user_id, product_id)
+);
+
+-- Marketplace Saves (wishlist/saved products)
+CREATE TABLE public.marketplace_saves (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES public.marketplace_products(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(user_id, product_id)
+);
+
+-- Seller Payouts (tracks money owed to sellers)
+CREATE TABLE public.seller_payouts (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  seller_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL NOT NULL,
+  order_id UUID REFERENCES public.marketplace_orders(id) ON DELETE SET NULL,
+  
+  amount DECIMAL(10, 2) NOT NULL,
+  platform_fee_deducted DECIMAL(10, 2) DEFAULT 0,
+  
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  payout_method TEXT,
+  payout_reference TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+
+-- Platform Earnings (tracks platform revenue)
+CREATE TABLE public.platform_earnings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  order_id UUID REFERENCES public.marketplace_orders(id) ON DELETE SET NULL,
+  
+  amount DECIMAL(10, 2) NOT NULL,
+  type TEXT DEFAULT 'transaction_fee' CHECK (type IN ('transaction_fee', 'subscription', 'listing_fee', 'other')),
+  description TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_orders_buyer_id ON public.marketplace_orders(buyer_id);
+CREATE INDEX idx_orders_status ON public.marketplace_orders(status);
+CREATE INDEX idx_order_items_order_id ON public.marketplace_order_items(order_id);
+CREATE INDEX idx_order_items_seller_id ON public.marketplace_order_items(seller_id);
+CREATE INDEX idx_purchases_user_id ON public.marketplace_purchases(user_id);
+CREATE INDEX idx_purchases_product_id ON public.marketplace_purchases(product_id);
+CREATE INDEX idx_saves_user_id ON public.marketplace_saves(user_id);
+CREATE INDEX idx_payouts_seller_id ON public.seller_payouts(seller_id);
+CREATE INDEX idx_payouts_status ON public.seller_payouts(status);
+
+-- Enable RLS
+ALTER TABLE public.marketplace_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketplace_order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketplace_purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketplace_saves ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.seller_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.platform_earnings ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for orders
+CREATE POLICY "Users can view own orders" 
+  ON public.marketplace_orders FOR SELECT 
+  USING (auth.uid() = buyer_id);
+
+CREATE POLICY "Users can create orders" 
+  ON public.marketplace_orders FOR INSERT 
+  WITH CHECK (auth.uid() = buyer_id);
+
+-- RLS Policies for order items
+CREATE POLICY "Users can view own order items" 
+  ON public.marketplace_order_items FOR SELECT 
+  USING (
+    order_id IN (SELECT id FROM public.marketplace_orders WHERE buyer_id = auth.uid())
+    OR seller_id = auth.uid()
+  );
+
+-- RLS Policies for purchases
+CREATE POLICY "Users can view own purchases" 
+  ON public.marketplace_purchases FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- RLS Policies for saves
+CREATE POLICY "Users can manage own saves" 
+  ON public.marketplace_saves FOR ALL 
+  USING (auth.uid() = user_id);
+
+-- RLS Policies for seller payouts
+CREATE POLICY "Sellers can view own payouts" 
+  ON public.seller_payouts FOR SELECT 
+  USING (auth.uid() = seller_id);
+
+-- Function to increment product views
+CREATE OR REPLACE FUNCTION public.increment_product_views(product_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE public.marketplace_products
+  SET view_count = COALESCE(view_count, 0) + 1
+  WHERE id = product_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
 ## Environment Variables Required
 
 Add these to your `.env.local`:

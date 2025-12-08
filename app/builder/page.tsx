@@ -4,29 +4,18 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import confetti from 'canvas-confetti';
-import ChatHeader from '@/components/chat/ChatHeader';
-import ChatSidebar from '@/components/chat/ChatSidebar';
+import BuilderHeader from '@/components/builder/BuilderHeader';
+import BuilderSidebar from '@/components/builder/BuilderSidebar';
 import ProductTypeBuilder from '@/components/builder/ProductTypeBuilder';
 import AIToolSelector from '@/components/builder/AIToolSelector';
 import { PRODUCT_TYPES, ProductTypeConfig } from '@/lib/product-types';
-import { 
+import {
   generateComprehensiveSaaSPrompt, 
   createPromptConfigFromProduct,
   SAAS_TEMPLATES,
   PromptMode
 } from '@/lib/prompt-generator';
-import {
-  PLATFORM_CONFIG,
-  MarketplacePlatform,
-  PlatformConnection,
-  savePlatformConnection,
-  getPlatformConnections,
-  disconnectPlatform,
-  isPlatformConnected,
-  LaunchResult,
-} from '@/lib/marketplace-integrations';
 import { 
-  ArrowLeft, 
   Sparkles, 
   FileText, 
   Video, 
@@ -70,14 +59,6 @@ import {
   Wrench
 } from 'lucide-react';
 import Link from 'next/link';
-
-interface Session {
-  id: string;
-  title: string;
-  phase: string;
-  created_at: string;
-  last_message_at: string;
-}
 
 interface ContentOutline {
   title: string;
@@ -217,7 +198,7 @@ const CONTENT_PRODUCT_STEPS = [
   { id: 'content', name: 'Content Plan', icon: FileText },
   { id: 'structure', name: 'Structure', icon: Lightbulb },
   { id: 'assets', name: 'Assets', icon: Zap },
-  { id: 'launch', name: 'Launch', icon: Rocket },
+  { id: 'export', name: 'Export', icon: Rocket },
 ];
 
 // Steps for software/SaaS products (includes assets for cover images)
@@ -226,7 +207,7 @@ const SOFTWARE_PRODUCT_STEPS = [
   { id: 'features', name: 'Features', icon: Lightbulb },
   { id: 'build', name: 'Build', icon: Wrench },
   { id: 'assets', name: 'Assets', icon: Zap },
-  { id: 'launch', name: 'Deploy', icon: Rocket },
+  { id: 'export', name: 'Export', icon: Rocket },
 ];
 
 // Get steps based on product type
@@ -264,7 +245,6 @@ function BuilderContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; email?: string | null } | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [isPro, setIsPro] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
@@ -315,27 +295,20 @@ function BuilderContent() {
   const [savingAssetId, setSavingAssetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Launch state
-  const [showLaunchModal, setShowLaunchModal] = useState(false);
+  // Export state
+  const [showExportModal, setShowExportModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewTab, setPreviewTab] = useState<'overview' | 'content' | 'structure' | 'assets'>('overview');
   const [productPrice, setProductPrice] = useState('');
-  const [launchChecklist, setLaunchChecklist] = useState({
+  const [exportChecklist, setExportChecklist] = useState({
     contentComplete: false,
     structureComplete: false,
     assetsReady: false,
     pricingSet: false,
     previewReviewed: false,
   });
-  const [isLaunching, setIsLaunching] = useState(false);
-  
-  // Multi-platform launch state
-  const [selectedPlatforms, setSelectedPlatforms] = useState<MarketplacePlatform[]>(['manymarkets']);
-  const [platformConnections, setPlatformConnections] = useState<PlatformConnection[]>([]);
-  const [launchResults, setLaunchResults] = useState<LaunchResult[]>([]);
-  const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const [connectingPlatform, setConnectingPlatform] = useState<MarketplacePlatform | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Category state
   const [categories, setCategories] = useState<{id: string; name: string; slug: string; icon: string}[]>([]);
@@ -384,59 +357,6 @@ function BuilderContent() {
 
   // Load platform connections and handle OAuth callbacks
   useEffect(() => {
-    // Load saved connections
-    const connections = getPlatformConnections();
-    setPlatformConnections(connections);
-    
-    // Check for OAuth callback
-    const params = new URLSearchParams(window.location.search);
-    const connectionStatus = params.get('connection');
-    const platform = params.get('platform') as MarketplacePlatform | null;
-    const data = params.get('data');
-    
-    if (connectionStatus === 'success' && platform && data) {
-      try {
-        const connectionData = JSON.parse(decodeURIComponent(data));
-        const newConnection: PlatformConnection = {
-          platform,
-          connected: true,
-          accessToken: connectionData.accessToken,
-          accountId: connectionData.accountId,
-          accountEmail: connectionData.accountEmail,
-          connectedAt: connectionData.connectedAt,
-        };
-        savePlatformConnection(newConnection);
-        setPlatformConnections(prev => {
-          const filtered = prev.filter(c => c.platform !== platform);
-          return [...filtered, newConnection];
-        });
-        showNotification('success', 'Platform Connected!', `Successfully connected to ${PLATFORM_CONFIG[platform].name}`);
-        
-        // Clean URL
-        window.history.replaceState({}, '', window.location.pathname);
-      } catch (e) {
-        console.error('Failed to parse connection data:', e);
-      }
-    } else if (connectionStatus === 'error' && platform) {
-      showNotification('error', 'Connection Failed', `Failed to connect to ${PLATFORM_CONFIG[platform].name}. Please try again.`);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  // Fetch categories for marketplace
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const response = await fetch('/api/marketplace/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
-    }
-    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -475,17 +395,6 @@ function BuilderContent() {
       setIsPro(false);
       router.push('/upgrade');
       return;
-    }
-
-    // Load sessions for sidebar
-    try {
-      const response = await fetch('/api/sessions');
-      if (response.ok) {
-        const { sessions: userSessions } = await response.json();
-        setSessions(userSessions || []);
-      }
-    } catch (e) {
-      console.error('Failed to load sessions:', e);
     }
 
     // Load all user products
@@ -771,7 +680,7 @@ function BuilderContent() {
     total: products.length,
     active: products.filter(p => p.status !== 'archived').length,
     archived: products.filter(p => p.status === 'archived').length,
-    launched: products.filter(p => p.status === 'launched').length,
+    launched: products.filter(p => p.status === 'completed').length,
   };
 
   // Get unique product types for filter
@@ -897,7 +806,7 @@ function BuilderContent() {
       ));
 
       // Mark content as complete in checklist
-      setLaunchChecklist(prev => ({ ...prev, contentComplete: true }));
+      setexportChecklist(prev => ({ ...prev, contentComplete: true }));
       
       // Show success modal
       showNotification('success', 'Content Generated!', 'Your ebook content has been written successfully.', [
@@ -957,7 +866,7 @@ function BuilderContent() {
       // Check if all chapters now have content
       const allHaveContent = data.outline.chapters?.every((ch: Chapter) => ch.content);
       if (allHaveContent) {
-        setLaunchChecklist(prev => ({ ...prev, contentComplete: true }));
+        setexportChecklist(prev => ({ ...prev, contentComplete: true }));
       }
     } catch (error) {
       console.error('Generate chapter content error:', error);
@@ -1256,158 +1165,67 @@ function BuilderContent() {
     setAssets(prev => prev.filter(a => a.id !== assetId));
   };
 
-  // Handle launch product to multiple platforms
-  const handleLaunchProduct = async () => {
+  // Handle finalize/export product
+  const handleExportProduct = async () => {
     if (!currentProduct) return;
     
-    setIsLaunching(true);
-    setLaunchResults([]);
+    setIsExporting(true);
     
     try {
-      // Build connections map for external platforms
-      const connectionsMap: Record<string, { accessToken: string }> = {};
-      platformConnections.forEach(conn => {
-        if (conn.accessToken) {
-          connectionsMap[conn.platform] = { accessToken: conn.accessToken };
+      // Mark product as completed
+      const { error } = await supabase
+        .from('product_ideas')
+        .update({ status: 'completed' })
+        .eq('id', currentProduct.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      const updatedProduct = { ...currentProduct, status: 'completed' };
+      setCurrentProduct(updatedProduct);
+      setProducts(prev => prev.map(p => p.id === currentProduct.id ? updatedProduct : p));
+      
+      setShowExportModal(false);
+      
+      // Show celebration
+      setShowCelebration(true);
+      
+      // Trigger confetti
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
+        });
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
         }
-      });
-
-      // Get the first generated image as thumbnail if available
-      const thumbnailAsset = assets.find(a => a.type === 'image' && a.url);
-
-      // Call the multi-platform launch API
-      const response = await fetch('/api/integrations/launch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: currentProduct.id,
-          platforms: selectedPlatforms,
-          productData: {
-            name: currentProduct.name,
-            description: formData.description || currentProduct.description || '',
-            tagline: currentProduct.tagline || currentProduct.name,
-            price: parseFloat(productPrice) || 0,
-            currency: 'USD',
-            tags: currentProduct.core_features?.slice(0, 5) || [],
-            productType: currentProduct.product_type,
-            thumbnailUrl: thumbnailAsset?.url || null,
-            categoryId: selectedCategory || null,
-          },
-          connections: connectionsMap,
-        }),
-      });
-
-      const data = await response.json();
+      };
+      frame();
       
-      if (!response.ok) throw new Error(data.error || 'Failed to launch');
+      // Auto-hide celebration after 5 seconds
+      setTimeout(() => setShowCelebration(false), 5000);
       
-      setLaunchResults(data.results || []);
-      
-      // Update local state for ManyMarkets launch
-      const manyMarketsResult = data.results?.find((r: LaunchResult) => r.platform === 'manymarkets');
-      if (manyMarketsResult?.success) {
-        const updatedProduct = { ...currentProduct, status: 'launched' };
-        setCurrentProduct(updatedProduct);
-        setProducts(prev => prev.map(p => p.id === currentProduct.id ? updatedProduct : p));
-      }
-      
-      setShowLaunchModal(false);
-      
-      // Show celebration if any launch was successful
-      if (data.allSuccess || data.anySuccess) {
-        setShowCelebration(true);
-        
-        // Trigger confetti
-        const duration = 3000;
-        const end = Date.now() + duration;
-
-        const frame = () => {
-          confetti({
-            particleCount: 3,
-            angle: 60,
-            spread: 55,
-            origin: { x: 0 },
-            colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
-          });
-          confetti({
-            particleCount: 3,
-            angle: 120,
-            spread: 55,
-            origin: { x: 1 },
-            colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
-          });
-
-          if (Date.now() < end) {
-            requestAnimationFrame(frame);
-          }
-        };
-        frame();
-        
-        // Auto-hide celebration after 5 seconds
-        setTimeout(() => setShowCelebration(false), 5000);
-      } else {
-        showNotification('error', 'Launch Failed', 'Failed to launch to any platform.', 
-          data.results.map((r: LaunchResult) => `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`)
-        );
-      }
+      showNotification('success', 'Product Complete!', 'Your product is ready to sell! Export your content and assets to your preferred platform.');
     } catch (error) {
-      console.error('Launch error:', error);
-      showNotification('error', 'Launch Failed', 'Failed to launch product. Please try again.');
+      console.error('Export error:', error);
+      showNotification('error', 'Export Failed', 'Failed to finalize product. Please try again.');
     } finally {
-      setIsLaunching(false);
+      setIsExporting(false);
     }
-  };
-
-  // Handle platform connection
-  const handleConnectPlatform = (platform: MarketplacePlatform) => {
-    if (platform === 'manymarkets') return; // Always connected
-    
-    // Get OAuth URL and redirect
-    const clientId = platform === 'gumroad' 
-      ? process.env.NEXT_PUBLIC_GUMROAD_CLIENT_ID 
-      : process.env.NEXT_PUBLIC_PAYHIP_CLIENT_ID;
-    
-    const redirectUri = `${window.location.origin}/api/integrations/${platform}/callback`;
-    
-    const params = new URLSearchParams({
-      client_id: clientId || '',
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: platform === 'gumroad' ? 'edit_products view_profile' : 'products:write account:read',
-    });
-    
-    const oauthUrl = platform === 'gumroad' 
-      ? `https://gumroad.com/oauth/authorize?${params.toString()}`
-      : `https://payhip.com/oauth/authorize?${params.toString()}`;
-    
-    window.location.href = oauthUrl;
-  };
-
-  // Handle platform disconnection
-  const handleDisconnectPlatform = (platform: MarketplacePlatform) => {
-    disconnectPlatform(platform);
-    setPlatformConnections(prev => prev.filter(c => c.platform !== platform));
-    setSelectedPlatforms(prev => prev.filter(p => p !== platform));
-    showNotification('info', 'Disconnected', `Disconnected from ${PLATFORM_CONFIG[platform].name}`);
-  };
-
-  // Toggle platform selection
-  const togglePlatformSelection = (platform: MarketplacePlatform) => {
-    if (platform !== 'manymarkets' && !isPlatformConnected(platform)) {
-      // Need to connect first
-      handleConnectPlatform(platform);
-      return;
-    }
-    
-    setSelectedPlatforms(prev => {
-      if (prev.includes(platform)) {
-        // Don't allow deselecting all platforms
-        if (prev.length === 1) return prev;
-        return prev.filter(p => p !== platform);
-      } else {
-        return [...prev, platform];
-      }
-    });
   };
 
   // Toggle chapter expansion
@@ -1438,16 +1256,12 @@ function BuilderContent() {
 
   // Check if all launch requirements are met
   const canLaunch = () => {
-    return Object.values(launchChecklist).every(Boolean);
+    return Object.values(exportChecklist).every(Boolean);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
-  };
-
-  const createNewChat = () => {
-    router.push('/chat');
   };
 
   const getProductIcon = (type?: string) => {
@@ -1495,10 +1309,9 @@ function BuilderContent() {
   return (
     <div className="min-h-screen bg-uvz-cream">
       {/* Header */}
-      <ChatHeader
+      <BuilderHeader
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
-        createNewChat={createNewChat}
         currentUser={currentUser}
         profileMenuOpen={profileMenuOpen}
         setProfileMenuOpen={setProfileMenuOpen}
@@ -1506,16 +1319,18 @@ function BuilderContent() {
       />
 
       {/* Sidebar */}
-      <ChatSidebar
+      <BuilderSidebar
         isOpen={isSidebarOpen}
         isMobile={isMobile}
         onClose={() => setIsSidebarOpen(false)}
-        createNewChat={createNewChat}
         isLogoutOpen={isLogoutOpen}
         setIsLogoutOpen={setIsLogoutOpen}
         handleLogout={handleLogout}
-        sessions={sessions}
-        currentSessionId={null}
+        products={products}
+        currentProductId={currentProduct?.id}
+        onSelectProduct={(id) => router.push(`/builder?product=${id}`)}
+        onCreateProduct={() => router.push('/builder/create')}
+        productStats={productStats}
       />
 
       {/* Main Content */}
@@ -1524,12 +1339,6 @@ function BuilderContent() {
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/chat')}
-                className="p-2 hover:bg-white rounded-lg border-2 border-transparent hover:border-black transition-all"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black">Product Builder</h1>
                 <p className="text-gray-600 text-sm">Build and manage your digital products</p>
@@ -1584,7 +1393,7 @@ function BuilderContent() {
                 </div>
                 <div>
                   <p className="text-xl md:text-2xl font-black">{productStats.launched}</p>
-                  <p className="text-xs md:text-sm text-gray-600">Launched</p>
+                  <p className="text-xs md:text-sm text-gray-600">Complete</p>
                 </div>
               </div>
             </div>
@@ -2830,11 +2639,11 @@ function BuilderContent() {
                     {currentStep === 3 && (
                       <div>
                         <h2 className="text-xl font-black mb-4">
-                          {isSoftwareProduct ? 'Marketplace Assets' : 'Assets & Resources'}
+                          {isSoftwareProduct ? 'Product Assets' : 'Assets & Resources'}
                         </h2>
                         <p className="text-gray-600 mb-6">
                           {isSoftwareProduct 
-                            ? 'Upload cover images and screenshots for your marketplace listing.'
+                            ? 'Upload cover images and screenshots for your product listing.'
                             : 'Upload or generate the assets needed for your product.'
                           }
                         </p>
@@ -2847,7 +2656,7 @@ function BuilderContent() {
                               Cover Image & Screenshots
                             </h3>
                             <p className="text-sm text-indigo-700 mb-4">
-                              Upload a cover image and screenshots to showcase your app in the marketplace.
+                              Upload a cover image and screenshots to showcase your app.
                             </p>
                             
                             {/* Upload Area */}
@@ -3218,7 +3027,7 @@ function BuilderContent() {
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Deploy Your App</h2>
                         <p className="text-gray-600 mb-6">
-                          Connect your deployed application and set up your marketplace listing.
+                          Connect your deployed application and finalize your product.
                         </p>
                         
                         {/* Production URL Section */}
@@ -3246,7 +3055,7 @@ function BuilderContent() {
                                       : `Production URL: ${url}\n${prev.notes || ''}`
                                   }));
                                   if (url) {
-                                    setLaunchChecklist(prev => ({ ...prev, assetsReady: true }));
+                                    setexportChecklist(prev => ({ ...prev, assetsReady: true }));
                                   }
                                 }}
                                 placeholder="https://your-app.vercel.app"
@@ -3282,7 +3091,7 @@ function BuilderContent() {
                                   onChange={(e) => {
                                     setProductPrice(e.target.value);
                                     if (e.target.value && parseFloat(e.target.value) > 0) {
-                                      setLaunchChecklist(prev => ({ ...prev, pricingSet: true }));
+                                      setexportChecklist(prev => ({ ...prev, pricingSet: true }));
                                     }
                                   }}
                                   placeholder="49.00"
@@ -3313,7 +3122,7 @@ function BuilderContent() {
                             🏷️ Product Category
                           </h3>
                           <p className="text-sm text-gray-600 mb-4">
-                            Choose a category to help customers find your product in the marketplace.
+                            Choose a category for your product.
                           </p>
                           <div>
                             <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Category</label>
@@ -3336,7 +3145,7 @@ function BuilderContent() {
                         <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
                           <div className="flex items-center gap-2 text-gray-600 font-bold text-sm sm:text-base mb-4">
                             <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                            Marketplace Preview
+                            Product Preview
                           </div>
                           
                           <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-6 shadow-brutal">
@@ -3405,19 +3214,19 @@ function BuilderContent() {
                           </div>
                           
                           <p className="text-xs text-gray-500 mt-3 text-center">
-                            This is how your product will appear in the marketplace
+                            Preview how your product will look to buyers
                           </p>
                         </div>
 
                         {/* Launch Button - Opens Platform Selection Modal */}
                         <div className="flex justify-center">
                           <button
-                            onClick={() => setShowLaunchModal(true)}
+                            onClick={() => setshowExportModal(true)}
                             disabled={!productPrice}
                             className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
                           >
                             <Rocket className="w-6 h-6" />
-                            Launch to Marketplace
+                            Finalize Product
                           </button>
                         </div>
                       </div>
@@ -3428,7 +3237,7 @@ function BuilderContent() {
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Launch Your Product</h2>
                         <p className="text-gray-600 mb-6">
-                          Upload your deliverable files, set your price, and launch to the marketplace.
+                          Upload your deliverable files, set your price, and finalize your product.
                         </p>
 
                         {/* Deliverable Files Section */}
@@ -3488,7 +3297,7 @@ function BuilderContent() {
                                   onChange={(e) => {
                                     setProductPrice(e.target.value);
                                     if (e.target.value && parseFloat(e.target.value) > 0) {
-                                      setLaunchChecklist(prev => ({ ...prev, pricingSet: true }));
+                                      setexportChecklist(prev => ({ ...prev, pricingSet: true }));
                                     }
                                   }}
                                   placeholder="49.00"
@@ -3524,7 +3333,7 @@ function BuilderContent() {
                             🏷️ Product Category
                           </h3>
                           <p className="text-sm text-gray-600 mb-4">
-                            Choose a category to help customers find your product in the marketplace.
+                            Choose a category for your product.
                           </p>
                           <div>
                             <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Category</label>
@@ -3553,7 +3362,7 @@ function BuilderContent() {
                             <button
                               onClick={() => {
                                 setShowPreviewModal(true);
-                                setLaunchChecklist(prev => ({ ...prev, previewReviewed: true }));
+                                setexportChecklist(prev => ({ ...prev, previewReviewed: true }));
                               }}
                               className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
                             >
@@ -3619,71 +3428,71 @@ function BuilderContent() {
                             <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={launchChecklist.contentComplete}
-                                onChange={(e) => setLaunchChecklist(prev => ({ ...prev, contentComplete: e.target.checked }))}
+                                checked={exportChecklist.contentComplete}
+                                onChange={(e) => setexportChecklist(prev => ({ ...prev, contentComplete: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm sm:text-base">Content is complete</p>
                                 <p className="text-xs sm:text-sm text-gray-500">All chapters/modules are written and reviewed</p>
                               </div>
-                              {launchChecklist.contentComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
+                              {exportChecklist.contentComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
                             <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={launchChecklist.structureComplete}
-                                onChange={(e) => setLaunchChecklist(prev => ({ ...prev, structureComplete: e.target.checked }))}
+                                checked={exportChecklist.structureComplete}
+                                onChange={(e) => setexportChecklist(prev => ({ ...prev, structureComplete: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm sm:text-base">Structure is finalized</p>
                                 <p className="text-xs sm:text-sm text-gray-500">Product structure has been reviewed</p>
                               </div>
-                              {launchChecklist.structureComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
+                              {exportChecklist.structureComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
                             <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={launchChecklist.assetsReady}
-                                onChange={(e) => setLaunchChecklist(prev => ({ ...prev, assetsReady: e.target.checked }))}
+                                checked={exportChecklist.assetsReady}
+                                onChange={(e) => setexportChecklist(prev => ({ ...prev, assetsReady: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm sm:text-base">Assets are ready</p>
                                 <p className="text-xs sm:text-sm text-gray-500">Cover images, graphics, and files are uploaded</p>
                               </div>
-                              {launchChecklist.assetsReady && <Check className="w-5 h-5 text-green-500 shrink-0" />}
+                              {exportChecklist.assetsReady && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
                             <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={launchChecklist.pricingSet}
-                                onChange={(e) => setLaunchChecklist(prev => ({ ...prev, pricingSet: e.target.checked }))}
+                                checked={exportChecklist.pricingSet}
+                                onChange={(e) => setexportChecklist(prev => ({ ...prev, pricingSet: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm sm:text-base">Pricing is set</p>
                                 <p className="text-xs sm:text-sm text-gray-500">You&apos;ve decided on your pricing strategy</p>
                               </div>
-                              {launchChecklist.pricingSet && <Check className="w-5 h-5 text-green-500 shrink-0" />}
+                              {exportChecklist.pricingSet && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                             
                             <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={launchChecklist.previewReviewed}
-                                onChange={(e) => setLaunchChecklist(prev => ({ ...prev, previewReviewed: e.target.checked }))}
+                                checked={exportChecklist.previewReviewed}
+                                onChange={(e) => setexportChecklist(prev => ({ ...prev, previewReviewed: e.target.checked }))}
                                 className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm sm:text-base">Preview reviewed</p>
                                 <p className="text-xs sm:text-sm text-gray-500">You&apos;ve reviewed how your product will appear</p>
                               </div>
-                              {launchChecklist.previewReviewed && <Check className="w-5 h-5 text-green-500 shrink-0" />}
+                              {exportChecklist.previewReviewed && <Check className="w-5 h-5 text-green-500 shrink-0" />}
                             </label>
                           </div>
                           
@@ -3691,13 +3500,13 @@ function BuilderContent() {
                             <div className="flex items-center justify-between text-xs sm:text-sm">
                               <span className="text-gray-600">Progress</span>
                               <span className="font-bold">
-                                {Object.values(launchChecklist).filter(Boolean).length} of {Object.keys(launchChecklist).length} complete
+                                {Object.values(exportChecklist).filter(Boolean).length} of {Object.keys(exportChecklist).length} complete
                               </span>
                             </div>
                             <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-green-500 transition-all"
-                                style={{ width: `${(Object.values(launchChecklist).filter(Boolean).length / Object.keys(launchChecklist).length) * 100}%` }}
+                                style={{ width: `${(Object.values(exportChecklist).filter(Boolean).length / Object.keys(exportChecklist).length) * 100}%` }}
                               />
                             </div>
                           </div>
@@ -3705,7 +3514,7 @@ function BuilderContent() {
                         
                         {/* Notes Section */}
                         <div className="mb-4 sm:mb-6">
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Launch Notes</label>
+                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Notes</label>
                           <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
@@ -3736,13 +3545,13 @@ function BuilderContent() {
                             <div className="flex items-center justify-center gap-2 text-yellow-700 bg-yellow-100 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
                               <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                               <span className="text-xs sm:text-sm font-medium">
-                                {Object.keys(launchChecklist).length - Object.values(launchChecklist).filter(Boolean).length} items remaining
+                                {Object.keys(exportChecklist).length - Object.values(exportChecklist).filter(Boolean).length} items remaining
                               </span>
                             </div>
                           )}
                           
                           <button 
-                            onClick={() => setShowLaunchModal(true)}
+                            onClick={() => setshowExportModal(true)}
                             disabled={!canLaunch()}
                             className={`w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-sm sm:text-base border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mx-auto ${
                               canLaunch()
@@ -3751,7 +3560,7 @@ function BuilderContent() {
                             }`}
                           >
                             <Rocket className="w-4 h-4 sm:w-5 sm:h-5" />
-                            Launch Product
+                            Finalize Product
                           </button>
                         </div>
                       </div>
@@ -3860,13 +3669,13 @@ function BuilderContent() {
         </div>
       )}
 
-      {/* Launch Platform Selection Modal */}
-      {showLaunchModal && currentProduct && (
+      {/* Export Product Modal */}
+      {showExportModal && currentProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLaunchModal(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowExportModal(false)} />
           <div className="relative bg-white border-4 border-black rounded-2xl p-6 sm:p-8 shadow-brutal w-full max-w-md">
             <button
-              onClick={() => setShowLaunchModal(false)}
+              onClick={() => setShowExportModal(false)}
               className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
@@ -3877,98 +3686,56 @@ function BuilderContent() {
               <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Rocket className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-2xl font-black mb-2">Launch to Marketplace</h3>
+              <h3 className="text-2xl font-black mb-2">Finalize Your Product</h3>
               <p className="text-gray-600">
-                Where would you like to list <strong className="text-black">{currentProduct.name}</strong>?
+                Mark <strong className="text-black">{currentProduct.name}</strong> as complete and ready to sell.
               </p>
             </div>
             
-            {/* Platform Options */}
-            <div className="space-y-3 mb-6">
-              {/* ManyMarkets Option */}
-              <button
-                onClick={() => togglePlatformSelection('manymarkets')}
-                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
-                  selectedPlatforms.includes('manymarkets')
-                    ? 'border-orange-500 bg-orange-50 shadow-md'
-                    : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
-                }`}
-              >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
-                  selectedPlatforms.includes('manymarkets') ? 'bg-orange-500' : 'bg-orange-100'
-                }`}>
-                  🏪
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="font-bold text-lg flex items-center gap-2">
-                    ManyMarkets
-                    <span className="text-xs px-2 py-0.5 bg-orange-200 text-orange-700 rounded-full">Native</span>
-                  </div>
-                  <p className="text-sm text-gray-500">List on our internal marketplace • 0% fee</p>
-                </div>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlatforms.includes('manymarkets')
-                    ? 'bg-orange-500 border-orange-500 text-white'
-                    : 'border-gray-300'
-                }`}>
-                  {selectedPlatforms.includes('manymarkets') && <Check className="w-4 h-4" />}
-                </div>
-              </button>
-
-              {/* Gumroad Option - Coming Soon */}
-              <div
-                className="w-full p-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center gap-4 opacity-70 cursor-not-allowed"
-              >
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-200">
-                  <svg viewBox="0 0 24 24" className="w-7 h-7" fill="#9CA3AF">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 3.6c4.636 0 8.4 3.764 8.4 8.4 0 4.636-3.764 8.4-8.4 8.4-4.636 0-8.4-3.764-8.4-8.4 0-4.636 3.764-8.4 8.4-8.4zm0 2.4a6 6 0 100 12 6 6 0 000-12z"/>
-                  </svg>
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="font-bold text-lg flex items-center gap-2 text-gray-500">
-                    Gumroad
-                    <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">Coming Soon</span>
-                  </div>
-                  <p className="text-sm text-gray-400">API doesn&apos;t support product creation yet</p>
-                </div>
-                <div className="w-6 h-6 rounded-full border-2 border-gray-300" />
-              </div>
+            {/* What's Next */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
+              <h4 className="font-bold text-blue-800 mb-2">Next Steps After Export:</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                  Download your content and assets
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                  Upload to your preferred selling platform (Gumroad, Payhip, etc.)
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                  Set up your payment processing
+                </li>
+              </ul>
             </div>
 
             {/* Price Display */}
             {productPrice && (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4 border border-green-200">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Product Price</span>
+                  <span className="text-sm text-gray-600">Suggested Price</span>
                   <span className="font-black text-xl text-green-600">${productPrice}</span>
                 </div>
               </div>
             )}
             
-            {/* Launch Button */}
+            {/* Finalize Button */}
             <button
-              onClick={handleLaunchProduct}
-              disabled={isLaunching || selectedPlatforms.length === 0}
-              className={`w-full py-4 font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 ${
-                selectedPlatforms.length === 0
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-              }`}
+              onClick={handleExportProduct}
+              disabled={isExporting}
+              className="w-full py-4 font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
             >
-              {isLaunching ? (
+              {isExporting ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  Launching...
+                  Finalizing...
                 </>
               ) : (
                 <>
                   <Rocket className="w-6 h-6" />
-                  {selectedPlatforms.length === 0 
-                    ? 'Select a Platform' 
-                    : selectedPlatforms.length === 2 
-                      ? 'Launch to Both Platforms 🚀'
-                      : `Launch to ${PLATFORM_CONFIG[selectedPlatforms[0]].name}`
-                  }
+                  Mark as Complete
                 </>
               )}
             </button>
@@ -3995,21 +3762,19 @@ function BuilderContent() {
             
             {/* Success Message */}
             <h2 className="text-3xl sm:text-4xl font-black mb-4 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
-              Product Launched!
+              Product Complete!
             </h2>
             
             <p className="text-lg text-gray-600 mb-6">
-              Congratulations! Your product is now live and ready to sell! 🚀
+              Congratulations! Your product is ready to sell on your preferred platform! 🚀
             </p>
             
-            {/* Launched Platforms */}
-            <div className="flex justify-center gap-3 mb-6">
-              {selectedPlatforms.map(platform => (
-                <div key={platform} className="px-4 py-2 bg-green-100 rounded-full text-green-700 font-bold text-sm flex items-center gap-2">
-                  <span>{PLATFORM_CONFIG[platform].icon}</span>
-                  {PLATFORM_CONFIG[platform].name}
-                </div>
-              ))}
+            {/* Next Steps */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200 text-left">
+              <h4 className="font-bold text-blue-800 mb-2">Ready to Sell?</h4>
+              <p className="text-sm text-blue-700">
+                Download your content and assets, then upload them to platforms like Gumroad, Payhip, or your own website to start earning!
+              </p>
             </div>
             
             {/* Action Buttons */}
@@ -4018,15 +3783,17 @@ function BuilderContent() {
                 onClick={() => setShowCelebration(false)}
                 className="flex-1 py-3 font-bold border-2 border-black rounded-xl hover:bg-gray-100 transition-colors"
               >
-                Continue Building
+                Continue Editing
               </button>
-              <Link
-                href="/marketplace"
+              <button
+                onClick={() => {
+                  setShowCelebration(false);
+                  setCurrentStep(3); // Go to Assets step
+                }}
                 className="flex-1 py-3 font-bold bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
-                View Marketplace
-                <ExternalLink className="w-4 h-4" />
-              </Link>
+                Download Assets
+              </button>
             </div>
           </div>
         </div>
@@ -4452,7 +4219,7 @@ function BuilderContent() {
             <div className="p-6 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">
-                  This is how your product will appear on the marketplace
+                  Preview how your product will look to buyers
                 </p>
                 <button
                   onClick={() => setShowPreviewModal(false)}

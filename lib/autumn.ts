@@ -31,9 +31,9 @@ export const PRODUCTS = {
 // Feature IDs for gating
 export const FEATURES = {
   AI_SESSIONS: 'ai_sessions',
-  MARKETPLACE_LISTING: 'marketplace_listing',
   BUILDER_STUDIO: 'builder_studio',
   ANALYTICS: 'analytics',
+  IDEA_SCORER: 'idea_scorer',
 } as const;
 
 export type ProductId = typeof PRODUCTS[keyof typeof PRODUCTS];
