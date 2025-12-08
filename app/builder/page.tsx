@@ -3221,7 +3221,7 @@ function BuilderContent() {
                         {/* Launch Button - Opens Platform Selection Modal */}
                         <div className="flex justify-center">
                           <button
-                            onClick={() => setshowExportModal(true)}
+                            onClick={() => setShowExportModal(true)}
                             disabled={!productPrice}
                             className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
                           >
@@ -3551,7 +3551,7 @@ function BuilderContent() {
                           )}
                           
                           <button 
-                            onClick={() => setshowExportModal(true)}
+                            onClick={() => setShowExportModal(true)}
                             disabled={!canLaunch()}
                             className={`w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-sm sm:text-base border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mx-auto ${
                               canLaunch()
