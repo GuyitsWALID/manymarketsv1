@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import confetti from 'canvas-confetti';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
 import ProductTypeBuilder from '@/components/builder/ProductTypeBuilder';
@@ -219,11 +220,12 @@ const CONTENT_PRODUCT_STEPS = [
   { id: 'launch', name: 'Launch', icon: Rocket },
 ];
 
-// Steps for software/SaaS products (no assets step - they build externally)
+// Steps for software/SaaS products (includes assets for cover images)
 const SOFTWARE_PRODUCT_STEPS = [
   { id: 'overview', name: 'Overview', icon: Target },
   { id: 'features', name: 'Features', icon: Lightbulb },
   { id: 'build', name: 'Build', icon: Wrench },
+  { id: 'assets', name: 'Assets', icon: Zap },
   { id: 'launch', name: 'Deploy', icon: Rocket },
 ];
 
@@ -315,6 +317,7 @@ function BuilderContent() {
   
   // Launch state
   const [showLaunchModal, setShowLaunchModal] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewTab, setPreviewTab] = useState<'overview' | 'content' | 'structure' | 'assets'>('overview');
   const [productPrice, setProductPrice] = useState('');
@@ -333,6 +336,10 @@ function BuilderContent() {
   const [launchResults, setLaunchResults] = useState<LaunchResult[]>([]);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [connectingPlatform, setConnectingPlatform] = useState<MarketplacePlatform | null>(null);
+  
+  // Category state
+  const [categories, setCategories] = useState<{id: string; name: string; slug: string; icon: string}[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   
   // Notification modal state
   const [notification, setNotification] = useState<{
@@ -414,6 +421,22 @@ function BuilderContent() {
       showNotification('error', 'Connection Failed', `Failed to connect to ${PLATFORM_CONFIG[platform].name}. Please try again.`);
       window.history.replaceState({}, '', window.location.pathname);
     }
+  }, []);
+
+  // Fetch categories for marketplace
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const response = await fetch('/api/marketplace/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    }
+    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -1249,6 +1272,9 @@ function BuilderContent() {
         }
       });
 
+      // Get the first generated image as thumbnail if available
+      const thumbnailAsset = assets.find(a => a.type === 'image' && a.url);
+
       // Call the multi-platform launch API
       const response = await fetch('/api/integrations/launch', {
         method: 'POST',
@@ -1259,9 +1285,13 @@ function BuilderContent() {
           productData: {
             name: currentProduct.name,
             description: formData.description || currentProduct.description || '',
+            tagline: currentProduct.tagline || currentProduct.name,
             price: parseFloat(productPrice) || 0,
             currency: 'USD',
             tags: currentProduct.core_features?.slice(0, 5) || [],
+            productType: currentProduct.product_type,
+            thumbnailUrl: thumbnailAsset?.url || null,
+            categoryId: selectedCategory || null,
           },
           connections: connectionsMap,
         }),
@@ -1283,25 +1313,38 @@ function BuilderContent() {
       
       setShowLaunchModal(false);
       
-      // Show appropriate notification
-      if (data.allSuccess) {
-        const platformNames = selectedPlatforms.map(p => PLATFORM_CONFIG[p].name).join(', ');
-        showNotification('success', 'Product Launched!', `Your product is now live on: ${platformNames}`, [
-          '🎉 Congratulations!',
-          ...data.results.map((r: LaunchResult) => 
-            r.success 
-              ? `✅ ${PLATFORM_CONFIG[r.platform].name}: ${r.productUrl || 'Success'}` 
-              : `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`
-          ),
-        ]);
-      } else if (data.anySuccess) {
-        showNotification('info', 'Partial Launch', 'Product launched to some platforms with issues.', 
-          data.results.map((r: LaunchResult) => 
-            r.success 
-              ? `✅ ${PLATFORM_CONFIG[r.platform].name}: Success` 
-              : `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`
-          )
-        );
+      // Show celebration if any launch was successful
+      if (data.allSuccess || data.anySuccess) {
+        setShowCelebration(true);
+        
+        // Trigger confetti
+        const duration = 3000;
+        const end = Date.now() + duration;
+
+        const frame = () => {
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        };
+        frame();
+        
+        // Auto-hide celebration after 5 seconds
+        setTimeout(() => setShowCelebration(false), 5000);
       } else {
         showNotification('error', 'Launch Failed', 'Failed to launch to any platform.', 
           data.results.map((r: LaunchResult) => `❌ ${PLATFORM_CONFIG[r.platform].name}: ${r.error}`)
@@ -2242,6 +2285,72 @@ function BuilderContent() {
                                               </ul>
                                             </div>
                                           )}
+                                          
+                                          {/* Chapter Assets Section */}
+                                          <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <h5 className="font-bold text-sm text-purple-800 flex items-center gap-2">
+                                                <ImageIcon className="w-4 h-4" />
+                                                Chapter Assets
+                                              </h5>
+                                              <button
+                                                onClick={() => {
+                                                  const prompt = `Professional illustration for ebook chapter: "${chapter.title}" - ${chapter.description?.slice(0, 100) || 'Key concepts and visuals'}. Style: Clean, modern, educational`;
+                                                  setAssetGenerationPrompt(prompt);
+                                                  const thumbnailUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=400&height=300&nologo=true`;
+                                                  const fullUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=768&nologo=true`;
+                                                  const newAsset: Asset = {
+                                                    id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                                    name: `${chapter.title} - Illustration`,
+                                                    type: 'image',
+                                                    status: 'uploaded',
+                                                    prompt: prompt,
+                                                    thumbnailUrl: thumbnailUrl,
+                                                    fullUrl: fullUrl,
+                                                    url: thumbnailUrl,
+                                                    category: 'chapter',
+                                                    isSelected: false,
+                                                  };
+                                                  setAssets(prev => [...prev, newAsset]);
+                                                }}
+                                                className="text-xs px-2 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1"
+                                              >
+                                                <Sparkles className="w-3 h-3" />
+                                                Generate Image
+                                              </button>
+                                            </div>
+                                            
+                                            {/* Display chapter-specific assets */}
+                                            {assets.filter(a => a.category === 'chapter' && a.name?.includes(chapter.title)).length > 0 ? (
+                                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                                {assets.filter(a => a.category === 'chapter' && a.name?.includes(chapter.title)).map((asset) => (
+                                                  <div key={asset.id} className="relative group rounded-lg overflow-hidden border border-purple-200">
+                                                    <img 
+                                                      src={asset.thumbnailUrl || asset.url} 
+                                                      alt={asset.name}
+                                                      className="w-full h-20 object-cover"
+                                                    />
+                                                    <button
+                                                      onClick={() => handleDeleteAsset(asset.id)}
+                                                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                      <X className="w-3 h-3" />
+                                                    </button>
+                                                    {asset.status !== 'saved' && (
+                                                      <button
+                                                        onClick={() => handleSaveAssetToStorage(asset)}
+                                                        className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-green-500 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                      >
+                                                        Save
+                                                      </button>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <p className="text-xs text-purple-600">No assets for this chapter yet. Click "Generate Image" to create one.</p>
+                                            )}
+                                          </div>
                                         </div>
                                       ) : (
                                         <>
@@ -2717,16 +2826,123 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 3: Assets (for content products only) */}
-                    {currentStep === 3 && !isSoftwareProduct && (
+                    {/* Step 3: Assets (for all product types) */}
+                    {currentStep === 3 && (
                       <div>
-                        <h2 className="text-xl font-black mb-4">Assets & Resources</h2>
+                        <h2 className="text-xl font-black mb-4">
+                          {isSoftwareProduct ? 'Marketplace Assets' : 'Assets & Resources'}
+                        </h2>
                         <p className="text-gray-600 mb-6">
-                          Upload or generate the assets needed for your product.
+                          {isSoftwareProduct 
+                            ? 'Upload cover images and screenshots for your marketplace listing.'
+                            : 'Upload or generate the assets needed for your product.'
+                          }
                         </p>
                         
-                        {/* AI Auto-Suggest Section */}
-                        {currentProduct.raw_analysis?.outline && (
+                        {/* Software Product - Simple Cover/Screenshot Upload */}
+                        {isSoftwareProduct && (
+                          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-4 sm:p-6 mb-6">
+                            <h3 className="font-black text-indigo-800 flex items-center gap-2 mb-3">
+                              <ImageIcon className="w-5 h-5" />
+                              Cover Image & Screenshots
+                            </h3>
+                            <p className="text-sm text-indigo-700 mb-4">
+                              Upload a cover image and screenshots to showcase your app in the marketplace.
+                            </p>
+                            
+                            {/* Upload Area */}
+                            <div 
+                              className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:border-indigo-500 transition-colors cursor-pointer bg-white"
+                              onClick={() => fileInputRef.current?.click()}
+                            >
+                              <Upload className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
+                              <p className="font-bold text-indigo-700 mb-1">Click to upload images</p>
+                              <p className="text-xs text-gray-500">PNG, JPG, WebP (recommended: 1200x630 for cover)</p>
+                            </div>
+                            
+                            {/* Display uploaded images */}
+                            {assets.filter(a => a.type === 'image').length > 0 && (
+                              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {assets.filter(a => a.type === 'image').map((asset) => (
+                                  <div key={asset.id} className="relative group rounded-lg overflow-hidden border-2 border-indigo-200">
+                                    <img 
+                                      src={asset.thumbnailUrl || asset.url} 
+                                      alt={asset.name}
+                                      className="w-full h-24 object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteAsset(asset.id);
+                                        }}
+                                        className="p-2 bg-red-500 text-white rounded-full"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                    {asset.status === 'saved' && (
+                                      <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-green-500 text-white text-xs font-bold rounded">
+                                        ✓
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Save unsaved assets button */}
+                            {assets.filter(a => a.type === 'image' && a.status !== 'saved').length > 0 && (
+                              <button
+                                onClick={handleSaveSelectedAssets}
+                                disabled={isSavingAssets}
+                                className="mt-4 w-full py-2 bg-indigo-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2"
+                              >
+                                {isSavingAssets ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Save className="w-4 h-4" />
+                                )}
+                                Save Images to Library
+                              </button>
+                            )}
+                            
+                            {/* AI Image Generation for Software Products */}
+                            <div className="mt-4 bg-purple-50 border-2 border-purple-300 rounded-xl p-4">
+                              <div className="flex items-center gap-2 text-purple-800 font-bold mb-2 text-sm">
+                                <ImageIcon className="w-4 h-4" />
+                                Generate with AI
+                              </div>
+                              <p className="text-xs text-purple-700 mb-3">
+                                Create custom cover images or screenshots with AI
+                              </p>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <input
+                                  type="text"
+                                  value={assetGenerationPrompt}
+                                  onChange={(e) => setAssetGenerationPrompt(e.target.value)}
+                                  placeholder="Describe the image you want..."
+                                  className="flex-1 px-3 py-2 border-2 border-purple-300 rounded-lg text-sm focus:outline-none focus:border-purple-500"
+                                />
+                                <button
+                                  onClick={handleGenerateImage}
+                                  disabled={isGeneratingImage || !assetGenerationPrompt.trim()}
+                                  className="w-full sm:w-auto px-4 py-2 bg-purple-500 text-white font-bold border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                  {isGeneratingImage ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className="w-4 h-4" />
+                                  )}
+                                  <span>Generate</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Content Products - AI Auto-Suggest Section */}
+                        {!isSoftwareProduct && currentProduct.raw_analysis?.outline && (
                           <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
                               <div>
@@ -2785,34 +3001,9 @@ function BuilderContent() {
                           </div>
                         )}
                         
-                        {/* Upload Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-                          {/* File Upload */}
-                          <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-6 text-center hover:border-uvz-orange transition-colors">
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              multiple
-                              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
-                              onChange={handleFileUpload}
-                              className="hidden"
-                            />
-                            <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
-                            <p className="font-bold mb-1 text-sm sm:text-base">Upload Files</p>
-                            <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-                              Drag & drop or click to upload
-                            </p>
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={isUploadingAsset}
-                              className="px-3 sm:px-4 py-2 bg-gray-100 text-black font-bold text-sm border-2 border-black rounded-lg hover:bg-gray-200 transition-colors"
-                            >
-                              {isUploadingAsset ? 'Uploading...' : 'Choose Files'}
-                            </button>
-                          </div>
-                          
-                          {/* Custom AI Image Generation */}
-                          <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 sm:p-6">
+                        {/* Custom AI Image Generation - for content products */}
+                        {!isSoftwareProduct && (
+                          <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
                             <div className="flex items-center gap-2 text-purple-800 font-bold mb-2 text-sm sm:text-base">
                               <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                               Custom AI Image
@@ -2831,17 +3022,18 @@ function BuilderContent() {
                               <button
                                 onClick={handleGenerateImage}
                                 disabled={isGeneratingImage || !assetGenerationPrompt.trim()}
-                                className="w-full sm:w-auto px-4 py-2 bg-purple-500 text-white font-bold border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center justify-center"
+                                className="w-full sm:w-auto px-4 py-2 bg-purple-500 text-white font-bold border-2 border-black rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                               >
                                 {isGeneratingImage ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                   <Sparkles className="w-4 h-4" />
                                 )}
+                                <span>Generate</span>
                               </button>
                             </div>
                           </div>
-                        </div>
+                        )}
                         
                         {/* Assets Grid */}
                         {assets.length > 0 ? (
@@ -3021,8 +3213,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 3: Deploy (for software products) */}
-                    {currentStep === 3 && isSoftwareProduct && (
+                    {/* Step 4: Deploy (for software products) */}
+                    {currentStep === 4 && isSoftwareProduct && (
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Deploy Your App</h2>
                         <p className="text-gray-600 mb-6">
@@ -3115,30 +3307,54 @@ function BuilderContent() {
                           </div>
                         </div>
 
+                        {/* Category Section */}
+                        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            🏷️ Product Category
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Choose a category to help customers find your product in the marketplace.
+                          </p>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Category</label>
+                            <select
+                              value={selectedCategory}
+                              onChange={(e) => setSelectedCategory(e.target.value)}
+                              className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                            >
+                              <option value="">Select a category...</option>
+                              {categories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.icon} {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
                         {/* Preview & Launch */}
                         <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-gray-600 font-bold text-sm sm:text-base">
-                              <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                              App Preview
-                            </div>
-                            <button
-                              onClick={() => {
-                                setShowPreviewModal(true);
-                                setLaunchChecklist(prev => ({ ...prev, previewReviewed: true }));
-                              }}
-                              className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
-                            >
-                              <Eye className="w-4 h-4" />
-                              View Full Preview
-                            </button>
+                          <div className="flex items-center gap-2 text-gray-600 font-bold text-sm sm:text-base mb-4">
+                            <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                            Marketplace Preview
                           </div>
                           
                           <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-6 shadow-brutal">
                             <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-indigo-500 border-2 border-black rounded-xl flex items-center justify-center shrink-0">
-                                <Code className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                              </div>
+                              {/* App Icon or Cover Image */}
+                              {assets.filter(a => a.type === 'image').length > 0 ? (
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-black rounded-xl overflow-hidden shrink-0">
+                                  <img 
+                                    src={assets.filter(a => a.type === 'image')[0]?.thumbnailUrl || assets.filter(a => a.type === 'image')[0]?.url} 
+                                    alt="Cover"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-indigo-500 border-2 border-black rounded-xl flex items-center justify-center shrink-0">
+                                  <Code className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                                </div>
+                              )}
                               <div className="flex-1 min-w-0">
                                 <h3 className="text-lg sm:text-xl font-black break-words">{currentProduct.name}</h3>
                                 <p className="text-gray-600 text-xs sm:text-sm mb-2">{currentProduct.tagline || 'No tagline set'}</p>
@@ -3146,36 +3362,62 @@ function BuilderContent() {
                                   <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 rounded-full capitalize">
                                     {currentProduct.product_type?.replace('-', ' ') || 'Software'}
                                   </span>
+                                  {selectedCategory && categories.find(c => c.id === selectedCategory) && (
+                                    <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 text-amber-700 rounded-full">
+                                      {categories.find(c => c.id === selectedCategory)?.icon} {categories.find(c => c.id === selectedCategory)?.name}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="w-full sm:w-auto text-left sm:text-right mt-2 sm:mt-0">
                                 <p className="text-xl sm:text-2xl font-black text-green-600">
-                                  ${productPrice || '49'}
+                                  ${productPrice || '0'}
                                 </p>
                                 <p className="text-xs text-gray-500">Price</p>
                               </div>
                             </div>
+                            
+                            {/* Description Preview */}
+                            {currentProduct.description && (
+                              <div className="mt-4 pt-4 border-t border-gray-200">
+                                <p className="text-sm text-gray-600 line-clamp-2">{currentProduct.description}</p>
+                              </div>
+                            )}
+                            
+                            {/* Features Preview */}
+                            {currentProduct.core_features && currentProduct.core_features.length > 0 && (
+                              <div className="mt-4 pt-4 border-t border-gray-200">
+                                <p className="text-xs font-bold text-gray-500 mb-2">KEY FEATURES</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {currentProduct.core_features.slice(0, 4).map((feature, i) => (
+                                    <span key={i} className="text-xs px-2 py-1 bg-gray-100 rounded-full">
+                                      ✓ {feature}
+                                    </span>
+                                  ))}
+                                  {currentProduct.core_features.length > 4 && (
+                                    <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-500">
+                                      +{currentProduct.core_features.length - 4} more
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
+                          
+                          <p className="text-xs text-gray-500 mt-3 text-center">
+                            This is how your product will appear in the marketplace
+                          </p>
                         </div>
 
-                        {/* Launch Button */}
+                        {/* Launch Button - Opens Platform Selection Modal */}
                         <div className="flex justify-center">
                           <button
-                            onClick={handleLaunchProduct}
-                            disabled={isLaunching || !productPrice}
+                            onClick={() => setShowLaunchModal(true)}
+                            disabled={!productPrice}
                             className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
                           >
-                            {isLaunching ? (
-                              <>
-                                <Loader2 className="w-6 h-6 animate-spin" />
-                                Launching...
-                              </>
-                            ) : (
-                              <>
-                                <Rocket className="w-6 h-6" />
-                                Launch to Marketplace
-                              </>
-                            )}
+                            <Rocket className="w-6 h-6" />
+                            Launch to Marketplace
                           </button>
                         </div>
                       </div>
@@ -3273,6 +3515,31 @@ function BuilderContent() {
                                 </p>
                               </div>
                             </div>
+                          </div>
+                        </div>
+                        
+                        {/* Category Section */}
+                        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            🏷️ Product Category
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Choose a category to help customers find your product in the marketplace.
+                          </p>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Category</label>
+                            <select
+                              value={selectedCategory}
+                              onChange={(e) => setSelectedCategory(e.target.value)}
+                              className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                            >
+                              <option value="">Select a category...</option>
+                              {categories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.icon} {cat.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                         
@@ -3593,174 +3860,173 @@ function BuilderContent() {
         </div>
       )}
 
-      {/* Launch Confirmation Modal */}
+      {/* Launch Platform Selection Modal */}
       {showLaunchModal && currentProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowLaunchModal(false)} />
-          <div className="relative bg-white border-2 sm:border-4 border-black rounded-xl sm:rounded-2xl p-4 sm:p-8 shadow-brutal w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLaunchModal(false)} />
+          <div className="relative bg-white border-4 border-black rounded-2xl p-6 sm:p-8 shadow-brutal w-full max-w-md">
             <button
               onClick={() => setShowLaunchModal(false)}
-              className="absolute top-3 sm:top-4 right-3 sm:right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
             
-            <div className="text-center mb-4 sm:mb-6">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <Rocket className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Rocket className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-black mb-2">Launch Your Product</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Choose where to publish <strong>{currentProduct.name}</strong>
+              <h3 className="text-2xl font-black mb-2">Launch to Marketplace</h3>
+              <p className="text-gray-600">
+                Where would you like to list <strong className="text-black">{currentProduct.name}</strong>?
               </p>
             </div>
             
-            {/* Platform Selection */}
-            <div className="mb-4 sm:mb-6">
-              <h4 className="font-bold mb-3 text-sm sm:text-base">Select Platforms:</h4>
-              <div className="space-y-3">
-                {(['manymarkets', 'gumroad'] as MarketplacePlatform[]).map((platform) => {
-                  const config = PLATFORM_CONFIG[platform];
-                  const connection = platformConnections.find(c => c.platform === platform);
-                  const isConnected = platform === 'manymarkets' || connection?.connected;
-                  const isSelected = selectedPlatforms.includes(platform);
-                  
-                  return (
-                    <div
-                      key={platform}
-                      className={`relative border-2 rounded-xl p-4 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-green-500 bg-green-50 shadow-md'
-                          : isConnected
-                            ? 'border-gray-200 bg-white hover:border-green-300'
-                            : 'border-dashed border-gray-300 bg-gray-50'
-                      }`}
-                      onClick={() => isConnected && togglePlatformSelection(platform)}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div
-                            className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                              isSelected
-                                ? 'bg-green-500 border-green-500 text-white'
-                                : isConnected
-                                  ? 'border-gray-300'
-                                  : 'border-gray-200 bg-gray-100'
-                            }`}
-                          >
-                            {isSelected && <Check className="w-4 h-4" />}
-                          </div>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xl">{config.icon}</span>
-                              <span className="font-bold">{config.name}</span>
-                              {platform === 'manymarkets' && (
-                                <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
-                                  Native
-                                </span>
-                              )}
-                              {isConnected && platform === 'gumroad' && (
-                                <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
-                                  Connected
-                                </span>
-                              )}
-                              {!isConnected && platform === 'gumroad' && (
-                                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full font-medium">
-                                  Not Connected
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">{config.description}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Fee: {config.fee}</p>
-                          </div>
-                        </div>
-                        
-                        {platform === 'gumroad' && !isConnected && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConnectPlatform(platform);
-                            }}
-                            className="px-3 py-1.5 text-xs bg-indigo-500 text-white font-bold rounded-lg hover:bg-indigo-600 transition-colors shrink-0"
-                          >
-                            Connect
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {/* Quick Actions */}
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => setSelectedPlatforms(['manymarkets', 'gumroad'].filter(p => 
-                    p === 'manymarkets' || platformConnections.find(c => c.platform === p)?.connected
-                  ) as MarketplacePlatform[])}
-                  className="flex-1 px-3 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
-                >
-                  Select All Connected
-                </button>
-                <button
-                  onClick={() => setSelectedPlatforms(['manymarkets'])}
-                  className="flex-1 px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  ManyMarkets Only
-                </button>
-              </div>
-            </div>
-            
-            {/* Price Summary */}
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600">Product Price:</span>
-                <span className="font-black text-xl text-green-600">${productPrice || '0'}</span>
-              </div>
-              {selectedPlatforms.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-green-200">
-                  <p className="text-xs text-gray-500">
-                    Launching to: {selectedPlatforms.map(p => PLATFORM_CONFIG[p].name).join(' + ')}
-                  </p>
+            {/* Platform Options */}
+            <div className="space-y-3 mb-6">
+              {/* ManyMarkets Option */}
+              <button
+                onClick={() => togglePlatformSelection('manymarkets')}
+                className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
+                  selectedPlatforms.includes('manymarkets')
+                    ? 'border-orange-500 bg-orange-50 shadow-md'
+                    : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
+                }`}
+              >
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
+                  selectedPlatforms.includes('manymarkets') ? 'bg-orange-500' : 'bg-orange-100'
+                }`}>
+                  🏪
                 </div>
+                <div className="flex-1 text-left">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    ManyMarkets
+                    <span className="text-xs px-2 py-0.5 bg-orange-200 text-orange-700 rounded-full">Native</span>
+                  </div>
+                  <p className="text-sm text-gray-500">List on our internal marketplace • 0% fee</p>
+                </div>
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                  selectedPlatforms.includes('manymarkets')
+                    ? 'bg-orange-500 border-orange-500 text-white'
+                    : 'border-gray-300'
+                }`}>
+                  {selectedPlatforms.includes('manymarkets') && <Check className="w-4 h-4" />}
+                </div>
+              </button>
+
+              {/* Gumroad Option - Coming Soon */}
+              <div
+                className="w-full p-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center gap-4 opacity-70 cursor-not-allowed"
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-200">
+                  <svg viewBox="0 0 24 24" className="w-7 h-7" fill="#9CA3AF">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 3.6c4.636 0 8.4 3.764 8.4 8.4 0 4.636-3.764 8.4-8.4 8.4-4.636 0-8.4-3.764-8.4-8.4 0-4.636 3.764-8.4 8.4-8.4zm0 2.4a6 6 0 100 12 6 6 0 000-12z"/>
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-bold text-lg flex items-center gap-2 text-gray-500">
+                    Gumroad
+                    <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">Coming Soon</span>
+                  </div>
+                  <p className="text-sm text-gray-400">API doesn&apos;t support product creation yet</p>
+                </div>
+                <div className="w-6 h-6 rounded-full border-2 border-gray-300" />
+              </div>
+            </div>
+
+            {/* Price Display */}
+            {productPrice && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4 border border-green-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Product Price</span>
+                  <span className="font-black text-xl text-green-600">${productPrice}</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Launch Button */}
+            <button
+              onClick={handleLaunchProduct}
+              disabled={isLaunching || selectedPlatforms.length === 0}
+              className={`w-full py-4 font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 ${
+                selectedPlatforms.length === 0
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+              }`}
+            >
+              {isLaunching ? (
+                <>
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  Launching...
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-6 h-6" />
+                  {selectedPlatforms.length === 0 
+                    ? 'Select a Platform' 
+                    : selectedPlatforms.length === 2 
+                      ? 'Launch to Both Platforms 🚀'
+                      : `Launch to ${PLATFORM_CONFIG[selectedPlatforms[0]].name}`
+                  }
+                </>
               )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Celebration Modal */}
+      {showCelebration && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCelebration(false)} />
+          <div className="relative bg-white border-4 border-black rounded-3xl p-8 sm:p-12 shadow-brutal max-w-md text-center transform animate-bounce-in">
+            <button
+              onClick={() => setShowCelebration(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Celebration Icon */}
+            <div className="text-8xl mb-6 animate-bounce">
+              🎉
             </div>
             
-            {/* Launch Buttons */}
+            {/* Success Message */}
+            <h2 className="text-3xl sm:text-4xl font-black mb-4 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              Product Launched!
+            </h2>
+            
+            <p className="text-lg text-gray-600 mb-6">
+              Congratulations! Your product is now live and ready to sell! 🚀
+            </p>
+            
+            {/* Launched Platforms */}
+            <div className="flex justify-center gap-3 mb-6">
+              {selectedPlatforms.map(platform => (
+                <div key={platform} className="px-4 py-2 bg-green-100 rounded-full text-green-700 font-bold text-sm flex items-center gap-2">
+                  <span>{PLATFORM_CONFIG[platform].icon}</span>
+                  {PLATFORM_CONFIG[platform].name}
+                </div>
+              ))}
+            </div>
+            
+            {/* Action Buttons */}
             <div className="flex gap-3">
               <button
-                onClick={() => setShowLaunchModal(false)}
-                className="flex-1 px-4 py-3 font-bold border-2 border-black rounded-xl hover:bg-gray-100 transition-colors"
+                onClick={() => setShowCelebration(false)}
+                className="flex-1 py-3 font-bold border-2 border-black rounded-xl hover:bg-gray-100 transition-colors"
               >
-                Cancel
+                Continue Building
               </button>
-              <button
-                onClick={handleLaunchProduct}
-                disabled={isLaunching || selectedPlatforms.length === 0}
-                className={`flex-1 px-4 py-3 font-bold border-2 border-black rounded-xl transition-colors flex items-center justify-center gap-2 ${
-                  selectedPlatforms.length === 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                } disabled:opacity-50`}
+              <Link
+                href="/marketplace"
+                className="flex-1 py-3 font-bold bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
-                {isLaunching ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Launching...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="w-5 h-5" />
-                    {selectedPlatforms.length === 0 
-                      ? 'Select Platform' 
-                      : selectedPlatforms.length === 1 
-                        ? `Launch on ${PLATFORM_CONFIG[selectedPlatforms[0]].name}`
-                        : `Launch to ${selectedPlatforms.length} Platforms`
-                    }
-                  </>
-                )}
-              </button>
+                View Marketplace
+                <ExternalLink className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </div>
