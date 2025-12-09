@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAutumn, PRODUCTS } from '@/lib/autumn';
+import { createCheckout, getCustomerSubscriptions, cancelSubscription, PRODUCTS, isActiveSubscription } from '@/lib/lemonsqueezy';
 import { createClient } from '@/lib/supabase/server';
 
 // GET - Get customer billing state
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -12,48 +12,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get customer state from Autumn
-    const { data, error } = await getAutumn().customers.get(user.id);
-    
-    if (error) {
-      // If customer doesn't exist, return free tier info
-      if (error.message?.includes('not found')) {
-        return NextResponse.json({
-          customer: null,
-          products: [],
-          currentPlan: 'free',
-        });
-      }
-      throw error;
-    }
+    // First check the database for subscription status
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier, lemon_squeezy_customer_id, lemon_squeezy_subscription_id')
+      .eq('id', user.id)
+      .single();
 
-    const currentPlan = data?.products?.[0]?.id || 'free';
-    
-    // Sync subscription tier to database if it differs
-    // This ensures the DB stays in sync with Autumn
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_tier')
-        .eq('id', user.id)
-        .single();
+    let currentPlan = profile?.subscription_tier || 'free';
+    let subscriptions: Array<{
+      id: string;
+      status: string;
+      variantId: string;
+      productId: string;
+      renewsAt: string | null;
+      endsAt: string | null;
+    }> = [];
+
+    // If user has a Lemon Squeezy subscription ID, verify it's still active
+    if (profile?.lemon_squeezy_subscription_id) {
+      const result = await getCustomerSubscriptions(user.email!);
       
-      if (profile && profile.subscription_tier !== currentPlan) {
-        console.log(`Syncing subscription tier for user ${user.id}: ${profile.subscription_tier} -> ${currentPlan}`);
-        await supabase
-          .from('profiles')
-          .update({ subscription_tier: currentPlan })
-          .eq('id', user.id);
+      if ('subscriptions' in result) {
+        subscriptions = result.subscriptions;
+        
+        // Find active subscription
+        const activeSub = subscriptions.find(sub => isActiveSubscription(sub.status));
+        
+        if (activeSub) {
+          currentPlan = 'pro';
+        } else if (currentPlan === 'pro') {
+          // Subscription expired, downgrade in DB
+          currentPlan = 'free';
+          await supabase
+            .from('profiles')
+            .update({ subscription_tier: 'free' })
+            .eq('id', user.id);
+        }
       }
-    } catch (syncError) {
-      console.error('Error syncing subscription tier:', syncError);
-      // Don't fail the request, just log the error
     }
 
     return NextResponse.json({
-      customer: data,
-      products: data?.products || [],
       currentPlan,
+      subscriptions,
+      customer: profile,
     });
   } catch (error) {
     console.error('Error fetching billing state:', error);
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create customer or handle billing actions
+// POST - Handle billing actions
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -78,121 +80,64 @@ export async function POST(request: NextRequest) {
     const { action, productId } = body;
 
     switch (action) {
-      case 'create_customer': {
-        // Create or update customer in Autumn
-        const { data, error } = await getAutumn().customers.create({
-          id: user.id,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          email: user.email!,
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        return NextResponse.json({ success: true, customer: data });
-      }
-
       case 'checkout': {
-        // Get checkout URL for upgrading
-        if (!productId) {
-          return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
+        // Get checkout URL for upgrading to Pro
+        const variantId = productId === 'pro' ? PRODUCTS.PRO : productId;
+        
+        if (!variantId || variantId === 'free') {
+          return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
         }
 
-        console.log('Starting checkout for user:', user.id, 'product:', productId);
+        console.log('Starting Lemon Squeezy checkout for user:', user.id, 'variant:', variantId);
 
-        // Ensure customer exists before checkout (important for production)
-        try {
-          const { data: existingCustomer, error: customerError } = await getAutumn().customers.get(user.id);
-          console.log('Customer lookup result:', { existingCustomer, customerError });
-          
-          if (customerError || !existingCustomer) {
-            // Create customer if doesn't exist
-            console.log('Customer not found, creating new customer...');
-            const { data: newCustomer, error: createError } = await getAutumn().customers.create({
-              id: user.id,
-              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-              email: user.email!,
-            });
-            console.log('Customer creation result:', { newCustomer, createError });
-            if (createError) {
-              console.error('Failed to create customer:', createError);
-            }
-          }
-        } catch (customerErr) {
-          console.log('Customer check/create error, attempting create:', customerErr);
-          try {
-            const { data: newCustomer, error: createError } = await getAutumn().customers.create({
-              id: user.id,
-              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-              email: user.email!,
-            });
-            console.log('Fallback customer creation result:', { newCustomer, createError });
-          } catch (createErr) {
-            console.error('Fallback customer creation failed:', createErr);
-          }
-        }
-
-        console.log('Calling checkout with customer_id:', user.id, 'product_id:', productId);
-        const { data, error } = await getAutumn().checkout({
-          customer_id: user.id,
-          product_id: productId,
+        const result = await createCheckout({
+          variantId,
+          userId: user.id,
+          userEmail: user.email!,
+          userName: user.user_metadata?.full_name || user.email?.split('@')[0],
         });
 
-        console.log('Checkout response:', { data, error });
-
-        if (error) {
-          console.error('Checkout error details:', JSON.stringify(error, null, 2));
-          return NextResponse.json(
-            { error: error.message || 'Checkout failed', details: JSON.stringify(error) },
-            { status: 500 }
-          );
+        if ('error' in result) {
+          console.error('Checkout error:', result.error);
+          return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
-        if (!data?.url) {
-          console.error('No checkout URL returned:', data);
-          return NextResponse.json(
-            { error: 'No checkout URL returned', details: JSON.stringify(data) },
-            { status: 500 }
-          );
-        }
-
-        return NextResponse.json({
-          url: data?.url,
-          preview: data?.url ? null : data,
-        });
-      }
-
-      case 'attach': {
-        // Attach product (for upgrades when payment is on file)
-        if (!productId) {
-          return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
-        }
-
-        const { data, error } = await getAutumn().attach({
-          customer_id: user.id,
-          product_id: productId,
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        return NextResponse.json({ success: true, data });
+        return NextResponse.json({ url: result.url });
       }
 
       case 'cancel': {
-        // Cancel subscription
-        const { data, error } = await getAutumn().cancel({
-          customer_id: user.id,
-          product_id: productId || PRODUCTS.PRO,
-        });
+        // Get user's subscription from database
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('lemon_squeezy_subscription_id')
+          .eq('id', user.id)
+          .single();
 
-        if (error) {
-          throw error;
+        if (!profile?.lemon_squeezy_subscription_id) {
+          return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, data });
+        const result = await cancelSubscription(profile.lemon_squeezy_subscription_id);
+
+        if ('error' in result) {
+          return NextResponse.json({ error: result.error }, { status: 500 });
+        }
+
+        // Update database
+        await supabase
+          .from('profiles')
+          .update({ 
+            subscription_tier: 'free',
+            lemon_squeezy_subscription_id: null 
+          })
+          .eq('id', user.id);
+
+        return NextResponse.json({ success: true });
+      }
+
+      case 'create_customer': {
+        // No-op for Lemon Squeezy - customers are created at checkout
+        return NextResponse.json({ success: true });
       }
 
       default:
@@ -207,3 +152,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

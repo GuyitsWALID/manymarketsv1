@@ -56,7 +56,9 @@ import {
   TrendingUp,
   BarChart3,
   Pencil,
-  Wrench
+  Wrench,
+  Download,
+  BookOpen
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -1163,6 +1165,219 @@ function BuilderContent() {
     }
     
     setAssets(prev => prev.filter(a => a.id !== assetId));
+  };
+
+  // Generate HTML content for the ebook/product
+  const generateProductHTML = () => {
+    if (!currentProduct) return '';
+    
+    const outline = currentProduct.raw_analysis?.outline;
+    const productAssets = assets.filter(a => a.category === 'cover' || a.category === 'generated');
+    
+    let html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${currentProduct.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Georgia', serif; line-height: 1.8; color: #333; max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+    .cover { text-align: center; page-break-after: always; padding: 100px 20px; background: linear-gradient(135deg, #ff6b35 0%, #f7c331 100%); color: white; margin: -40px -20px 40px; }
+    .cover h1 { font-size: 3em; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    .cover .tagline { font-size: 1.4em; opacity: 0.9; margin-bottom: 30px; }
+    .cover .author { font-size: 1.1em; opacity: 0.8; }
+    .toc { page-break-after: always; padding: 40px 0; }
+    .toc h2 { font-size: 2em; margin-bottom: 30px; border-bottom: 3px solid #ff6b35; padding-bottom: 10px; }
+    .toc-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dotted #ddd; }
+    .toc-item:hover { background: #f9f9f9; }
+    .chapter { page-break-before: always; padding: 40px 0; }
+    .chapter-header { background: linear-gradient(135deg, #ff6b35 0%, #f7c331 100%); color: white; padding: 30px; margin: -40px -20px 30px; }
+    .chapter-number { font-size: 0.9em; text-transform: uppercase; letter-spacing: 3px; opacity: 0.8; }
+    .chapter-title { font-size: 2.2em; margin-top: 10px; }
+    .chapter-content { font-size: 1.1em; }
+    .chapter-content h2 { font-size: 1.6em; color: #ff6b35; margin: 30px 0 15px; }
+    .chapter-content h3 { font-size: 1.3em; color: #333; margin: 25px 0 12px; }
+    .chapter-content p { margin-bottom: 18px; text-align: justify; }
+    .chapter-content ul, .chapter-content ol { margin: 15px 0 15px 30px; }
+    .chapter-content li { margin-bottom: 8px; }
+    .chapter-content strong { color: #ff6b35; }
+    .key-takeaways { background: #f0f7ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 30px 0; border-radius: 0 8px 8px 0; }
+    .key-takeaways h4 { color: #1e40af; margin-bottom: 15px; }
+    .key-takeaways ul { margin-left: 20px; }
+    .key-takeaways li { color: #1e40af; margin-bottom: 8px; }
+    .bonus-section { background: #faf5ff; border: 2px solid #a855f7; padding: 30px; margin: 40px 0; border-radius: 12px; }
+    .bonus-section h3 { color: #7c3aed; margin-bottom: 20px; }
+    .asset-image { max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .footer { text-align: center; padding: 40px 0; margin-top: 60px; border-top: 2px solid #eee; color: #666; }
+    @media print {
+      .chapter { page-break-before: always; }
+      .cover { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Cover Page -->
+  <div class="cover">
+    <h1>${currentProduct.name}</h1>
+    <p class="tagline">${currentProduct.tagline || ''}</p>
+    <p class="author">Created with ManyMarkets</p>
+  </div>
+`;
+
+    // Table of Contents
+    if (outline?.chapters && outline.chapters.length > 0) {
+      html += `
+  <div class="toc">
+    <h2>Table of Contents</h2>
+`;
+      outline.chapters.forEach((chapter: Chapter) => {
+        html += `    <div class="toc-item"><span>Chapter ${chapter.number}: ${chapter.title}</span></div>\n`;
+      });
+      html += `  </div>\n`;
+    }
+
+    // Chapters
+    if (outline?.chapters) {
+      outline.chapters.forEach((chapter: Chapter) => {
+        html += `
+  <div class="chapter">
+    <div class="chapter-header">
+      <div class="chapter-number">Chapter ${chapter.number}</div>
+      <h1 class="chapter-title">${chapter.title}</h1>
+    </div>
+    <div class="chapter-content">
+`;
+        if (chapter.content) {
+          // Convert markdown-style content to HTML
+          let content = chapter.content
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\* (.*$)/gim, '<li>$1</li>')
+            .replace(/^- (.*$)/gim, '<li>$1</li>')
+            .replace(/\n\n/g, '</p><p>');
+          
+          // Wrap loose li tags in ul
+          content = content.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+          
+          html += `      <p>${content}</p>\n`;
+        } else {
+          html += `      <p><em>${chapter.description || 'Content not yet generated.'}</em></p>\n`;
+        }
+
+        // Key Takeaways
+        if (chapter.keyTakeaways && chapter.keyTakeaways.length > 0) {
+          html += `
+      <div class="key-takeaways">
+        <h4>💡 Key Takeaways</h4>
+        <ul>
+`;
+          chapter.keyTakeaways.forEach((takeaway: string) => {
+            html += `          <li>${takeaway}</li>\n`;
+          });
+          html += `        </ul>\n      </div>\n`;
+        }
+
+        html += `    </div>\n  </div>\n`;
+      });
+    }
+
+    // Bonus Content
+    if (outline?.bonus_content && outline.bonus_content.length > 0) {
+      html += `
+  <div class="bonus-section">
+    <h3>🎁 Bonus Materials</h3>
+    <ul>
+`;
+      outline.bonus_content.forEach((bonus: BonusContent) => {
+        html += `      <li><strong>${bonus.title}</strong> - ${bonus.description || bonus.type}</li>\n`;
+      });
+      html += `    </ul>\n  </div>\n`;
+    }
+
+    // Footer
+    html += `
+  <div class="footer">
+    <p>Thank you for reading!</p>
+    <p>Created with ❤️ using ManyMarkets</p>
+  </div>
+</body>
+</html>`;
+
+    return html;
+  };
+
+  // Handle download product
+  const handleDownloadProduct = async () => {
+    if (!currentProduct) return;
+    
+    setIsExporting(true);
+    
+    try {
+      // Generate the HTML content
+      const htmlContent = generateProductHTML();
+      
+      // Create blob and download
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentProduct.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Mark product as completed
+      const { error } = await supabase
+        .from('product_ideas')
+        .update({ status: 'completed' })
+        .eq('id', currentProduct.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      const updatedProduct = { ...currentProduct, status: 'completed' };
+      setCurrentProduct(updatedProduct);
+      setProducts(prev => prev.map(p => p.id === currentProduct.id ? updatedProduct : p));
+      
+      // Show celebration with confetti
+      setShowCelebration(true);
+      
+      // Trigger confetti
+      const duration = 4000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#ff6b35', '#f7c331', '#4ade80', '#3b82f6', '#a855f7'],
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      showNotification('error', 'Download Failed', 'Failed to download product. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Handle finalize/export product
@@ -3232,336 +3447,223 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 4: Launch (for content products only) */}
+                    {/* Step 4: Export (for content products only) */}
                     {currentStep === 4 && !isSoftwareProduct && (
                       <div>
-                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Launch Your Product</h2>
+                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
+                          <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-uvz-orange" />
+                          Export Your Product
+                        </h2>
                         <p className="text-gray-600 mb-6">
-                          Upload your deliverable files, set your price, and finalize your product.
+                          Preview your completed product and download it as a beautifully formatted file.
                         </p>
 
-                        {/* Deliverable Files Section */}
-                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
-                            📦 Product Files
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            Upload the files customers will receive after purchase (PDF, templates, assets, etc.)
-                          </p>
-                          
-                          {/* Upload Area */}
-                          <div 
-                            className="border-2 border-dashed border-purple-300 rounded-xl p-6 text-center hover:border-purple-500 transition-colors cursor-pointer bg-white"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            <Upload className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                            <p className="font-bold text-purple-700 mb-1">Click to upload deliverable files</p>
-                            <p className="text-xs text-gray-500">PDF, ZIP, DOCX, PPTX, or any digital file</p>
+                        {/* Book-Like Preview */}
+                        <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-4 border-black rounded-2xl overflow-hidden shadow-brutal mb-6">
+                          {/* Book Cover */}
+                          <div className="bg-gradient-to-br from-uvz-orange to-orange-600 p-8 sm:p-12 text-center text-white relative overflow-hidden">
+                            <div className="absolute inset-0 opacity-10">
+                              <div className="absolute top-4 left-4 w-32 h-32 border-4 border-white rounded-full" />
+                              <div className="absolute bottom-4 right-4 w-24 h-24 border-4 border-white rounded-full" />
+                              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-4 border-white rounded-full" />
+                            </div>
+                            <div className="relative">
+                              {assets.filter(a => a.category === 'cover' || a.type === 'image').length > 0 ? (
+                                <div className="w-32 h-40 sm:w-40 sm:h-52 mx-auto mb-6 border-4 border-white rounded-lg overflow-hidden shadow-2xl">
+                                  <img 
+                                    src={assets.filter(a => a.category === 'cover' || a.type === 'image')[0]?.thumbnailUrl || assets.filter(a => a.category === 'cover' || a.type === 'image')[0]?.url} 
+                                    alt="Cover"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-32 h-40 sm:w-40 sm:h-52 mx-auto mb-6 bg-white/20 border-4 border-white/50 rounded-lg flex items-center justify-center">
+                                  <BookOpen className="w-12 h-12 sm:w-16 sm:h-16 text-white/70" />
+                                </div>
+                              )}
+                              <h1 className="text-2xl sm:text-4xl font-black mb-3 drop-shadow-lg">{currentProduct.name}</h1>
+                              <p className="text-lg sm:text-xl opacity-90 mb-4">{currentProduct.tagline || 'Your Digital Product'}</p>
+                              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-4 py-2 rounded-full text-sm font-bold">
+                                <span className="capitalize">{currentProduct.product_type?.replace('-', ' ') || 'Digital Product'}</span>
+                              </div>
+                            </div>
                           </div>
                           
-                          {/* Uploaded Files List */}
-                          {assets.filter(a => a.category === 'uploaded').length > 0 && (
-                            <div className="mt-4 space-y-2">
-                              <p className="text-sm font-bold text-gray-700">Uploaded Files:</p>
-                              {assets.filter(a => a.category === 'uploaded').map((asset) => (
-                                <div key={asset.id} className="flex items-center justify-between p-3 bg-white border-2 border-gray-200 rounded-lg">
-                                  <div className="flex items-center gap-3">
-                                    <FileText className="w-5 h-5 text-purple-500" />
-                                    <span className="text-sm font-medium">{asset.name}</span>
-                                  </div>
-                                  <button
-                                    onClick={() => handleDeleteAsset(asset.id)}
-                                    className="text-red-500 hover:text-red-700"
+                          {/* Book Stats */}
+                          {currentProduct.raw_analysis?.outline && (
+                            <div className="bg-white border-b-2 border-black p-4 sm:p-6">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                                <div>
+                                  <p className="text-2xl sm:text-3xl font-black text-uvz-orange">
+                                    {currentProduct.raw_analysis.outline.chapters?.length || 0}
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Chapters</p>
+                                </div>
+                                <div>
+                                  <p className="text-2xl sm:text-3xl font-black text-uvz-orange">
+                                    {currentProduct.raw_analysis.outline.estimated_word_count?.toLocaleString() || '—'}
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Words</p>
+                                </div>
+                                <div>
+                                  <p className="text-2xl sm:text-3xl font-black text-uvz-orange">
+                                    {currentProduct.raw_analysis.outline.estimated_total_pages || '—'}
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Pages</p>
+                                </div>
+                                <div>
+                                  <p className="text-2xl sm:text-3xl font-black text-green-600">
+                                    {currentProduct.raw_analysis.outline.chapters?.filter((ch: Chapter) => ch.content).length || 0}/{currentProduct.raw_analysis.outline.chapters?.length || 0}
+                                  </p>
+                                  <p className="text-xs sm:text-sm text-gray-500 font-medium">Complete</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Table of Contents */}
+                          <div className="bg-white p-4 sm:p-6">
+                            <h3 className="font-black text-lg mb-4 flex items-center gap-2">
+                              📚 Table of Contents
+                            </h3>
+                            {currentProduct.raw_analysis?.outline?.chapters ? (
+                              <div className="space-y-2">
+                                {currentProduct.raw_analysis.outline.chapters.map((chapter: Chapter, index: number) => (
+                                  <div 
+                                    key={chapter.id} 
+                                    className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                                      chapter.content 
+                                        ? 'border-green-300 bg-green-50' 
+                                        : 'border-gray-200 bg-gray-50'
+                                    }`}
                                   >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Pricing Section */}
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
-                            💰 Set Your Price
-                          </h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Price</label>
-                              <div className="relative">
-                                <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                                <input
-                                  type="text"
-                                  value={productPrice}
-                                  onChange={(e) => {
-                                    setProductPrice(e.target.value);
-                                    if (e.target.value && parseFloat(e.target.value) > 0) {
-                                      setExportChecklist(prev => ({ ...prev, pricingSet: true }));
-                                    }
-                                  }}
-                                  placeholder="49.00"
-                                  className="w-full pl-7 sm:pl-8 pr-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg sm:text-xl font-bold"
-                                />
-                              </div>
-                              <p className="text-xs text-gray-500 mt-2">
-                                Suggested: {currentProduct.pricing_model || '$29 - $99'}
-                              </p>
-                            </div>
-                            <div className="flex flex-col justify-center">
-                              <div className="space-y-2 text-xs sm:text-sm">
-                                <p className="flex items-center gap-2">
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                  <span>ManyMarkets takes 0% platform fee</span>
-                                </p>
-                                <p className="flex items-center gap-2">
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                  <span>Payment processing: 2.9% + $0.30</span>
-                                </p>
-                                <p className="flex items-center gap-2">
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                  <span>Instant payouts to your account</span>
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Category Section */}
-                        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
-                            🏷️ Product Category
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            Choose a category for your product.
-                          </p>
-                          <div>
-                            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Category</label>
-                            <select
-                              value={selectedCategory}
-                              onChange={(e) => setSelectedCategory(e.target.value)}
-                              className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
-                            >
-                              <option value="">Select a category...</option>
-                              {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                  {cat.icon} {cat.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        
-                        {/* Product Preview Card with Preview Button */}
-                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-gray-600 font-bold text-sm sm:text-base">
-                              <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                              Product Preview
-                            </div>
-                            <button
-                              onClick={() => {
-                                setShowPreviewModal(true);
-                                setExportChecklist(prev => ({ ...prev, previewReviewed: true }));
-                              }}
-                              className="w-full sm:w-auto px-4 py-2 bg-uvz-orange text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
-                            >
-                              <Eye className="w-4 h-4" />
-                              View Full Preview
-                            </button>
-                          </div>
-                          
-                          <div className="bg-white border-2 border-black rounded-xl p-4 sm:p-6 shadow-brutal">
-                            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-uvz-orange to-orange-400 border-2 border-black rounded-xl flex items-center justify-center shrink-0">
-                                <ProductIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-lg sm:text-xl font-black break-words">{currentProduct.name}</h3>
-                                <p className="text-gray-600 text-xs sm:text-sm mb-2">{currentProduct.tagline || 'No tagline set'}</p>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="px-2 py-0.5 text-xs font-bold bg-uvz-orange/10 text-uvz-orange rounded-full capitalize">
-                                    {currentProduct.product_type || 'Product'}
-                                  </span>
-                                  {currentProduct.build_difficulty && (
-                                    <span className="px-2 py-0.5 text-xs font-bold bg-gray-100 text-gray-600 rounded-full capitalize">
-                                      {currentProduct.build_difficulty}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="w-full sm:w-auto text-left sm:text-right mt-2 sm:mt-0">
-                                <p className="text-xl sm:text-2xl font-black text-uvz-orange">
-                                  ${productPrice || '49'}
-                                </p>
-                                <p className="text-xs text-gray-500">Price</p>
-                              </div>
-                            </div>
-                            
-                            {currentProduct.description && (
-                              <p className="text-gray-600 mt-4 text-sm line-clamp-2">
-                                {currentProduct.description}
-                              </p>
-                            )}
-                            
-                            {currentProduct.core_features && currentProduct.core_features.length > 0 && (
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {currentProduct.core_features.slice(0, 4).map((feature, i) => (
-                                  <span key={i} className="text-xs px-2 py-1 bg-gray-100 rounded-lg">
-                                    ✓ {feature}
-                                  </span>
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                        chapter.content 
+                                          ? 'bg-green-500 text-white' 
+                                          : 'bg-gray-300 text-gray-600'
+                                      }`}>
+                                        {chapter.content ? <Check className="w-4 h-4" /> : index + 1}
+                                      </div>
+                                      <div>
+                                        <p className="font-bold text-sm sm:text-base">{chapter.title}</p>
+                                        {chapter.wordCount && (
+                                          <p className="text-xs text-gray-500">{chapter.wordCount.toLocaleString()} words</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {chapter.content && (
+                                      <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                        Ready
+                                      </span>
+                                    )}
+                                  </div>
                                 ))}
-                                {currentProduct.core_features.length > 4 && (
-                                  <span className="text-xs px-2 py-1 text-gray-500">
-                                    +{currentProduct.core_features.length - 4} more
-                                  </span>
-                                )}
                               </div>
+                            ) : (
+                              <p className="text-gray-500 text-center py-8">No chapters generated yet. Go back to the Content step to generate your outline.</p>
                             )}
                           </div>
-                        </div>
-                        
-                        {/* Launch Checklist */}
-                        <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <h3 className="font-black mb-3 sm:mb-4 text-sm sm:text-base">Launch Checklist</h3>
-                          <div className="space-y-2 sm:space-y-3">
-                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={exportChecklist.contentComplete}
-                                onChange={(e) => setExportChecklist(prev => ({ ...prev, contentComplete: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm sm:text-base">Content is complete</p>
-                                <p className="text-xs sm:text-sm text-gray-500">All chapters/modules are written and reviewed</p>
-                              </div>
-                              {exportChecklist.contentComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
-                            </label>
-                            
-                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={exportChecklist.structureComplete}
-                                onChange={(e) => setExportChecklist(prev => ({ ...prev, structureComplete: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm sm:text-base">Structure is finalized</p>
-                                <p className="text-xs sm:text-sm text-gray-500">Product structure has been reviewed</p>
-                              </div>
-                              {exportChecklist.structureComplete && <Check className="w-5 h-5 text-green-500 shrink-0" />}
-                            </label>
-                            
-                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={exportChecklist.assetsReady}
-                                onChange={(e) => setExportChecklist(prev => ({ ...prev, assetsReady: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm sm:text-base">Assets are ready</p>
-                                <p className="text-xs sm:text-sm text-gray-500">Cover images, graphics, and files are uploaded</p>
-                              </div>
-                              {exportChecklist.assetsReady && <Check className="w-5 h-5 text-green-500 shrink-0" />}
-                            </label>
-                            
-                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={exportChecklist.pricingSet}
-                                onChange={(e) => setExportChecklist(prev => ({ ...prev, pricingSet: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm sm:text-base">Pricing is set</p>
-                                <p className="text-xs sm:text-sm text-gray-500">You&apos;ve decided on your pricing strategy</p>
-                              </div>
-                              {exportChecklist.pricingSet && <Check className="w-5 h-5 text-green-500 shrink-0" />}
-                            </label>
-                            
-                            <label className="flex items-start sm:items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={exportChecklist.previewReviewed}
-                                onChange={(e) => setExportChecklist(prev => ({ ...prev, previewReviewed: e.target.checked }))}
-                                className="w-5 h-5 rounded border-2 border-black accent-green-500 mt-0.5 sm:mt-0 shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-sm sm:text-base">Preview reviewed</p>
-                                <p className="text-xs sm:text-sm text-gray-500">You&apos;ve reviewed how your product will appear</p>
-                              </div>
-                              {exportChecklist.previewReviewed && <Check className="w-5 h-5 text-green-500 shrink-0" />}
-                            </label>
-                          </div>
                           
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-600">Progress</span>
-                              <span className="font-bold">
-                                {Object.values(exportChecklist).filter(Boolean).length} of {Object.keys(exportChecklist).length} complete
-                              </span>
-                            </div>
-                            <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-green-500 transition-all"
-                                style={{ width: `${(Object.values(exportChecklist).filter(Boolean).length / Object.keys(exportChecklist).length) * 100}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Notes Section */}
-                        <div className="mb-4 sm:mb-6">
-                          <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Notes</label>
-                          <textarea
-                            value={formData.notes}
-                            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Any notes about your launch plan, marketing strategy, etc..."
-                            rows={3}
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-uvz-orange resize-none text-sm sm:text-base"
-                          />
-                        </div>
-                        
-                        {/* Launch Button */}
-                        <div className={`rounded-xl p-4 sm:p-6 text-center ${
-                          canLaunch() 
-                            ? 'bg-green-50 border-2 border-green-300' 
-                            : 'bg-gray-50 border-2 border-gray-300'
-                        }`}>
-                          <Rocket className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 ${canLaunch() ? 'text-green-600' : 'text-gray-400'}`} />
-                          <h3 className="font-black text-base sm:text-lg mb-2">
-                            {canLaunch() ? 'Ready to Launch!' : 'Complete the Checklist'}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 px-2">
-                            {canLaunch() 
-                              ? 'Choose where to publish your product.'
-                              : 'Complete all checklist items before launching.'
-                            }
-                          </p>
-                          
-                          {!canLaunch() && (
-                            <div className="flex items-center justify-center gap-2 text-yellow-700 bg-yellow-100 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4">
-                              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                              <span className="text-xs sm:text-sm font-medium">
-                                {Object.keys(exportChecklist).length - Object.values(exportChecklist).filter(Boolean).length} items remaining
-                              </span>
+                          {/* Generated Assets Preview */}
+                          {assets.filter(a => a.category === 'generated' || a.category === 'cover').length > 0 && (
+                            <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-t-2 border-black p-4 sm:p-6">
+                              <h3 className="font-black text-lg mb-4 flex items-center gap-2">
+                                🎨 Included Assets
+                              </h3>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                {assets.filter(a => a.category === 'generated' || a.category === 'cover').map((asset) => (
+                                  <div key={asset.id} className="bg-white border-2 border-gray-200 rounded-lg p-2 text-center">
+                                    {asset.type === 'image' ? (
+                                      <div className="aspect-square rounded overflow-hidden mb-2">
+                                        <img 
+                                          src={asset.thumbnailUrl || asset.url} 
+                                          alt={asset.name}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="aspect-square rounded bg-gray-100 flex items-center justify-center mb-2">
+                                        <FileText className="w-8 h-8 text-gray-400" />
+                                      </div>
+                                    )}
+                                    <p className="text-xs font-medium truncate">{asset.name}</p>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                           
-                          <button 
-                            onClick={() => setShowExportModal(true)}
-                            disabled={!canLaunch()}
-                            className={`w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 font-bold text-sm sm:text-base border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mx-auto ${
-                              canLaunch()
-                                ? 'bg-green-500 text-white hover:bg-green-600'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed hover:translate-y-0'
-                            }`}
+                          {/* Bonus Content */}
+                          {currentProduct.raw_analysis?.outline?.bonus_content && currentProduct.raw_analysis.outline.bonus_content.length > 0 && (
+                            <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-t-2 border-black p-4 sm:p-6">
+                              <h3 className="font-black text-lg mb-4 flex items-center gap-2">
+                                🎁 Bonus Materials
+                              </h3>
+                              <div className="grid sm:grid-cols-2 gap-3">
+                                {currentProduct.raw_analysis.outline.bonus_content.map((bonus: BonusContent, i: number) => (
+                                  <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-amber-200">
+                                    <CheckCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                                    <div>
+                                      <p className="font-bold text-sm">{bonus.title}</p>
+                                      <p className="text-xs text-gray-500 capitalize">{bonus.type}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Export Actions */}
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-4 border-green-500 rounded-2xl p-6 sm:p-8 text-center">
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <Download className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                          </div>
+                          <h3 className="text-xl sm:text-2xl font-black mb-2">Ready to Download!</h3>
+                          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                            Your product has been compiled and is ready to export. Download it as an HTML file that you can convert to PDF or use directly.
+                          </p>
+                          
+                          {/* Content Status */}
+                          {currentProduct.raw_analysis?.outline?.chapters && (
+                            <div className="mb-6 p-4 bg-white rounded-xl border-2 border-green-200 inline-block">
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-3 h-3 rounded-full ${
+                                    currentProduct.raw_analysis.outline.chapters.every((ch: Chapter) => ch.content) 
+                                      ? 'bg-green-500' 
+                                      : 'bg-yellow-500'
+                                  }`} />
+                                  <span className="font-medium">
+                                    {currentProduct.raw_analysis.outline.chapters.filter((ch: Chapter) => ch.content).length} of {currentProduct.raw_analysis.outline.chapters.length} chapters written
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <button
+                            onClick={handleDownloadProduct}
+                            disabled={isExporting}
+                            className="px-8 sm:px-12 py-4 sm:py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg sm:text-xl border-4 border-black rounded-2xl shadow-brutal hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_#000000] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 mx-auto"
                           >
-                            <Rocket className="w-4 h-4 sm:w-5 sm:h-5" />
-                            Finalize Product
+                            {isExporting ? (
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                Preparing Download...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="w-6 h-6" />
+                                Export & Download
+                              </>
+                            )}
                           </button>
+                          
+                          <p className="text-xs text-gray-500 mt-4">
+                            Downloads as HTML • Open in browser and print to PDF • Sell on Gumroad, Payhip, or your own site
+                          </p>
                         </div>
                       </div>
                     )}
@@ -3762,19 +3864,39 @@ function BuilderContent() {
             
             {/* Success Message */}
             <h2 className="text-3xl sm:text-4xl font-black mb-4 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
-              Product Complete!
+              Download Complete!
             </h2>
             
-            <p className="text-lg text-gray-600 mb-6">
-              Congratulations! Your product is ready to sell on your preferred platform! 🚀
+            <p className="text-lg text-gray-600 mb-4">
+              Congratulations! Your product has been downloaded and is ready to sell! 🚀
             </p>
             
+            {/* Download Success Icon */}
+            <div className="flex items-center justify-center gap-2 mb-6 text-green-600">
+              <Check className="w-6 h-6" />
+              <span className="font-bold">File saved to your Downloads folder</span>
+            </div>
+            
             {/* Next Steps */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200 text-left">
-              <h4 className="font-bold text-blue-800 mb-2">Ready to Sell?</h4>
-              <p className="text-sm text-blue-700">
-                Download your content and assets, then upload them to platforms like Gumroad, Payhip, or your own website to start earning!
-              </p>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 mb-6 border border-green-200 text-left">
+              <h4 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                <Rocket className="w-4 h-4" />
+                What&apos;s Next?
+              </h4>
+              <ul className="text-sm text-green-700 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">1.</span>
+                  Upload to Gumroad, Payhip, or your website
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">2.</span>
+                  Set your price and payment options
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">3.</span>
+                  Start promoting and earning! 💰
+                </li>
+              </ul>
             </div>
             
             {/* Action Buttons */}
@@ -3783,16 +3905,16 @@ function BuilderContent() {
                 onClick={() => setShowCelebration(false)}
                 className="flex-1 py-3 font-bold border-2 border-black rounded-xl hover:bg-gray-100 transition-colors"
               >
-                Continue Editing
+                Back to Builder
               </button>
               <button
                 onClick={() => {
                   setShowCelebration(false);
-                  setCurrentStep(3); // Go to Assets step
+                  window.location.href = '/builder';
                 }}
                 className="flex-1 py-3 font-bold bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
-                Download Assets
+                Create Another
               </button>
             </div>
           </div>

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAutumn } from '@/lib/autumn';
 import { createClient } from '@/lib/supabase/server';
 
-// POST - Check if user has access to a feature
+// POST - Check if user has access to a feature based on subscription tier
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -12,31 +11,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { featureId, requiredBalance = 1 } = await request.json();
+    const { featureId } = await request.json();
 
     if (!featureId) {
       return NextResponse.json({ error: 'Feature ID required' }, { status: 400 });
     }
 
-    const { data, error } = await getAutumn().check({
-      customer_id: user.id,
-      feature_id: featureId,
-      required_balance: requiredBalance,
-    });
+    // Get user's subscription tier from database
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .single();
 
-    if (error) {
-      // If customer not found, they're on free tier - check based on that
-      console.error('Check error:', error);
-      return NextResponse.json({
-        allowed: false,
-        reason: 'Customer not found or feature not available',
-      });
+    const tier = profile?.subscription_tier || 'free';
+    const isPro = tier === 'pro' || tier === 'enterprise';
+
+    // Define feature access based on tier
+    const proFeatures = ['builder_studio', 'unlimited_sessions', 'analytics', 'priority_support'];
+    const freeFeatures = ['basic_research', 'ai_sessions']; // Limited access
+
+    let allowed = false;
+    let unlimited = false;
+
+    if (isPro) {
+      // Pro users have access to all features
+      allowed = true;
+      unlimited = proFeatures.includes(featureId);
+    } else {
+      // Free users have limited access
+      allowed = freeFeatures.includes(featureId);
     }
 
     return NextResponse.json({
-      allowed: data?.allowed ?? false,
-      balance: data?.balance,
-      unlimited: data?.unlimited,
+      allowed,
+      unlimited,
+      tier,
     });
   } catch (error) {
     console.error('Feature check error:', error);
@@ -46,3 +56,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

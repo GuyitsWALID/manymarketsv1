@@ -95,24 +95,12 @@ export default function UpgradePage() {
       }
       
       if (data.url) {
-        // Redirect to Autumn checkout
+        // Redirect to Lemon Squeezy checkout
         window.location.href = data.url;
-      } else if (data.preview) {
-        // No payment required (e.g., already has payment on file)
-        // Try to attach directly
-        const attachResponse = await fetch('/api/billing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'attach', productId: 'pro' }),
-        });
-        
-        if (attachResponse.ok) {
-          router.push('/builder');
-        }
       } else {
         // No URL returned - show error
         console.error('No checkout URL returned:', data);
-        alert(`Checkout error: ${data.error || 'No checkout URL returned'}. Details: ${data.details || 'None'}`);
+        alert(`Checkout error: ${data.error || 'No checkout URL returned'}`);
       }
     } catch (error) {
       console.error('Upgrade error:', error);

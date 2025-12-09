@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { generateText } from 'ai';
 import { groq, google } from '@/lib/ai/provider';
-import { getAutumn } from '@/lib/autumn';
 
-// Helper function to check if user is Pro via Autumn
-async function checkProStatus(userId: string): Promise<boolean> {
+// Helper function to check if user is Pro via database
+async function checkProStatus(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
   try {
-    const { data, error } = await getAutumn().customers.get(userId);
-    if (error) return false;
-    const plan = data?.products?.[0]?.id || 'free';
-    return plan === 'pro' || plan === 'enterprise';
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', userId)
+      .single();
+    
+    const tier = profile?.subscription_tier || 'free';
+    return tier === 'pro' || tier === 'enterprise';
   } catch {
     return false;
   }
@@ -74,8 +77,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is Pro via Autumn
-    const isPro = await checkProStatus(user.id);
+    // Check if user is Pro from database
+    const isPro = await checkProStatus(supabase, user.id);
     
     if (!isPro) {
       return NextResponse.json({ error: 'Pro subscription required' }, { status: 403 });

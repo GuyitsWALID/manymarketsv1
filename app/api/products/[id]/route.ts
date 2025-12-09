@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAutumn } from '@/lib/autumn';
 
-// Helper function to check if user is Pro via Autumn
-async function checkProStatus(userId: string): Promise<boolean> {
+// Helper function to check if user is Pro via database
+async function checkProStatus(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<boolean> {
   try {
-    const { data, error } = await getAutumn().customers.get(userId);
-    if (error) return false;
-    const plan = data?.products?.[0]?.id || 'free';
-    return plan === 'pro' || plan === 'enterprise';
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', userId)
+      .single();
+    
+    const tier = profile?.subscription_tier || 'free';
+    return tier === 'pro' || tier === 'enterprise';
   } catch {
     return false;
   }
@@ -60,20 +63,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is Pro - first check database, then Autumn as fallback
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier')
-      .eq('id', user.id)
-      .single();
-    
-    const isProInDb = profile?.subscription_tier === 'pro' || profile?.subscription_tier === 'enterprise';
-    
-    // If not Pro in DB, check Autumn
-    let isPro = isProInDb;
-    if (!isPro) {
-      isPro = await checkProStatus(user.id);
-    }
+    // Check if user is Pro from database
+    const isPro = await checkProStatus(supabase, user.id);
     
     if (!isPro) {
       return NextResponse.json({ error: 'Pro subscription required' }, { status: 403 });

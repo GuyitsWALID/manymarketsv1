@@ -140,7 +140,7 @@ function SettingsContent() {
         console.error('Failed to load sessions:', e);
       }
       
-      // Load billing state from Autumn
+      // Load billing state from Lemon Squeezy
       try {
         const billingResponse = await fetch('/api/billing');
         if (billingResponse.ok) {
