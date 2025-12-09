@@ -1292,7 +1292,7 @@ function BuilderContent() {
     <ul>
 `;
       outline.bonus_content.forEach((bonus: BonusContent) => {
-        html += `      <li><strong>${bonus.title}</strong> - ${bonus.description || bonus.type}</li>\n`;
+        html += `      <li><strong>${bonus.title}</strong> - ${bonus.type}</li>\n`;
       });
       html += `    </ul>\n  </div>\n`;
     }
