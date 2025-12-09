@@ -3566,13 +3566,13 @@ function BuilderContent() {
                           </div>
                           
                           {/* Generated Assets Preview */}
-                          {assets.filter(a => a.category === 'generated' || a.category === 'cover').length > 0 && (
+                          {assets.filter(a => a.category === 'illustration' || a.category === 'cover' || a.category === 'chapter').length > 0 && (
                             <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-t-2 border-black p-4 sm:p-6">
                               <h3 className="font-black text-lg mb-4 flex items-center gap-2">
                                 🎨 Included Assets
                               </h3>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {assets.filter(a => a.category === 'generated' || a.category === 'cover').map((asset) => (
+                                {assets.filter(a => a.category === 'illustration' || a.category === 'cover' || a.category === 'chapter').map((asset) => (
                                   <div key={asset.id} className="bg-white border-2 border-gray-200 rounded-lg p-2 text-center">
                                     {asset.type === 'image' ? (
                                       <div className="aspect-square rounded overflow-hidden mb-2">
