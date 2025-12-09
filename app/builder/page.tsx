@@ -1172,7 +1172,7 @@ function BuilderContent() {
     if (!currentProduct) return '';
     
     const outline = currentProduct.raw_analysis?.outline;
-    const productAssets = assets.filter(a => a.category === 'cover' || a.category === 'generated');
+    const productAssets = assets.filter(a => a.category === 'cover' || a.category === 'illustration' || a.category === 'chapter');
     
     let html = `
 <!DOCTYPE html>
