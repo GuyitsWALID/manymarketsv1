@@ -99,13 +99,62 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
         }
 
+        console.log('Starting checkout for user:', user.id, 'product:', productId);
+
+        // Ensure customer exists before checkout (important for production)
+        try {
+          const { data: existingCustomer, error: customerError } = await getAutumn().customers.get(user.id);
+          console.log('Customer lookup result:', { existingCustomer, customerError });
+          
+          if (customerError || !existingCustomer) {
+            // Create customer if doesn't exist
+            console.log('Customer not found, creating new customer...');
+            const { data: newCustomer, error: createError } = await getAutumn().customers.create({
+              id: user.id,
+              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+              email: user.email!,
+            });
+            console.log('Customer creation result:', { newCustomer, createError });
+            if (createError) {
+              console.error('Failed to create customer:', createError);
+            }
+          }
+        } catch (customerErr) {
+          console.log('Customer check/create error, attempting create:', customerErr);
+          try {
+            const { data: newCustomer, error: createError } = await getAutumn().customers.create({
+              id: user.id,
+              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+              email: user.email!,
+            });
+            console.log('Fallback customer creation result:', { newCustomer, createError });
+          } catch (createErr) {
+            console.error('Fallback customer creation failed:', createErr);
+          }
+        }
+
+        console.log('Calling checkout with customer_id:', user.id, 'product_id:', productId);
         const { data, error } = await getAutumn().checkout({
           customer_id: user.id,
           product_id: productId,
         });
 
+        console.log('Checkout response:', { data, error });
+
         if (error) {
-          throw error;
+          console.error('Checkout error details:', JSON.stringify(error, null, 2));
+          return NextResponse.json(
+            { error: error.message || 'Checkout failed', details: JSON.stringify(error) },
+            { status: 500 }
+          );
+        }
+
+        if (!data?.url) {
+          console.error('No checkout URL returned:', data);
+          return NextResponse.json(
+            { error: 'No checkout URL returned', details: JSON.stringify(data) },
+            { status: 500 }
+          );
         }
 
         return NextResponse.json({
@@ -151,8 +200,9 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Billing action error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Billing action failed';
     return NextResponse.json(
-      { error: 'Billing action failed' },
+      { error: errorMessage, details: String(error) },
       { status: 500 }
     );
   }

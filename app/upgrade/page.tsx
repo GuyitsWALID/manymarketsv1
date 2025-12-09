@@ -87,11 +87,12 @@ export default function UpgradePage() {
         body: JSON.stringify({ action: 'checkout', productId: 'pro' }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create checkout');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Checkout error response:', data);
+        throw new Error(data.error || data.details || 'Failed to create checkout');
+      }
       
       if (data.url) {
         // Redirect to Autumn checkout
@@ -108,10 +109,15 @@ export default function UpgradePage() {
         if (attachResponse.ok) {
           router.push('/builder');
         }
+      } else {
+        // No URL returned - show error
+        console.error('No checkout URL returned:', data);
+        alert(`Checkout error: ${data.error || 'No checkout URL returned'}. Details: ${data.details || 'None'}`);
       }
     } catch (error) {
       console.error('Upgrade error:', error);
-      alert('Failed to start upgrade. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Failed to start upgrade: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
