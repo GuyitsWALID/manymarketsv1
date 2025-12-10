@@ -204,13 +204,18 @@ export default function WaitlistPage() {
 
       {/* Header */}
       <header className="relative z-10 border-b-2 border-black bg-white/80 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex flex-row sm:flex-row items-center justify-between gap-2 sm:gap-4">
           <img src="/2-Photoroom.png" alt="manymarketrs logo" className="h-10 w-auto mb-2 sm:mb-0" />
+          {/* Mobile count badge (visible on xs) - replaces 'Be first!' text with actual number */}
+          <div className="flex sm:hidden items-center gap-2 px-3 py-1 bg-gradient-to-r from-orange-100 to-pink-100 border-2 border-black rounded-full justify-center min-w-0" title={totalSignups > 0 ? `${totalSignups} creators joined` : 'No signups yet'}>
+            <Users className="w-4 h-4 flex-shrink-0" />
+            <span className="font-bold text-sm">{totalSignups > 0 ? `${totalSignups}+` : '0'}</span>
+          </div>
           <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-pink-100 border-2 border-black rounded-full w-full sm:w-auto justify-center min-w-0">
             <Users className="w-4 h-4 flex-shrink-0" />
             <span className="font-bold text-sm truncate">{totalSignups > 0 ? `${totalSignups}+ joined` : 'Be first!'}</span>
           </div>
-        </div>
+         </div>
       </header>
 
       <main className="relative z-10">
