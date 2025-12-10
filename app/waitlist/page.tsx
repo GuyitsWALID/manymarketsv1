@@ -19,6 +19,7 @@ import {
   Loader2,
   PartyPopper,
   BadgePercent
+  , Twitter, Linkedin, Facebook, Mail, Copy, Share2
 } from 'lucide-react';
 
 // Popular countries for the dropdown
@@ -137,6 +138,7 @@ export default function WaitlistPage() {
   const [position, setPosition] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [totalSignups, setTotalSignups] = useState<number>(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     // Fetch total signups
@@ -207,7 +209,7 @@ export default function WaitlistPage() {
           <div className="max-w-6xl mx-auto px-4 py-4 flex flex-row sm:flex-row items-center justify-between gap-2 sm:gap-4">
           <img src="/2-Photoroom.png" alt="manymarketrs logo" className="h-10 w-auto mb-2 sm:mb-0" />
           {/* Mobile count badge (visible on xs) - replaces 'Be first!' text with actual number */}
-          <div className="flex sm:hidden items-center gap-2 px-3 py-1 bg-gradient-to-r from-orange-100 to-pink-100 border-2 border-black rounded-full justify-center min-w-0" title={totalSignups > 0 ? `${totalSignups} creators joined` : 'No signups yet'}>
+          <div aria-label={totalSignups > 0 ? `${totalSignups} creators joined` : 'No signups yet'} className="flex sm:hidden items-center gap-2 px-3 py-1 bg-gradient-to-r from-orange-100 to-pink-100 border-2 border-black rounded-full justify-center min-w-0" title={totalSignups > 0 ? `${totalSignups} creators joined` : 'No signups yet'}>
             <Users className="w-4 h-4 flex-shrink-0" />
             <span className="font-bold text-sm">{totalSignups > 0 ? `${totalSignups}+` : '0'}</span>
           </div>
@@ -296,21 +298,102 @@ export default function WaitlistPage() {
                   <p className="text-gray-500 text-sm">
                     We&apos;ll email you when it&apos;s your turn!
                   </p>
-                  <div className="mt-6 flex gap-3">
-                    <Link 
-                      href="/"
-                      className="flex-1 py-3 px-4 border-2 border-black rounded-xl font-bold hover:bg-gray-100 transition-colors"
-                    >
-                      Back Home
-                    </Link>
+                  <div className="mt-6 grid grid-cols-2 sm:flex sm:flex-wrap gap-3 justify-center">
+                    {/* Twitter / X */}
                     <button
                       onClick={() => {
-                        const text = `I just joined the ManyMarkets waitlist! 🚀 Build & sell digital products with AI. Join me: ${window.location.origin}/waitlist`;
+                        const text = `I joined the ManyMarkets waitlist! Discover profitable niches & build digital products with AI. Join me: ${window.location.origin}/waitlist`;
                         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                       }}
-                      className="flex-1 py-3 px-4 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                      aria-label="Share on X"
+                      className="flex items-center gap-2 px-3 py-2 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
                     >
+                      <Twitter className="w-4 h-4" />
                       Share on X
+                    </button>
+
+                    {/* LinkedIn */}
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/waitlist`;
+                        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
+                      }}
+                      aria-label="Share on LinkedIn"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold border-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Linkedin className="w-4 h-4" />
+                      Share on LinkedIn
+                    </button>
+
+                    {/* Facebook */}
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/waitlist`;
+                        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+                      }}
+                      aria-label="Share on Facebook"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold border-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Facebook className="w-4 h-4" />
+                      Share on Facebook
+                    </button>
+
+                    {/* WhatsApp */}
+                    <button
+                      onClick={() => {
+                        const text = `I joined the ManyMarkets waitlist — find profitable niches & build digital products: ${window.location.origin}/waitlist`;
+                        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                      }}
+                      aria-label="Share on WhatsApp"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold border-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share on WhatsApp
+                    </button>
+
+                    {/* Telegram */}
+                    <button
+                      onClick={() => {
+                        const text = `I joined the ManyMarkets waitlist! Find profitable niches & build digital products: ${window.location.origin}/waitlist`;
+                        window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.origin + '/waitlist')}&text=${encodeURIComponent(text)}`, '_blank');
+                      }}
+                      aria-label="Share on Telegram"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold border-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share on Telegram
+                    </button>
+
+                    {/* Email */}
+                    <button
+                      onClick={() => {
+                        const subject = 'Join me on the ManyMarkets waitlist';
+                        const body = `I joined the ManyMarkets waitlist! Discover profitable niches & build digital products: ${window.location.origin}/waitlist`;
+                        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                      }}
+                      aria-label="Share via Email"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold border-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Mail className="w-4 h-4" />
+                      Email
+                    </button>
+
+                    {/* Copy link */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(`${window.location.origin}/waitlist`);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        } catch (e) {
+                          // ignore
+                        }
+                      }}
+                      aria-label="Copy waitlist link"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold border-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Copy className="w-4 h-4" />
+                      {copied ? 'Copied!' : 'Copy link'}
                     </button>
                   </div>
                 </div>
