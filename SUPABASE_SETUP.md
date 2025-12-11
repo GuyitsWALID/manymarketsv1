@@ -7,6 +7,8 @@ After you configure your Paddle vendor and product in the Paddle dashboard, veri
   - `PADDLE_VENDOR_AUTH`
   - `PADDLE_PUBLIC_KEY` (PEM format)
   - `PADDLE_PRO_PRODUCT_ID` and `NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID` (product ID for the Pro plan)
+    - `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` (required for client-side overlay JS)
+    - `NEXT_PUBLIC_PADDLE_ENV` (sandbox | production, default = sandbox)
 3. Register your webhook endpoint (e.g. `https://your-domain.com/api/webhooks/paddle`) in Paddle Dashboard > Webhooks.
 4. In the Paddle dashboard, use `Send test webhook` in Webhooks or perform a test checkout to trigger webhook events. Use the MCP to view the webhook log to confirm your endpoint receives them.
 5. Confirm that the webhook payload includes `passthrough` or `email` and that your application picks it up to update the Supabase `profiles` table (paddle_customer_id and paddle_subscription_id).

@@ -31,6 +31,8 @@ The **UVZ (Unique Value Zone) Platform** is a SaaS solution designed to democrat
     PADDLE_PRO_PRODUCT_ID=your_pro_product_id (optional)
     NEXT_PUBLIC_PADDLE_VENDOR_ID=your_paddle_vendor_id
     NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID=your_pro_product_id (optional)
+    NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=your_paddle_client_token
+    NEXT_PUBLIC_PADDLE_ENV=sandbox # or 'production'
     ```
 
 3.  **Run the development server**:

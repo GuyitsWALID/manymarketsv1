@@ -10,10 +10,16 @@ export default function PaddleAutoCheckout() {
     
     const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
     
+    if (!clientToken) {
+      console.warn('NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not set. Auto checkout will not be initialized. Add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN to .env.local if you use Paddle overlay.');
+      return;
+    }
+    const env = (process.env.NEXT_PUBLIC_PADDLE_ENV || 'sandbox') as 'sandbox' | 'production';
+    
     // Check if Paddle v2 is already loaded
     if ((window as any).Paddle && clientToken) {
       try { 
-        (window as any).Paddle.Environment.set('sandbox'); // if using sandbox
+        (window as any).Paddle.Environment.set(env);
         (window as any).Paddle.Initialize({ token: clientToken }); 
       } catch (e) { /* ignore */ }
       setScriptLoaded(true);
@@ -25,10 +31,10 @@ export default function PaddleAutoCheckout() {
     const s = document.createElement('script');
     s.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
     s.async = true;
-    s.onload = () => {
+      s.onload = () => {
       try { 
         if ((window as any).Paddle && clientToken) {
-          (window as any).Paddle.Environment.set('sandbox'); // if using sandbox
+          (window as any).Paddle.Environment.set(env);
           (window as any).Paddle.Initialize({ token: clientToken }); 
         }
       } catch (e) { /* ignore */ }

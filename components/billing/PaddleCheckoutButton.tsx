@@ -22,12 +22,20 @@ export default function PaddleCheckoutButton({
   useEffect(() => {
     const initPaddle = async () => {
       try {
+        const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+        const env = (process.env.NEXT_PUBLIC_PADDLE_ENV || 'sandbox') as 'sandbox' | 'production';
+
+        if (!token) {
+          console.warn('NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not set. Paddle initialization skipped. Add it to .env.local if you plan to use Paddle overlay.');
+          return;
+        }
+
         const paddleInstance = await initializePaddle({
-          token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
-          environment: (process.env.NEXT_PUBLIC_PADDLE_ENV || 'sandbox') as 'sandbox' | 'production'
+          token,
+          environment: env,
         });
-        
-        setPaddle(paddleInstance);
+
+        setPaddle(paddleInstance ?? null);
       } catch (error) {
         console.error('Failed to initialize Paddle:', error);
       }
@@ -77,6 +85,12 @@ export default function PaddleCheckoutButton({
           transactionId: transactionId
         });
       } else {
+        // Fallback to redirecting to the returned checkout URL if overlay failed to initialize
+        console.warn('Paddle not initialized; falling back to redirect if checkout URL provided by server');
+        if (json?.url) {
+          window.location.assign(json.url);
+          return;
+        }
         console.error('Paddle not initialized');
         alert('Checkout system not ready. Please refresh and try again.');
       }
