@@ -37,6 +37,8 @@ CREATE TABLE public.profiles (
   subscription_status TEXT DEFAULT 'active' CHECK (subscription_status IN ('active', 'canceled', 'past_due', 'trialing')),
   stripe_customer_id TEXT UNIQUE,
   stripe_subscription_id TEXT,
+  paddle_customer_id TEXT,
+  paddle_subscription_id TEXT,
   research_credits INTEGER DEFAULT 10,
   total_sessions INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -87,6 +89,30 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+-- Optional: If you previously had lemon_squeezy_* fields, migrate them to paddle_* columns
+-- (this keeps your billing data and preserves user mapping)
+-- Run this migration only if you used Lemon Squeezy previously.
+-- Also consider backing up your DB before running migrations.
+-- Example migration script:
+--
+-- ALTER TABLE public.profiles
+--   ADD COLUMN IF NOT EXISTS paddle_customer_id TEXT;
+--
+-- ALTER TABLE public.profiles
+--   ADD COLUMN IF NOT EXISTS paddle_subscription_id TEXT;
+--
+-- -- If you have old lemon fields and want to migrate values
+-- UPDATE public.profiles
+-- SET
+--   paddle_customer_id = COALESCE(paddle_customer_id, lemon_squeezy_customer_id),
+--   paddle_subscription_id = COALESCE(paddle_subscription_id, lemon_squeezy_subscription_id)
+-- WHERE lemon_squeezy_customer_id IS NOT NULL OR lemon_squeezy_subscription_id IS NOT NULL;
+--
+-- -- Optional: Drop old lemon fields after verifying migration
+-- ALTER TABLE public.profiles
+--   DROP COLUMN IF EXISTS lemon_squeezy_customer_id,
+--   DROP COLUMN IF EXISTS lemon_squeezy_subscription_id;
 ```
 
 ---

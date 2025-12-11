@@ -9,6 +9,7 @@ The **UVZ (Unique Value Zone) Platform** is a SaaS solution designed to democrat
 - **Database**: Supabase
 - **AI**: Gemini API
 - **Payments**: Stripe
+ - **Payments**: Paddle (primary), Stripe (legacy)
 
 ## Getting Started
 
@@ -22,6 +23,15 @@ The **UVZ (Unique Value Zone) Platform** is a SaaS solution designed to democrat
     ```bash
     cp .env.local.example .env.local
     ```
+    Add the following Paddle environment variables to `.env.local` as needed:
+    ```bash
+    PADDLE_VENDOR_ID=your_paddle_vendor_id
+    PADDLE_VENDOR_AUTH=your_paddle_vendor_auth
+    PADDLE_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'
+    PADDLE_PRO_PRODUCT_ID=your_pro_product_id (optional)
+    NEXT_PUBLIC_PADDLE_VENDOR_ID=your_paddle_vendor_id
+    NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID=your_pro_product_id (optional)
+    ```
 
 3.  **Run the development server**:
     ```bash
@@ -29,6 +39,22 @@ The **UVZ (Unique Value Zone) Platform** is a SaaS solution designed to democrat
     ```
 
 4.  Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+Cleaning build artifacts:
+If you switched billing providers (e.g., from Lemon Squeezy or Stripe to Paddle) you should clear the build cache and rebuild to remove compiled references:
+```powershell
+# PowerShell (Windows)
+Remove-Item -Recurse -Force .next
+npm run build
+```
+To validate the Paddle vendor API key locally, create `.env.local` with the PADDLE env variables and run the test script:
+
+```bash
+npm install node-fetch@3 querystring dotenv # if needed
+node scripts/test-paddle.js
+```
+
+This script will attempt to generate a test pay-link using your vendor credentials and print the pay link (if successful) or any API error from Paddle.
 
 ## Project Structure
 
@@ -51,5 +77,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Paddle Integration & Test Checklist
+If you're migrating from other payment providers or adding Paddle, use this checklist to verify the integration using Paddle's Management Console (MCP):
+
+1. Create a test product and get `product_id` in the Paddle dashboard.
+2. Add the Paddle env variables to `.env.local` (see SUPABASE_SETUP.md).
+3. Wire the `NEXT_PUBLIC_PADDLE_VENDOR_ID` and `NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID` in the client for overlay or link generation.
+4. Use the Paddle dashboard webhooks tester to send sample events to your `/api/webhooks/paddle` endpoint and verify they reach your app.
+5. Confirm the `profiles` table updates: `paddle_customer_id`, `paddle_subscription_id`, and `subscription_tier` values update properly.
+6. If you opted to use the Paddle overlay (Checkout JS), make sure `NEXT_PUBLIC_PADDLE_VENDOR_ID` is set and `https://cdn.paddle.com/paddle/paddle.js` loads on the page.
+
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
 import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
 import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Twitter, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
@@ -204,7 +205,7 @@ export default function Home() {
     }
   ];
 
-  const process = [
+  const workflow = [
     {
       step: "01",
       title: "Discover Your Niche",
@@ -480,7 +481,7 @@ export default function Home() {
               <HandDrawnBox delay={100}>How It Works</HandDrawnBox>
             </h2>
             <div className="grid md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 max-w-6xl mx-auto">
-              {process.map((item, i) => (
+              {workflow.map((item, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 50 }}
@@ -498,7 +499,7 @@ export default function Home() {
                     </h3>
                     <p className="font-medium leading-relaxed">{item.description}</p>
                   </div>
-                  {i < process.length - 1 && (
+                  {i < workflow.length - 1 && (
                     <div className="hidden md:block absolute top-1/2 -right-6 transform -translate-y-1/2 z-10">
                       <ArrowRight className="w-12 h-12 text-uvz-orange" strokeWidth={3} />
                     </div>
@@ -593,14 +594,23 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <Link 
-                    href="/signup" 
-                    className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${
-                      plan.popular ? "bg-uvz-orange text-white" : "bg-white text-black"
-                    }`}
-                  >
-                    {plan.cta}
-                  </Link>
+                  {plan.name === 'FREE' ? (
+                    <Link 
+                      href="/signup" 
+                      className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${
+                        plan.popular ? "bg-uvz-orange text-white" : "bg-white text-black"
+                      }`}
+                    >
+                      {plan.cta}
+                    </Link>
+                  ) : (
+                    <PaddleCheckoutButton
+                      productId={process.env.NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID || 'pro'}
+                      className={plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}
+                    >
+                      {plan.cta}
+                    </PaddleCheckoutButton>
+                  )}
                 </motion.div>
               ))}
             </div>

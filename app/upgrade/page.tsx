@@ -16,6 +16,7 @@ import {
   Loader2,
   Star
 } from 'lucide-react';
+  import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
 
 const PRO_FEATURES = [
   {
@@ -95,7 +96,7 @@ export default function UpgradePage() {
       }
       
       if (data.url) {
-        // Redirect to Lemon Squeezy checkout
+        // Redirect to Paddle checkout
         window.location.href = data.url;
       } else {
         // No URL returned - show error
@@ -213,8 +214,17 @@ export default function UpgradePage() {
                   </>
                 )}
               </button>
+                <PaddleCheckoutButton
+                  productId={process.env.NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID || 'pro'}
+                  className="w-full py-4 bg-uvz-orange text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <>
+                    <Crown className="w-5 h-5" />
+                    Upgrade to Pro Now
+                  </>
+                </PaddleCheckoutButton>
               <p className="text-center text-sm text-gray-500 mt-3">
-                Secure checkout powered by Stripe
+                Secure checkout powered by Paddle
               </p>
             </div>
           </div>

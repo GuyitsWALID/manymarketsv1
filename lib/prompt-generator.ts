@@ -53,8 +53,8 @@ export const SAAS_TEMPLATES: Record<SaaSType, Partial<ProductConfig>> = {
   },
   marketplace: {
     userRoles: ['Buyer', 'Seller', 'Admin', 'Support'],
-    techStack: ['Next.js', 'React', 'Tailwind CSS', 'PostgreSQL', 'Stripe'],
-    integrations: ['Stripe', 'PayPal', 'Email', 'Analytics'],
+    techStack: ['Next.js', 'React', 'Tailwind CSS', 'PostgreSQL', 'Paddle'],
+    integrations: ['Paddle', 'PayPal', 'Email', 'Analytics'],
     authMethod: 'all',
     pricingModel: 'usage-based',
   },

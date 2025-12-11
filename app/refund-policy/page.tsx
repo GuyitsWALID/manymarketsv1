@@ -64,7 +64,7 @@ export default function RefundPolicyPage() {
 
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Third-Party Marketplaces</h2>
-          <p className="text-gray-700">For purchases made through third-party marketplaces or integrators, refunds will be handled by the third party in accordance with their policies. Please contact the third party for the fastest resolution. If we control the refund process for the transaction (e.g., a charge through our Lemon Squeezy storefront), we will follow the terms above.</p>
+          <p className="text-gray-700">For purchases made through third-party marketplaces or integrators, refunds will be handled by the third party in accordance with their policies. Please contact the third party for the fastest resolution. If we control the refund process for the transaction (e.g., a charge through our Paddle storefront), we will follow the terms above.</p>
         </section>
 
         <section className="mb-8">

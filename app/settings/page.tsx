@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown, Loader2, Camera } from 'lucide-react';
+import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -121,26 +122,29 @@ function SettingsContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
-        return;
-      }
-      setUser(user);
-      
-      // Load user metadata
-      setDisplayName(user.user_metadata?.display_name || user.user_metadata?.full_name || '');
-      setAvatarUrl(user.user_metadata?.avatar_url || '');
-      
-      // Load sessions
-      try {
-        const response = await fetch('/api/sessions');
-        if (response.ok) {
-          const { sessions: userSessions } = await response.json();
-          setSessions(userSessions || []);
-        }
-      } catch (e) {
-        console.error('Failed to load sessions:', e);
-      }
-      
-      // Load billing state from Lemon Squeezy
+                            {plan.id === 'enterprise' ? (
+                              <button
+                                onClick={() => handleUpgrade(plan.id)}
+                                className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm transition-all flex items-center justify-center gap-2 ${
+                                  plan.popular
+                                    ? 'bg-uvz-orange text-white hover:-translate-y-0.5 shadow-brutal'
+                                    : 'bg-white text-black hover:bg-gray-50 shadow-brutal hover:-translate-y-0.5'
+                                }`}
+                              >
+                                {plan.cta}
+                              </button>
+                            ) : isCurrentPlan ? (
+                              <button
+                                disabled
+                                className="w-full py-2 px-3 font-bold border-2 border-black rounded text-sm bg-gray-200 text-gray-500 cursor-not-allowed"
+                              >
+                                Current
+                              </button>
+                            ) : (
+                              <PaddleCheckoutButton productId={plan.id} className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm ${plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}`}>
+                                {plan.cta}
+                              </PaddleCheckoutButton>
+                            )}
       try {
         const billingResponse = await fetch('/api/billing');
         if (billingResponse.ok) {
@@ -155,7 +159,7 @@ function SettingsContent() {
     }
     getUser();
     
-    // Check for success/cancel from Stripe checkout
+    // Check for success/cancel from Paddle checkout
     const success = searchParams.get('success');
     const canceled = searchParams.get('canceled');
     if (success) {

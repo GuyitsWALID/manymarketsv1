@@ -1,3 +1,19 @@
+## Paddle Integration & MCP (Management Console) Verification
+After you configure your Paddle vendor and product in the Paddle dashboard, verify following steps:
+
+1. Create a sandbox (or test) product in the Paddle dashboard and note its product ID.
+2. Set the following environment variables in your `.env.local`:
+  - `PADDLE_VENDOR_ID` and `NEXT_PUBLIC_PADDLE_VENDOR_ID`
+  - `PADDLE_VENDOR_AUTH`
+  - `PADDLE_PUBLIC_KEY` (PEM format)
+  - `PADDLE_PRO_PRODUCT_ID` and `NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID` (product ID for the Pro plan)
+3. Register your webhook endpoint (e.g. `https://your-domain.com/api/webhooks/paddle`) in Paddle Dashboard > Webhooks.
+4. In the Paddle dashboard, use `Send test webhook` in Webhooks or perform a test checkout to trigger webhook events. Use the MCP to view the webhook log to confirm your endpoint receives them.
+5. Confirm that the webhook payload includes `passthrough` or `email` and that your application picks it up to update the Supabase `profiles` table (paddle_customer_id and paddle_subscription_id).
+6. If signature verification fails in dev, confirm `PADDLE_PUBLIC_KEY` is properly set (PEM) and that webhook event payloads are parsed using the canonical serialization required by Paddle. Consider using a small verification script that re-constructs the message and verifies RSA-SHA1 with the public key.
+
+For more details, see Paddle docs: https://developer.paddle.com/reference/paddle-webhooks
+
 # Supabase Setup for UVZ Platform
 
 ## Prerequisites
@@ -21,6 +37,19 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 GEMINI_API_KEY=your_gemini_api_key
 GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
+```
+
+Add Paddle environment variables (if using Paddle for payments):
+
+```bash
+PADDLE_VENDOR_ID=your_paddle_vendor_id
+PADDLE_VENDOR_AUTH=your_paddle_vendor_auth
+PADDLE_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'
+PADDLE_PRO_PRODUCT_ID=your_pro_product_id
+
+# Client-side env vars (prefixed with NEXT_PUBLIC_)
+NEXT_PUBLIC_PADDLE_VENDOR_ID=your_paddle_vendor_id
+NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID=your_pro_product_id
 ```
 
 ### 3. Enable OAuth Providers in Supabase

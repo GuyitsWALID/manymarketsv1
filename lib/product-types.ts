@@ -612,7 +612,7 @@ Generate the complete course curriculum and content outline.`,
 ## TECHNICAL REQUIREMENTS
 - Modern, responsive web application
 - User authentication (email, OAuth)
-- Subscription billing (Stripe)
+  - Subscription billing (Paddle)
 - Dashboard with key metrics
 - Admin panel
 - API for integrations
@@ -622,7 +622,7 @@ Generate the complete course curriculum and content outline.`,
 - Styling: Tailwind CSS
 - Database: Supabase (PostgreSQL)
 - Auth: Supabase Auth
-- Payments: Stripe
+- Payments: Paddle
 - Hosting: Vercel
 
 ## UI/UX REQUIREMENTS

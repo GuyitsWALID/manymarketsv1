@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createCheckout, getCustomerSubscriptions, cancelSubscription, PRODUCTS, isActiveSubscription } from '@/lib/lemonsqueezy';
+import { createCheckout, getCustomerSubscriptions, cancelSubscription, PRODUCTS, isActiveSubscription } from '@/lib/paddle';
 import { createClient } from '@/lib/supabase/server';
 
 // GET - Get customer billing state
@@ -15,7 +15,7 @@ export async function GET() {
     // First check the database for subscription status
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_tier, lemon_squeezy_customer_id, lemon_squeezy_subscription_id')
+      .select('subscription_tier, paddle_customer_id, paddle_subscription_id')
       .eq('id', user.id)
       .single();
 
@@ -29,8 +29,8 @@ export async function GET() {
       endsAt: string | null;
     }> = [];
 
-    // If user has a Lemon Squeezy subscription ID, verify it's still active
-    if (profile?.lemon_squeezy_subscription_id) {
+    // If user has a Paddle subscription ID, verify it's still active
+    if (profile?.paddle_subscription_id) {
       const result = await getCustomerSubscriptions(user.email!);
       
       if ('subscriptions' in result) {
@@ -88,10 +88,10 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
         }
 
-        console.log('Starting Lemon Squeezy checkout for user:', user.id, 'variant:', variantId);
+        console.log('Starting Paddle checkout for user:', user.id, 'product:', variantId);
 
         const result = await createCheckout({
-          variantId,
+          productId: variantId,
           userId: user.id,
           userEmail: user.email!,
           userName: user.user_metadata?.full_name || user.email?.split('@')[0],
@@ -109,15 +109,15 @@ export async function POST(request: NextRequest) {
         // Get user's subscription from database
         const { data: profile } = await supabase
           .from('profiles')
-          .select('lemon_squeezy_subscription_id')
+          .select('paddle_subscription_id')
           .eq('id', user.id)
           .single();
 
-        if (!profile?.lemon_squeezy_subscription_id) {
+        if (!profile?.paddle_subscription_id) {
           return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
         }
 
-        const result = await cancelSubscription(profile.lemon_squeezy_subscription_id);
+        const result = await cancelSubscription(profile.paddle_subscription_id);
 
         if ('error' in result) {
           return NextResponse.json({ error: result.error }, { status: 500 });
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
           .from('profiles')
           .update({ 
             subscription_tier: 'free',
-            lemon_squeezy_subscription_id: null 
+            paddle_subscription_id: null 
           })
           .eq('id', user.id);
 
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'create_customer': {
-        // No-op for Lemon Squeezy - customers are created at checkout
+        // No-op for Paddle - customers are created at checkout
         return NextResponse.json({ success: true });
       }
 

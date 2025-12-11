@@ -11,8 +11,8 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // User is authenticated - Lemon Squeezy customer will be created at checkout
-      // No need to pre-create customers like with Autumn
+      // User is authenticated - Paddle customer will be created at checkout
+      // No need to pre-create customers for Paddle - we will attach user id via passthrough
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
