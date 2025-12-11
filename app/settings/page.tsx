@@ -122,29 +122,7 @@ function SettingsContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
-                            {plan.id === 'enterprise' ? (
-                              <button
-                                onClick={() => handleUpgrade(plan.id)}
-                                className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm transition-all flex items-center justify-center gap-2 ${
-                                  plan.popular
-                                    ? 'bg-uvz-orange text-white hover:-translate-y-0.5 shadow-brutal'
-                                    : 'bg-white text-black hover:bg-gray-50 shadow-brutal hover:-translate-y-0.5'
-                                }`}
-                              >
-                                {plan.cta}
-                              </button>
-                            ) : isCurrentPlan ? (
-                              <button
-                                disabled
-                                className="w-full py-2 px-3 font-bold border-2 border-black rounded text-sm bg-gray-200 text-gray-500 cursor-not-allowed"
-                              >
-                                Current
-                              </button>
-                            ) : (
-                              <PaddleCheckoutButton productId={plan.id} className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm ${plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}`}>
-                                {plan.cta}
-                              </PaddleCheckoutButton>
-                            )}
+      }
       try {
         const billingResponse = await fetch('/api/billing');
         if (billingResponse.ok) {

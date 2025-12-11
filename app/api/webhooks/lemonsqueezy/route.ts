@@ -3,17 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Deprecated: Lemon Squeezy webhook removed in favor of Paddle.
 // This route now responds with 410 Gone to indicate the endpoint is retired.
 
-// Create a Supabase admin client for webhook handling
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (!supabaseServiceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for webhook handling');
-  }
-  
-  return createClient(supabaseUrl, supabaseServiceKey);
-}
+// This webhook has been retired; no supabase client is used here.
 
 export async function POST(request: NextRequest) {
   // Return 410 Gone for any old Lemon Squeezy webhooks.
