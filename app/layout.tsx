@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import PaddleAutoCheckout from '@/components/billing/PaddleAutoCheckout';
+import Script from 'next/script';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -23,6 +25,9 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} font-sans antialiased bg-white text-black`}
       >
+        {/* Include Paddle.js via Next.js Script for reliable loading per Paddle docs */}
+        <Script src="https://cdn.paddle.com/paddle/paddle.js" strategy="afterInteractive" />
+        <PaddleAutoCheckout />
         {children}
         <Analytics />
       </body>

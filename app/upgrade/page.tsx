@@ -79,38 +79,7 @@ export default function UpgradePage() {
     }
   };
 
-  const handleUpgrade = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/billing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'checkout', productId: 'pro' }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Checkout error response:', data);
-        throw new Error(data.error || data.details || 'Failed to create checkout');
-      }
-      
-      if (data.url) {
-        // Redirect to Paddle checkout
-        window.location.href = data.url;
-      } else {
-        // No URL returned - show error
-        console.error('No checkout URL returned:', data);
-        alert(`Checkout error: ${data.error || 'No checkout URL returned'}`);
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(`Failed to start upgrade: ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // NOTE: We keep the transactional checkout button via `PaddleCheckoutButton`.
 
   if (checkingPlan) {
     return (
@@ -197,24 +166,7 @@ export default function UpgradePage() {
 
             {/* CTA Button */}
             <div className="p-6 bg-gray-50">
-              <button
-                onClick={handleUpgrade}
-                disabled={isLoading}
-                className="w-full py-4 bg-uvz-orange text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Crown className="w-5 h-5" />
-                    Upgrade to Pro Now
-                  </>
-                )}
-              </button>
-                <PaddleCheckoutButton
+              <PaddleCheckoutButton
                   productId={process.env.NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID || 'pro'}
                   className="w-full py-4 bg-uvz-orange text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

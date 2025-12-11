@@ -69,7 +69,7 @@ export async function createCheckout(params: {
 }
 
 // Create a billing transaction (Paddle Billing API). Returns checkout.url in object.
-export async function createTransaction(params: { priceId?: string; productId?: string; quantity?: number; userEmail?: string; returnUrl?: string; include?: string[]; }): Promise<PaddleResult<{ url: string }>> {
+export async function createTransaction(params: { priceId?: string; productId?: string; quantity?: number; userEmail?: string; returnUrl?: string; include?: string[]; }): Promise<PaddleResult<{ url: string; status?: string }>> {
   if (!PADDLE_VENDOR_AUTH) return { error: 'Paddle credentials not configured' };
   if (!isBillingApiKey()) return { error: 'createTransaction is supported only for Paddle Billing keys' };
   try {
@@ -93,8 +93,10 @@ export async function createTransaction(params: { priceId?: string; productId?: 
     const json = await res.json();
     if (!res.ok) return { error: json?.error?.message || json?.detail || 'Failed to create transaction', code: json?.error?.code } as any;
     const url = json?.data?.checkout?.url || json?.data?.checkout_url || '';
+    const status = json?.data?.status || json?.data?.status_string || undefined;
+    const transactionId = json?.data?.id || json?.data?.transaction_id || undefined;
     if (!url) return { error: 'Transaction did not return a checkout URL' };
-    return { url };
+    return { url, status, id: transactionId } as any;
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
   }

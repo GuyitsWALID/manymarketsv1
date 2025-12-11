@@ -106,7 +106,22 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
-        return NextResponse.json({ url: result.url });
+        // Log returned checkout url host - we no longer reject non-paddle hosts because checkout often returns an app URL with `_ptxn` for the default checkout page.
+        try {
+          const parsed = new URL(result.url);
+          const host = parsed.hostname || '';
+          if (!host.includes('paddle.com')) {
+            console.warn('Checkout URL returned is not paddle.com; it may be the app default checkout page (with _ptxn param). URL:', result.url);
+          }
+          // If transaction status is present, ensure it's draft or ready to proceed
+          if ('status' in result && result.status && !['draft', 'ready', 'created'].includes(String(result.status).toLowerCase())) {
+            console.error('Transaction status is not draft/ready:', result.status);
+            return NextResponse.json({ error: `Transaction status ${result.status} is not valid for checkout` }, { status: 500 });
+          }
+        } catch (err) {
+          console.warn('Failed to parse checkout url', err, result.url);
+        }
+        return NextResponse.json({ url: result.url, status: 'status' in result ? (result as any).status : undefined, transactionId: 'id' in result ? (result as any).id : undefined });
       }
 
       case 'cancel': {

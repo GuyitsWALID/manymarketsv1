@@ -64,16 +64,45 @@ export default function PaddleCheckoutButton({ productId, children = 'Upgrade', 
         return;
       }
       const url = json.url;
-      // If paddle script loaded, try to open overlay, otherwise redirect
+      const status = json.status;
+      const transactionId = json.transactionId || json.id || null;
+      // Validate that url is a Paddle-hosted checkout; otherwise show helpful message
+      try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.includes('paddle.com')) {
+          alert('Checkout URL returned is not hosted by Paddle. Please verify your Paddle Checkout settings in the Dashboard.');
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error('Invalid checkout URL returned from server', url, e);
+        alert('Invalid checkout URL returned from server.');
+        setLoading(false);
+        return;
+      }
+      if (status && !['draft', 'ready', 'created'].includes(String(status).toLowerCase())) {
+        // the transaction is not ready for checkout yet
+        alert(`Transaction status: ${status}. Please verify the transaction in Paddle Dashboard.`);
+        setLoading(false);
+        return;
+      }
+      // If paddle script loaded, prefer to open overlay using transactionId when available
       if (scriptLoaded && (window as any).Paddle && vendorId) {
         try {
-          // If we got a direct link, we can just redirect to it for now.
-          // Paddle Checkout overlay also accepts a product ID or custom link.
-          if (url) {
-            // Use direct redirect to host link to ensure correct passthrough
+          // If transactionId is provided and the URL points to our site, open overlay using transactionId.
+          if (transactionId) {
+            (window as any).Paddle.Checkout.open({ transactionId });
+            return;
+          }
+          // If we got a direct Paddle link, redirect to it.
+          if (url && url.includes('paddle.com')) {
             window.location.href = url;
-          } else {
+            return;
+          }
+          // Otherwise, fallback to opening overlay using product ID
+          if (typeof productId === 'string' && !Number.isNaN(Number(productId))) {
             (window as any).Paddle.Checkout.open({ product: Number(productId) });
+            return;
           }
           return;
         } catch (err) {
