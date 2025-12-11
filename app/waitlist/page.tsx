@@ -659,6 +659,15 @@ export default function WaitlistPage() {
             <Link href="/login" className="text-gray-500 hover:text-black transition-colors">
               Login
             </Link>
+            <Link href="/privacy" className="text-gray-500 hover:text-black transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="text-gray-500 hover:text-black transition-colors">
+              Terms
+            </Link>
+            <Link href="/refund-policy" className="text-gray-500 hover:text-black transition-colors">
+              Refund Policy
+            </Link>
           </div>
         </div>
       </footer>

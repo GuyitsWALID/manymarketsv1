@@ -675,6 +675,7 @@ export default function Home() {
                 <li><Link href="/privacy" className="hover:text-uvz-orange transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-uvz-orange transition-colors">Terms of Service</Link></li>
                 <li><Link href="/cookies" className="hover:text-uvz-orange transition-colors">Cookie Policy</Link></li>
+                <li><Link href="/refund-policy" className="hover:text-uvz-orange transition-colors">Refund Policy</Link></li>
               </ul>
             </div>
           </div>
