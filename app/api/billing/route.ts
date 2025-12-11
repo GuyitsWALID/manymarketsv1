@@ -99,6 +99,10 @@ export async function POST(request: NextRequest) {
 
         if ('error' in result) {
           console.error('Checkout error:', result.error);
+          // If the billing API indicates there's no default checkout URL configured, surface a helpful error
+          if (String(result.error).includes('transaction_default_checkout_url_not_set')) {
+            return NextResponse.json({ error: 'Paddle transaction requires a default checkout page to be set on your Paddle dashboard (Checkout → Checkout settings).' }, { status: 500 });
+          }
           return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
