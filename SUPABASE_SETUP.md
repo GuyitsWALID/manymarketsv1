@@ -1,7 +1,7 @@
-## Paddle Integration & MCP (Management Console) Verification
-After you configure your Paddle vendor and product in the Paddle dashboard, verify following steps:
+## Payment Provider Integration & Webhook Verification
+After you configure your payment provider and product in its dashboard, verify the following steps:
 
-1. Create a sandbox (or test) product in the Paddle dashboard and note its product ID.
+1. Create a sandbox (or test) product in the payment provider dashboard and note its product ID.
 2. Set the following environment variables in your `.env.local`:
   - `PADDLE_VENDOR_ID` and `NEXT_PUBLIC_PADDLE_VENDOR_ID`
   - `PADDLE_VENDOR_AUTH`
@@ -9,12 +9,12 @@ After you configure your Paddle vendor and product in the Paddle dashboard, veri
   - `PADDLE_PRO_PRODUCT_ID` and `NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID` (product ID for the Pro plan)
     - `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` (required for client-side overlay JS)
     - `NEXT_PUBLIC_PADDLE_ENV` (sandbox | production, default = sandbox)
-3. Register your webhook endpoint (e.g. `https://your-domain.com/api/webhooks/paddle`) in Paddle Dashboard > Webhooks.
-4. In the Paddle dashboard, use `Send test webhook` in Webhooks or perform a test checkout to trigger webhook events. Use the MCP to view the webhook log to confirm your endpoint receives them.
+3. Register your webhook endpoint (e.g. `https://your-domain.com/api/webhooks/provider`) in your payment provider's dashboard > Webhooks.
+4. In the provider dashboard, use the “Send test webhook” feature or perform a test checkout to trigger webhook events. Use the provider's logs or management console to confirm your endpoint receives them.
 5. Confirm that the webhook payload includes `passthrough` or `email` and that your application picks it up to update the Supabase `profiles` table (paddle_customer_id and paddle_subscription_id).
-6. If signature verification fails in dev, confirm `PADDLE_PUBLIC_KEY` is properly set (PEM) and that webhook event payloads are parsed using the canonical serialization required by Paddle. Consider using a small verification script that re-constructs the message and verifies RSA-SHA1 with the public key.
+6. If signature verification fails in dev, confirm the `PADDLE_PUBLIC_KEY` is properly set (PEM) and that webhook event payloads are parsed using the canonical serialization required by your provider. Consider using a small verification script that reconstructs the message and verifies the signature.
 
-For more details, see Paddle docs: https://developer.paddle.com/reference/paddle-webhooks
+For developer details, consult your payment provider's webhook documentation and developer guides.
 
 # Supabase Setup for UVZ Platform
 

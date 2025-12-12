@@ -22,10 +22,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Optional verification meta tag for payment provider verification */}
+        {process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_VERIFY ? (
+          <meta name="payment-provider-verify" content={process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_VERIFY} />
+        ) : null}
+      </head>
       <body
         className={`${spaceGrotesk.variable} font-sans antialiased bg-white text-black`}
       >
-        {/* Include Paddle.js via Next.js Script for reliable loading per Paddle docs */}
+        {/* Include payment provider overlay JS if used by client (e.g. Paddle) via Next.js Script for reliable loading */}
         <Script src="https://cdn.paddle.com/paddle/paddle.js" strategy="afterInteractive" />
         <PaddleAutoCheckout />
         {children}

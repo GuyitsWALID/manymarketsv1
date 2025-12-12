@@ -79,22 +79,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-## Paddle Integration & Test Checklist
-If you're migrating from other payment providers or adding Paddle, use this checklist to verify the integration using Paddle's Management Console (MCP):
+## Payment Provider Integration & Test Checklist
+If you're adding or migrating to a new payment provider, use this checklist to verify the integration using your provider’s dashboard or management console:
 
-1. Create a test product and get `product_id` in the Paddle dashboard.
-2. Add the Paddle env variables to `.env.local` (see SUPABASE_SETUP.md).
-3. Wire the `NEXT_PUBLIC_PADDLE_VENDOR_ID` and `NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID` in the client for overlay or link generation.
-4. Use the Paddle dashboard webhooks tester to send sample events to your `/api/webhooks/paddle` endpoint and verify they reach your app.
-5. Confirm the `profiles` table updates: `paddle_customer_id`, `paddle_subscription_id`, and `subscription_tier` values update properly.
-6. If you opted to use the Paddle overlay (Checkout JS), make sure `NEXT_PUBLIC_PADDLE_VENDOR_ID` is set and `https://cdn.paddle.com/paddle/paddle.js` loads on the page.
+1. Create a test product and get its `product_id` in the payment provider dashboard.
+2. Add environment variables required by the provider to `.env.local` (see SUPABASE_SETUP.md).
+3. Wire any client-side env keys (e.g., `NEXT_PUBLIC_PARKING_CLIENT_TOKEN` or similar) required for overlay or link generation.
+4. Use the provider dashboard’s webhooks tester to send sample events to your webhook endpoint and verify they reach your app.
+5. Confirm the `profiles` table updates with customer/subscription identifiers and that `subscription_tier` values update properly.
+6. If you opt to use a checkout overlay, make sure the client-side token and vendor id (if required) are set and the provider's overlay JS loads on the page.
 
-### Paddle Domain Verification
-If Paddle requests domain verification, they may ask you to add an HTML meta tag or upload a small verification file. To add a meta tag, insert it in the `head` of your site (e.g. in `app/layout.tsx`) while in development or on your production domain. Example:
+### Payment Provider Domain Verification
+Some payment providers may request domain verification using an HTML meta tag, a verification file, or a DNS record. To add a meta tag, insert it in the `head` of your site (e.g. in `app/layout.tsx`) while in development or on your production domain. Example:
 ```html
-<meta name="paddle-verify" content="YOUR_PADDLE_VERIFICATION_TOKEN" />
+<meta name="payment-provider-verify" content="YOUR_VERIFICATION_TOKEN" />
 ```
-After adding the meta tag or verification file, follow Paddle's instructions to complete the domain verification process: https://www.paddle.com/help/start/account-verification/what-is-domain-verification
-
+After adding the meta tag or verification file, follow your provider's instructions to complete the domain verification process (consult your payment provider’s documentation).
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

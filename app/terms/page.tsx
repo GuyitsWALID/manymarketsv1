@@ -72,10 +72,10 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-2">Paddle & Payment Compliance</h2>
-          <p className="text-gray-700">ManyMarkets uses Paddle for payment processing and subscription management. All transactions are processed by Paddle and are subject to Paddle’s Terms and Policies. You agree to comply with Paddle’s policies regarding permitted products and content. Paddle’s list of prohibited items includes, but is not limited to, the following categories: illegal or illicit goods and services; drugs, controlled substances and related paraphernalia; adult material or pornography (where restricted by law); regulated goods including firearms and ammunition; high-risk financial services or unauthorized decoupling tools; and services that facilitate wrongdoing or promote hate or discrimination. For more details, see Paddle’s guidance on prohibited items: <a href="https://www.paddle.com/help/start/intro-to-paddle/what-am-i-not-allowed-to-sell-on-paddle" className="text-uvz-orange font-bold">What You Are Not Allowed to Sell on Paddle</a>.</p>
-          <p className="text-gray-700 mt-2">You must ensure that any product or service you list or sell through ManyMarkets complies with Paddle’s policies and any applicable laws. Failure to comply may result in suspension of payments, removal of the product, or account termination by Paddle or ManyMarkets. If you are uncertain whether a product or service is permitted, consult Paddle’s documentation or contact us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a>.</p>
-          <p className="text-gray-700">You must not use the Service to promote or sell content or services that would violate Paddle’s policies or otherwise put ManyMarkets at risk. If Paddle or ManyMarkets determine that content violates these Terms or Paddle’s policy, we may suspend or restrict access and take additional actions.</p>
+          <h2 className="text-2xl font-bold mb-2">Payment Processor Policies</h2>
+          <p className="text-gray-700">ManyMarkets uses third-party payment processors to process payments and manage subscriptions. Transactions are subject to the policies of those processors. Merchant listings and sales must comply with applicable laws and the processor’s acceptable use and content policies; typical prohibited categories include illegal goods and services, drugs, sexually explicit materials where restricted, regulated goods (e.g., firearms), and services that facilitate wrongdoing or discrimination. Failure to comply may lead to payment restrictions or account termination by the processor or ManyMarkets.</p>
+          <p className="text-gray-700 mt-2">You must ensure that any product or service you list or sell through ManyMarkets complies with the policies of the payment processor used to process transactions and any applicable laws. Failure to comply may result in suspension of payments, removal of the product, or account termination by the processor or ManyMarkets. If you are uncertain whether a product or service is permitted, contact us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a>.</p>
+          <p className="text-gray-700">You must not use the Service to promote or sell content or services that violate the policies of the payment processor or applicable laws, or would otherwise put ManyMarkets at risk. If a payment provider or ManyMarkets determine content violates these Terms or a processor’s policy, we may suspend or restrict access and take additional actions.</p>
         </section>
 
         <section className="mb-8">
@@ -176,13 +176,13 @@ export default function TermsPage() {
           <h3 className="text-lg font-semibold">7.1 Subscription Fees</h3>
           <p className="text-gray-700">Paid plans require payment of applicable subscription fees. Pricing, tiers, and billing intervals are displayed at the time of purchase and may be updated periodically.</p>
           <h3 className="text-lg font-semibold mt-2">7.2 Payment Processing</h3>
-          <p className="text-gray-700">Payments are securely processed by our third-party payment provider (e.g., Paddle or other approved processors). By purchasing a subscription, you agree to be bound by the payment processor’s terms, which may include separate refund, tax, and invoicing policies.</p>
+          <p className="text-gray-700">Payments are securely processed by third-party payment processors we integrate with. By purchasing a subscription, you agree to be bound by the payment processor’s terms, which may include separate refund, tax, and invoicing policies.</p>
           <h3 className="text-lg font-semibold mt-2">7.3 Taxes</h3>
           <p className="text-gray-700">Depending on your location, taxes such as VAT, GST, or sales taxes may apply. These are calculated and applied by the payment processor.</p>
           <h3 className="text-lg font-semibold mt-2">7.4 Automatic Renewal</h3>
           <p className="text-gray-700">Unless otherwise stated, subscriptions automatically renew at the end of each billing cycle. You may cancel automatic renewal at any time within your account.</p>
           <h3 className="text-lg font-semibold mt-2">7.5 Refunds</h3>
-          <p className="text-gray-700">Refund requests are handled in accordance with our Refund Policy and the policies of our payment processor (e.g., Paddle). If you request a refund, we may coordinate with Paddle to resolve the payment and return funds when applicable. Unless otherwise required by law, the processor’s refund policy and the terms described in our Refund Policy govern eligibility for refunds.</p>
+          <p className="text-gray-700">Refund requests are handled in accordance with our Refund Policy and the policies of the payment processor that processed the transaction. If you request a refund, we may coordinate with the processor to resolve the payment and return funds when applicable. Unless otherwise required by law, the processor’s refund policy and the terms described in our Refund Policy govern eligibility for refunds.</p>
         </section>
 
         <section className="mb-6">
@@ -232,8 +232,8 @@ export default function TermsPage() {
 
         <section className="mb-6">
           <h2 className="text-xl font-bold mb-1">16. Contact Information</h2>
-          <p className="text-gray-700">For questions or concerns regarding these Terms, or for Paddle verification assistance, contact: <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a></p>
-          <p className="text-gray-700 mt-2">Paddle Terms and policies: <a href="https://www.paddle.com/legal/terms" className="text-uvz-orange font-bold">https://www.paddle.com/legal/terms</a></p>
+          <p className="text-gray-700">For questions or concerns regarding these Terms, or for payment verification assistance, contact: <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a></p>
+          <p className="text-gray-700 mt-2">Payment processor terms and policies: consult your payment provider’s documentation for details.</p>
         </section>
 
         <p className="text-sm text-gray-600">Note: These Terms are provided for informational purposes and may require review or customization by qualified legal counsel to ensure compliance with applicable laws and regulations.</p>

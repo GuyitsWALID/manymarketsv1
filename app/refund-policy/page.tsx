@@ -46,7 +46,7 @@ export default function RefundPolicyPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Eligibility for Refunds</h2>
           <p className="text-gray-700">We evaluate refund requests on a case-by-case basis. Examples where refunds may be granted include: (a) an accidental double charge, (b) a billing error on our side, (c) a technical issue that prevented access for a prolonged period, or (d) other good-faith circumstances. We do not generally refund changes of mind or partial feature usage; please contact support if you believe you have grounds for refund.</p>
-          <p className="text-gray-700 mt-2">If your payment was processed by Paddle, you can also request a refund through Paddle’s support channels. If the purchase was made through a third-party marketplace, you may need to request a refund from that third party instead. If you need help, contact us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a>.</p>
+          <p className="text-gray-700 mt-2">If your payment was processed by a third-party payment processor, you can also request a refund through the processor’s support channels. If the purchase was made through a third-party marketplace, you may need to request a refund from that third party instead. If you need help, contact us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a>.</p>
         </section>
 
         <section className="mb-8">
@@ -60,24 +60,24 @@ export default function RefundPolicyPage() {
 
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Processing Refunds</h2>
-          <p className="text-gray-700">If we approve a refund, we will typically issue it using the original payment method through the payment processor that handled the transaction (e.g., Paddle). Refund processing may take several business days depending on the payment processor and your bank’s policies. In some cases, we may offer credit to your ManyMarkets account instead of refunding to the original payment method, especially for promotional or marketing-credited purchases.</p>
-          <p className="text-gray-700 mt-2">For purchases completed via Paddle, please note that Paddle’s policies and processing times may apply. You can read Paddle’s refund policies and contact their support directly through: <a href="https://www.paddle.com/legal/terms" className="text-uvz-orange font-bold">Paddle Terms</a>.</p>
+          <p className="text-gray-700">If we approve a refund, we will typically issue it using the original payment method through the payment processor that handled the transaction (e.g., a payment processor). Refund processing may take several business days depending on the payment processor and your bank’s policies. In some cases, we may offer credit to your ManyMarkets account instead of refunding to the original payment method, especially for promotional or marketing-credited purchases.</p>
+          <p className="text-gray-700 mt-2">For purchases completed via a third-party payment processor, please note that the processor’s policies and processing times may apply. Consult the processor’s documentation for details on refunds and support channels.</p>
         </section>
 
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Third-Party Marketplaces</h2>
-          <p className="text-gray-700">For purchases made through third-party marketplaces or integrators, refunds will be handled by the third party in accordance with their policies. Please contact the third party for the fastest resolution. If we control the refund process for the transaction (e.g., a charge through our Paddle storefront), we will follow the terms above.</p>
+          <p className="text-gray-700">For purchases made through third-party marketplaces or integrators, refunds will be handled by the third party in accordance with their policies. Please contact the third party for the fastest resolution. If we control the refund process for the transaction (e.g., a charge through our storefront), we will follow the terms above.</p>
         </section>
 
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Chargebacks and Fraud</h2>
-          <p className="text-gray-700">If you open a chargeback with your card issuer, your account may be locked while the claim is investigated. If a chargeback is resolved in your favor, we will update your account accordingly. If Paddle is handling the transaction, Paddle’s chargeback and fraud policies may also apply. We reserve the right to request additional documentation and to take action, including terminating accounts, if fraud is suspected.</p>
+          <p className="text-gray-700">If you open a chargeback with your card issuer, your account may be locked while the claim is investigated. If a chargeback is resolved in your favor, we will update your account accordingly. If a payment processor is handling the transaction, the processor’s chargeback and fraud policies may also apply. We reserve the right to request additional documentation and to take action, including terminating accounts, if fraud is suspected.</p>
         </section>
 
         <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-2">Paddle Domain Verification & Storefront Requirements</h2>
-          <p className="text-gray-700">Paddle requires merchants to verify their domain and provide clear refund and support policies. Ensure your website includes a visible support email, refund policy, and contact page. For detailed domain verification steps, see: <a href="https://www.paddle.com/help/start/account-verification/what-is-domain-verification" className="text-uvz-orange font-bold">Paddle Domain Verification</a>.</p>
-          <p className="text-gray-700">If Paddle’s verification process has requested additional data or page visibility changes (e.g., content about refunds or product descriptions), update those as required and re-submit your storefront verification request. Contact Paddle support or notify us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a> for assistance.</p>
+          <h2 className="text-2xl font-bold mb-2">Domain Verification & Storefront Requirements</h2>
+          <p className="text-gray-700">Payment providers or marketplaces may require merchants to verify their domain and provide clear refund and support policies. Ensure your website includes a visible support email, refund policy, and contact page.</p>
+          <p className="text-gray-700">If a payment provider’s verification process has requested additional data or page visibility changes (e.g., content about refunds or product descriptions), update those as required and re-submit your storefront verification request. Contact the provider's support or notify us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a> for assistance.</p>
         </section>
 
         <section className="mb-8">
