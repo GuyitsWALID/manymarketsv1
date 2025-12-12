@@ -26,6 +26,7 @@ export default function PrivacyPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Overview</h2>
           <p className="text-gray-700">This Privacy Policy explains how ManyMarkets collects, uses, discloses, and protects personal information. By using the Service, you consent to the practices described below.</p>
+          <p className="text-gray-700 mt-3">For details on refunds and how payments are handled, please view our <a className="text-uvz-orange font-bold" href="/refund-policy">Refund Policy</a> and <a className="text-uvz-orange font-bold" href="/terms">Terms of Service</a>.</p>
         </section>
 
         <section className="mb-8">
@@ -61,6 +62,12 @@ export default function PrivacyPage() {
         </section>
 
         <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Payment Processors</h2>
+          <p className="text-gray-700">We use third-party payment processors such as Paddle to process payments, manage subscriptions, and handle billing. When you make a purchase through the Service, we may share your name, billing address, email address, and transaction details with Paddle (or other processors) so they can process your payment and comply with legal obligations.</p>
+          <p className="text-gray-700">Paddle acts as a data processor for payment transactions. Please refer to Paddle’s privacy and terms pages for more details: <a href="https://www.paddle.com/legal/terms" className="text-uvz-orange font-bold">Paddle Terms</a> and <a href="https://www.paddle.com/privacy-policy" className="text-uvz-orange font-bold">Paddle Privacy Policy</a>.</p>
+        </section>
+
+        <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Data Security</h2>
           <p className="text-gray-700">We apply reasonable security safeguards including encryption in transit, secure hosting, and access controls. However, no online system is completely secure, and we can't guarantee absolute security.</p>
         </section>
@@ -83,6 +90,13 @@ export default function PrivacyPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Children</h2>
           <p className="text-gray-700">The Service is not intended for children under 13. We do not knowingly collect personal data from children under 13. If you believe a child has provided personal data, please contact us so we can remove it.</p>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Domain Verification & Paddle Requirements</h2>
+          <p className="text-gray-700">To maintain an integrated checkout and meet payment gateway requirements, ManyMarkets uses Paddle’s domain verification process. This helps ensure that all payments processed through our checkout are secure and that our storefront is registered with Paddle.</p>
+          <p className="text-gray-700">If Paddle requests domain verification, they may require one of the following: (1) placing a verification file at a specified URL on the domain, (2) adding an HTML meta tag to the site, or (3) adding a DNS TXT record. For more details, see Paddle’s domain verification guide: <a href="https://www.paddle.com/help/start/account-verification/what-is-domain-verification" className="text-uvz-orange font-bold">Paddle Domain Verification</a>.</p>
+          <p className="text-gray-700">If you receive a verification request from Paddle, please follow their instructions and notify us via <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a> if you need assistance.</p>
         </section>
 
         <section className="mb-8">

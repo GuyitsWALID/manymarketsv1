@@ -23,6 +23,18 @@ export default function TermsPage() {
           <h1 className="text-4xl font-black mb-6">Terms of Service</h1>
           <p className="text-gray-700 mb-6">Last Updated: December 11, 2025</p>
 
+        <section className="mb-6">
+          <h2 className="text-lg font-bold mb-1">Company Information</h2>
+          <p className="text-gray-700">These Terms are provided by ManyMarkets. Please replace the placeholder business details below with your registered legal entity and business address for production readiness.</p>
+          <p className="text-gray-700">Legal Entity: ManyMarkets (replace with registered legal name)</p>
+          <p className="text-gray-700">Address: [Your registered address]</p>
+          <p className="text-gray-700">Contact: <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a></p>
+        </section>
+
+        <section className="mb-4">
+          <p className="text-gray-700">Please also review our <a href="/privacy" className="text-uvz-orange font-bold">Privacy Policy</a> and our <a href="/refund-policy" className="text-uvz-orange font-bold">Refund Policy</a> for important information about how payments and refunds are handled.</p>
+        </section>
+
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Acceptance of Terms</h2>
           <p className="text-gray-700">By accessing or using ManyMarkets ("the Service"), you agree to these Terms of Service ("Terms"). If you do not agree, do not use the Service. These Terms form a binding legal contract between you and the operator of ManyMarkets.</p>
@@ -57,6 +69,13 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-2">Acceptable Use</h2>
           <p className="text-gray-700">You agree not to use the Service to upload or share content that is illegal, harmful, harassing, hateful, pornographic, or otherwise objectionable. You also agree not to reverse-engineer or misuse the Service or attempt to access restricted areas without authorization.</p>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Paddle & Payment Compliance</h2>
+          <p className="text-gray-700">ManyMarkets uses Paddle for payment processing and subscription management. All transactions are processed by Paddle and are subject to Paddle’s Terms and Policies. You agree to comply with Paddle’s policies regarding permitted products and content. Paddle’s list of prohibited items includes, but is not limited to, the following categories: illegal or illicit goods and services; drugs, controlled substances and related paraphernalia; adult material or pornography (where restricted by law); regulated goods including firearms and ammunition; high-risk financial services or unauthorized decoupling tools; and services that facilitate wrongdoing or promote hate or discrimination. For more details, see Paddle’s guidance on prohibited items: <a href="https://www.paddle.com/help/start/intro-to-paddle/what-am-i-not-allowed-to-sell-on-paddle" className="text-uvz-orange font-bold">What You Are Not Allowed to Sell on Paddle</a>.</p>
+          <p className="text-gray-700 mt-2">You must ensure that any product or service you list or sell through ManyMarkets complies with Paddle’s policies and any applicable laws. Failure to comply may result in suspension of payments, removal of the product, or account termination by Paddle or ManyMarkets. If you are uncertain whether a product or service is permitted, consult Paddle’s documentation or contact us at <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a>.</p>
+          <p className="text-gray-700">You must not use the Service to promote or sell content or services that would violate Paddle’s policies or otherwise put ManyMarkets at risk. If Paddle or ManyMarkets determine that content violates these Terms or Paddle’s policy, we may suspend or restrict access and take additional actions.</p>
         </section>
 
         <section className="mb-8">
@@ -163,7 +182,7 @@ export default function TermsPage() {
           <h3 className="text-lg font-semibold mt-2">7.4 Automatic Renewal</h3>
           <p className="text-gray-700">Unless otherwise stated, subscriptions automatically renew at the end of each billing cycle. You may cancel automatic renewal at any time within your account.</p>
           <h3 className="text-lg font-semibold mt-2">7.5 Refunds</h3>
-          <p className="text-gray-700">Refund requests are handled in accordance with our Refund Policy and/or the policies of our payment processor. Except where required by law or explicitly stated, payments already processed are non-refundable.</p>
+          <p className="text-gray-700">Refund requests are handled in accordance with our Refund Policy and the policies of our payment processor (e.g., Paddle). If you request a refund, we may coordinate with Paddle to resolve the payment and return funds when applicable. Unless otherwise required by law, the processor’s refund policy and the terms described in our Refund Policy govern eligibility for refunds.</p>
         </section>
 
         <section className="mb-6">
@@ -213,7 +232,8 @@ export default function TermsPage() {
 
         <section className="mb-6">
           <h2 className="text-xl font-bold mb-1">16. Contact Information</h2>
-          <p className="text-gray-700">For questions or concerns regarding these Terms, please contact: <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a></p>
+          <p className="text-gray-700">For questions or concerns regarding these Terms, or for Paddle verification assistance, contact: <a href="mailto:hello@manymarkets.com" className="text-uvz-orange font-bold">hello@manymarkets.com</a></p>
+          <p className="text-gray-700 mt-2">Paddle Terms and policies: <a href="https://www.paddle.com/legal/terms" className="text-uvz-orange font-bold">https://www.paddle.com/legal/terms</a></p>
         </section>
 
         <p className="text-sm text-gray-600">Note: These Terms are provided for informational purposes and may require review or customization by qualified legal counsel to ensure compliance with applicable laws and regulations.</p>

@@ -89,5 +89,12 @@ If you're migrating from other payment providers or adding Paddle, use this chec
 5. Confirm the `profiles` table updates: `paddle_customer_id`, `paddle_subscription_id`, and `subscription_tier` values update properly.
 6. If you opted to use the Paddle overlay (Checkout JS), make sure `NEXT_PUBLIC_PADDLE_VENDOR_ID` is set and `https://cdn.paddle.com/paddle/paddle.js` loads on the page.
 
+### Paddle Domain Verification
+If Paddle requests domain verification, they may ask you to add an HTML meta tag or upload a small verification file. To add a meta tag, insert it in the `head` of your site (e.g. in `app/layout.tsx`) while in development or on your production domain. Example:
+```html
+<meta name="paddle-verify" content="YOUR_PADDLE_VERIFICATION_TOKEN" />
+```
+After adding the meta tag or verification file, follow Paddle's instructions to complete the domain verification process: https://www.paddle.com/help/start/account-verification/what-is-domain-verification
+
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
