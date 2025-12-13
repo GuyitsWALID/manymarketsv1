@@ -60,6 +60,10 @@ export default function ChatPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([]);
   const [researchSummary, setResearchSummary] = useState({ niche: '', uvz: '', targetAudience: '' });
+
+  // Daily quick prompts
+  const [dailyPrompts, setDailyPrompts] = useState<string[]>([]);
+  const [dailyPromptsSource, setDailyPromptsSource] = useState<'ai' | 'fallback' | 'local'>('local');
   
   // Chat session
   const [chatSessionId, setChatSessionId] = useState(() => `uvz-chat-${Date.now()}`);
@@ -111,6 +115,32 @@ export default function ChatPage() {
       }
     }
     loadUserAndSessions();
+
+    // Load today's quick prompts (best-effort)
+    (async () => {
+      try {
+        const res = await fetch('/api/chat/daily-prompts');
+        if (res.ok) {
+          const data = await res.json();
+          setDailyPrompts(data.prompts || []);
+          setDailyPromptsSource(data.source === 'ai' ? 'ai' : 'fallback');
+        } else {
+          // Fallback to local deterministic generator
+          const mod = await import('@/lib/chat/dailyPrompts');
+          setDailyPrompts(mod.getDailyPrompts(5));
+          setDailyPromptsSource('local');
+        }
+      } catch (err) {
+        try {
+          const mod = await import('@/lib/chat/dailyPrompts');
+          setDailyPrompts(mod.getDailyPrompts(5));
+          setDailyPromptsSource('local');
+        } catch {
+          setDailyPrompts(['Find niches in health tech', 'Discover AI tool opportunities', 'Explore digital product ideas']);
+          setDailyPromptsSource('local');
+        }
+      }
+    })();
   }, [supabase.auth]);
 
   // Auto-scroll - use instant scroll when loading, smooth when chatting
@@ -571,9 +601,9 @@ export default function ChatPage() {
                   🚀 Start New Research Session
                 </button>
                 
-                <p className="text-sm text-gray-500 mb-4">Or try a quick prompt:</p>
+                <p className="text-sm text-gray-500 mb-4">Or try a quick prompt (new every day) {dailyPromptsSource === 'ai' ? <span className="text-xs text-green-600">· AI-generated</span> : dailyPromptsSource === 'fallback' ? <span className="text-xs text-yellow-700">· Fallback</span> : <span className="text-xs text-gray-500">· Local</span>}:</p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  {['Find niches in health tech', 'Discover AI tool opportunities', 'Explore digital product ideas'].map((prompt, i) => (
+                  {dailyPrompts.map((prompt, i) => (
                     <button
                       key={i}
                       onClick={() => handleSendMessage(prompt)}
