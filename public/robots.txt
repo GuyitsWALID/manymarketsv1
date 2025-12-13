@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: ${process.env.NEXT_PUBLIC_APP_URL || 'https://manymarkets.com'}/sitemap.xml
