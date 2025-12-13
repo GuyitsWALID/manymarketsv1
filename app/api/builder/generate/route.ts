@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateText } from 'ai';
-import { google } from '@ai-sdk/google';
+import { models } from '../../../../lib/ai/provider';
 
 export async function POST(request: Request) {
   try {
@@ -58,8 +58,10 @@ Task: ${prompt}
 Provide a brief, first-person response (2-4 sentences max).`;
     }
 
+    // Use GROQ Llama 3.3 70B explicitly for consistent results
+    const model = models.groqLlama70B();
     const { text } = await generateText({
-      model: google('gemini-2.0-flash'),
+      model,
       system: systemPrompt,
       prompt: userPrompt,
     });

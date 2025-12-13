@@ -181,6 +181,7 @@ interface Product {
   notes: string;
   price_point?: string;
   raw_analysis?: {
+    overview?: string;
     targetAudience?: string;
     problemSolved?: string;
     skillsMatch?: string[];
@@ -311,6 +312,15 @@ function BuilderContent() {
     previewReviewed: false,
   });
   const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'html' | 'pdf' | 'doc' | 'md'>('html');
+  const [showFormatModal, setShowFormatModal] = useState(false);
+
+  // Lazy-load heavy docx helper only on the client when needed
+  const generateDocxBlob = async (product: any) => {
+    const mod = await import('../../lib/export/docx');
+    return mod.generateDocxBlob(product);
+  };
+
   
   // Category state
   const [categories, setCategories] = useState<{id: string; name: string; slug: string; icon: string}[]>([]);
@@ -319,13 +329,13 @@ function BuilderContent() {
   // Notification modal state
   const [notification, setNotification] = useState<{
     show: boolean;
-    type: 'success' | 'error' | 'info';
+    type: 'success' | 'error' | 'info' | 'warning';
     title: string;
     message: string;
     details?: string[];
   }>({ show: false, type: 'info', title: '', message: '' });
 
-  const showNotification = (type: 'success' | 'error' | 'info', title: string, message: string, details?: string[]) => {
+  const showNotification = (type: 'success' | 'error' | 'info' | 'warning', title: string, message: string, details?: string[]) => {
     setNotification({ show: true, type, title, message, details });
   };
   
@@ -1310,33 +1320,91 @@ function BuilderContent() {
   };
 
   // Handle download product
-  const handleDownloadProduct = async () => {
+  const handleDownloadProduct = async (confirmed: boolean = false) => {
     if (!currentProduct) return;
     
     setIsExporting(true);
     
+    // If not explicitly confirmed (from modal or quick-download), open the format modal instead
+    if (!confirmed && !showFormatModal) {
+      setShowFormatModal(true);
+      setIsExporting(false);
+      return;
+    }
+    // Track whether the download step succeeded so catch block can adjust messaging
+    let downloadSucceeded = false;
     try {
-      // Generate the HTML content
-      const htmlContent = generateProductHTML();
+
+      if (exportFormat === 'html') {
+        // Generate the HTML content
+        const htmlContent = generateProductHTML();
+
+        // Create blob and download
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentProduct.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        downloadSucceeded = true;
+      } else if (exportFormat === 'md') {
+        // Generate simple Markdown version
+        const md = generateProductMarkdown();
+        const blob = new Blob([md], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentProduct.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        downloadSucceeded = true;
+      } else if (exportFormat === 'doc') {
+        // Export as real .docx using the docx helper
+        try {
+          const blob = await generateDocxBlob(currentProduct);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${currentProduct.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.docx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          downloadSucceeded = true;
+        } catch (err) {
+          console.error('DOCX generation error', err);
+          throw err;
+        }
+      } else if (exportFormat === 'pdf') {
+        // Open a print dialog for PDF creation
+        const htmlContent = generateProductHTML();
+        const url = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
+        const w = window.open(url, '_blank');
+        if (w) {
+          // Attempt to print after load
+          w.addEventListener('load', () => {
+            try { w.print(); } catch (e) { /* ignore */ }
+          });
+          // Revoke temporary URL after a short delay
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+          downloadSucceeded = true;
+        } else {
+          throw new Error('Popup blocked');
+        }
+      }
       
-      // Create blob and download
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${currentProduct.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      // Mark product as completed
-      const { error } = await supabase
-        .from('product_ideas')
-        .update({ status: 'completed' })
-        .eq('id', currentProduct.id);
-      
-      if (error) throw error;
+      // Finalize download: show notifications and mark product completed (non-fatal)
+      try {
+        const mod = await import('../../lib/export/finalizeDownload');
+        await mod.finalizeDownload(downloadSucceeded, supabase, currentProduct.id, showNotification as any);
+      } catch (err) {
+        console.warn('Failed during finalizeDownload:', err);
+      }
       
       // Update local state
       const updatedProduct = { ...currentProduct, status: 'completed' };
@@ -1374,10 +1442,36 @@ function BuilderContent() {
       
     } catch (error) {
       console.error('Download error:', error);
-      showNotification('error', 'Download Failed', 'Failed to download product. Please try again.');
+      if (typeof downloadSucceeded !== 'undefined' && downloadSucceeded) {
+        // If the file already downloaded, show a less severe warning
+        showNotification('warning', 'Downloaded', 'Downloaded successfully, but an error occurred after the download.');
+      } else {
+        showNotification('error', 'Download Failed', 'Failed to download product. Please try again.');
+      }
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // Generate a simple Markdown version of the product
+  const generateProductMarkdown = () => {
+    if (!currentProduct) return '';
+    let md = `# ${currentProduct.name}\n\n`;
+    if (currentProduct.raw_analysis?.overview) {
+      md += `## Overview\n\n${currentProduct.raw_analysis.overview}\n\n`;
+    }
+    const chapters = currentProduct.raw_analysis?.outline?.chapters || [];
+    chapters.forEach((ch: any, i: number) => {
+      md += `## ${i + 1}. ${ch.title}\n\n`;
+      if (ch.content) md += `${ch.content}\n\n`;
+      if (ch.parts) {
+        ch.parts.forEach((p: any, j: number) => {
+          md += `### ${i + 1}.${j + 1} ${p.title}\n\n`;
+          if (p.content) md += `${p.content}\n\n`;
+        });
+      }
+    });
+    return md;
   };
 
   // Handle finalize/export product
@@ -2029,8 +2123,20 @@ function BuilderContent() {
                                     });
                                     if (response.ok) {
                                       const { content } = await response.json();
-                                      setFormData(prev => ({ ...prev, targetAudience: content }));
+                                      let processed = (content || '').trim();
+                                      // Ensure response is in first-person. If not, prefix appropriately.
+                                      if (!/^(my|i|this)/i.test(processed)) {
+                                        processed = `My target audience is ${processed.replace(/^\s*/,'')}`;
+                                      }
+                                      setFormData(prev => ({ ...prev, targetAudience: processed }));
+                                      showNotification('success', 'AI Filled', 'Target audience has been filled using AI.');
+                                    } else {
+                                      const err = await response.json().catch(() => ({}));
+                                      showNotification('error', 'AI Fill Failed', err.error || 'Failed to generate target audience.');
                                     }
+                                  } catch (err) {
+                                    console.error('AI Fill error:', err);
+                                    showNotification('error', 'AI Fill Failed', 'Failed to generate target audience. Please try again.');
                                   } finally {
                                     setIsGeneratingOutline(false);
                                   }
@@ -2078,8 +2184,20 @@ function BuilderContent() {
                                     });
                                     if (response.ok) {
                                       const { content } = await response.json();
-                                      setFormData(prev => ({ ...prev, problemSolved: content }));
+                                      let processed = (content || '').trim();
+                                      // Ensure first-person phrasing that describes the problem the product solves
+                                      if (!/^(this product|my product|my|i|it)/i.test(processed)) {
+                                        processed = `This product solves ${processed.replace(/^\s*/,'')}`;
+                                      }
+                                      setFormData(prev => ({ ...prev, problemSolved: processed }));
+                                      showNotification('success', 'AI Filled', 'Problem statement has been filled using AI.');
+                                    } else {
+                                      const err = await response.json().catch(() => ({}));
+                                      showNotification('error', 'AI Fill Failed', err.error || 'Failed to generate problem statement.');
                                     }
+                                  } catch (err) {
+                                    console.error('AI Fill error:', err);
+                                    showNotification('error', 'AI Fill Failed', 'Failed to generate problem statement. Please try again.');
                                   } finally {
                                     setIsGeneratingOutline(false);
                                   }
@@ -3622,8 +3740,22 @@ function BuilderContent() {
                           </div>
                           <h3 className="text-xl sm:text-2xl font-black mb-2">Ready to Download!</h3>
                           <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                            Your product has been compiled and is ready to export. Download it as an HTML file that you can convert to PDF or use directly.
+                            Your product has been compiled and is ready to export. Choose a format and download it; HTML opens in the browser, PDF uses your print dialog, Word (.doc) opens in Word, and Markdown (.md) is perfect for repos or editing.
                           </p>
+                          <div className="mb-4 flex items-center justify-center gap-2">
+                            <label className="text-sm font-medium mr-2">Select format:</label>
+                            <select
+                              value={exportFormat}
+                              onChange={(e) => setExportFormat(e.target.value as any)}
+                              className="px-3 py-2 rounded-lg border bg-white"
+                              aria-label="Export format"
+                            >
+                              <option value="html">HTML</option>
+                              <option value="pdf">PDF (Print to PDF)</option>
+                              <option value="doc">Word (.docx)</option>
+                              <option value="md">Markdown (.md)</option>
+                            </select>
+                          </div>
                           
                           {/* Content Status */}
                           {currentProduct.raw_analysis?.outline?.chapters && (
@@ -3644,7 +3776,7 @@ function BuilderContent() {
                           )}
                           
                           <button
-                            onClick={handleDownloadProduct}
+                            onClick={() => setShowFormatModal(true)}
                             disabled={isExporting}
                             className="px-8 sm:px-12 py-4 sm:py-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg sm:text-xl border-4 border-black rounded-2xl shadow-brutal hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_#000000] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 mx-auto"
                           >
@@ -3662,7 +3794,7 @@ function BuilderContent() {
                           </button>
                           
                           <p className="text-xs text-gray-500 mt-4">
-                            Downloads as HTML • Open in browser and print to PDF • Sell on Gumroad, Payhip, or your own site
+                            Download in HTML, PDF (print), Word, or Markdown • Sell on Gumroad, Payhip, or your own site
                           </p>
                         </div>
                       </div>
@@ -3813,6 +3945,30 @@ function BuilderContent() {
               </ul>
             </div>
 
+            {/* Quick Download */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Download now</label>
+              <div className="flex gap-3">
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value as any)}
+                  className="px-3 py-2 rounded-lg border flex-1"
+                >
+                  <option value="html">HTML</option>
+                  <option value="pdf">PDF (Print)</option>
+                  <option value="doc">Word (.docx)</option>
+                  <option value="md">Markdown (.md)</option>
+                </select>
+                <button
+                  onClick={() => handleDownloadProduct(true)}
+                  disabled={isExporting}
+                  className="px-4 py-2 rounded-lg bg-green-600 text-white font-bold"
+                >
+                  {isExporting ? 'Preparing...' : 'Download'}
+                </button>
+              </div>
+            </div>
+
             {/* Price Display */}
             {productPrice && (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 mb-4 border border-green-200">
@@ -3841,6 +3997,53 @@ function BuilderContent() {
                 </>
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Format Selection Modal (for export/download) */}
+      {showFormatModal && currentProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFormatModal(false)} />
+          <div className="relative bg-white border-4 border-black rounded-2xl p-6 sm:p-8 shadow-brutal w-full max-w-md">
+            <button
+              onClick={() => setShowFormatModal(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-4">
+              <h3 className="text-xl font-black mb-2">Choose Export Format</h3>
+              <p className="text-sm text-gray-600 mb-4">Select the file type you'd like to download.</p>
+            </div>
+
+            <div className="mb-6">
+              <select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value as any)}
+                className="w-full px-4 py-3 rounded-lg border"
+                aria-label="Choose export format"
+              >
+                <option value="html">HTML</option>
+                <option value="pdf">PDF (Print to PDF)</option>
+                <option value="doc">Word (.docx)</option>
+                <option value="md">Markdown (.md)</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button className="px-4 py-2 rounded-lg border" onClick={() => setShowFormatModal(false)}>Cancel</button>
+              <button
+                className="px-6 py-2 rounded-lg bg-green-600 text-white font-bold"
+                onClick={async () => {
+                  setShowFormatModal(false);
+                  await handleDownloadProduct(true);
+                }}
+              >
+                {isExporting ? 'Preparing...' : 'Download'}
+              </button>
+            </div>
           </div>
         </div>
       )}
