@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createCheckout, getCustomerSubscriptions, cancelSubscription, PRODUCTS, isActiveSubscription } from '@/lib/paddle';
 import { createClient } from '@/lib/supabase/server';
+import { ENABLE_PRICING } from '@/lib/config';
 
 // GET - Get customer billing state
 export async function GET() {
   try {
+    // If pricing is disabled, return fallback free plan
+    if (!ENABLE_PRICING) {
+      return NextResponse.json({ currentPlan: 'free', subscriptions: [], customer: null });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -69,6 +75,11 @@ export async function GET() {
 // POST - Handle billing actions
 export async function POST(request: NextRequest) {
   try {
+    // Disallow billing actions when pricing is disabled
+    if (!ENABLE_PRICING) {
+      return NextResponse.json({ error: 'Billing is temporarily disabled' }, { status: 403 });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     

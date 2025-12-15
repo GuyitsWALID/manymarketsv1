@@ -7,6 +7,10 @@ export default function PaddleAutoCheckout() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // Disabled when pricing is turned off
+    const { ENABLE_PRICING } = require('@/lib/config');
+    if (!ENABLE_PRICING) return;
     
     const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
     

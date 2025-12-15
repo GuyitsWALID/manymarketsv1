@@ -90,6 +90,8 @@ export default function RootLayout({
         {/* Include payment provider overlay JS if used by client (e.g. Paddle) via Next.js Script for reliable loading */}
         <Script src="https://cdn.paddle.com/paddle/paddle.js" strategy="afterInteractive" />
         <PaddleAutoCheckout />
+        {/* FreeBanner is shown only on the homepage to avoid site-wide repetition. */}
+
         {children}
         <Analytics />
       </body>

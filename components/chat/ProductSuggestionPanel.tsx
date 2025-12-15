@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Sparkles, ArrowRight, CheckCircle, Clock, DollarSign, Zap, Book, Code, Video, Users, FileText, Loader2, Crown, Lock } from 'lucide-react';
+import { ENABLE_PRICING } from '@/lib/config';
 
 export interface ProductSuggestion {
   id: string;
@@ -63,6 +64,13 @@ export default function ProductSuggestionPanel({
   }, [isOpen]);
 
   const checkSubscription = async () => {
+    // If pricing is disabled, treat all users as Pro for product creation
+    if (!ENABLE_PRICING) {
+      setIsPro(true);
+      setCheckingPlan(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/billing');
       if (response.ok) {

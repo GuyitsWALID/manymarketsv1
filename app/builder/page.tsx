@@ -60,6 +60,7 @@ import {
   Download,
   BookOpen
 } from 'lucide-react';
+import { ENABLE_PRICING } from '@/lib/config';
 import Link from 'next/link';
 
 interface ContentOutline {
@@ -308,7 +309,8 @@ function BuilderContent() {
     contentComplete: false,
     structureComplete: false,
     assetsReady: false,
-    pricingSet: false,
+    // If pricing is disabled, treat pricing as already set so users can export
+    pricingSet: !ENABLE_PRICING,
     previewReviewed: false,
   });
   const [isExporting, setIsExporting] = useState(false);
@@ -384,29 +386,33 @@ function BuilderContent() {
     }
     setCurrentUser(user);
 
-    // Check subscription
-    try {
-      const billingRes = await fetch('/api/billing');
-      if (billingRes.ok) {
-        const billingData = await billingRes.json();
-        const plan = billingData.currentPlan || 'free';
-        const hasPro = plan === 'pro' || plan === 'enterprise';
-        setIsPro(hasPro);
-        
-        if (!hasPro) {
-          // Not Pro, redirect to upgrade
+    // Check subscription (skip checks if pricing/upgrade disabled)
+    if (!ENABLE_PRICING) {
+      setIsPro(true);
+    } else {
+      try {
+        const billingRes = await fetch('/api/billing');
+        if (billingRes.ok) {
+          const billingData = await billingRes.json();
+          const plan = billingData.currentPlan || 'free';
+          const hasPro = plan === 'pro' || plan === 'enterprise';
+          setIsPro(hasPro);
+          
+          if (!hasPro) {
+            // Not Pro, redirect to upgrade
+            router.push('/upgrade');
+            return;
+          }
+        } else {
+          setIsPro(false);
           router.push('/upgrade');
           return;
         }
-      } else {
+      } catch {
         setIsPro(false);
         router.push('/upgrade');
         return;
       }
-    } catch {
-      setIsPro(false);
-      router.push('/upgrade');
-      return;
     }
 
     // Load all user products
@@ -3409,45 +3415,52 @@ function BuilderContent() {
                         </div>
 
                         {/* Pricing Section */}
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
-                            💰 Set Your Price
-                          </h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Price</label>
-                              <div className="relative">
-                                <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                                <input
-                                  type="text"
-                                  value={productPrice}
-                                  onChange={(e) => {
-                                    setProductPrice(e.target.value);
-                                    if (e.target.value && parseFloat(e.target.value) > 0) {
-                                      setExportChecklist(prev => ({ ...prev, pricingSet: true }));
-                                    }
-                                  }}
-                                  placeholder="49.00"
-                                  className="w-full pl-7 sm:pl-8 pr-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg sm:text-xl font-bold"
-                                />
+                        {ENABLE_PRICING ? (
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                            <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                              💰 Set Your Price
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Product Price</label>
+                                <div className="relative">
+                                  <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                  <input
+                                    type="text"
+                                    value={productPrice}
+                                    onChange={(e) => {
+                                      setProductPrice(e.target.value);
+                                      if (e.target.value && parseFloat(e.target.value) > 0) {
+                                        setExportChecklist(prev => ({ ...prev, pricingSet: true }));
+                                      }
+                                    }}
+                                    placeholder="49.00"
+                                    className="w-full pl-7 sm:pl-8 pr-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg sm:text-xl font-bold"
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Suggested: {currentProduct.pricing_model || '$29 - $199/mo'}
+                                </p>
                               </div>
-                              <p className="text-xs text-gray-500 mt-2">
-                                Suggested: {currentProduct.pricing_model || '$29 - $199/mo'}
-                              </p>
-                            </div>
-                            <div>
-                              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Pricing Model</label>
-                              <select
-                                className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
-                                defaultValue="one-time"
-                              >
-                                <option value="one-time">One-time Purchase</option>
-                                <option value="subscription">Monthly Subscription</option>
-                                <option value="freemium">Freemium + Premium</option>
-                              </select>
+                              <div>
+                                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Pricing Model</label>
+                                <select
+                                  className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                                  defaultValue="one-time"
+                                >
+                                  <option value="one-time">One-time Purchase</option>
+                                  <option value="subscription">Monthly Subscription</option>
+                                  <option value="freemium">Freemium + Premium</option>
+                                </select>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="bg-gray-100 border-2 border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 text-center">
+                            <h3 className="font-black mb-2">💰 Pricing Disabled</h3>
+                            <p className="text-sm text-gray-600">Pricing and checkout are temporarily disabled. All products will be free to create and export. You can set pricing later when billing is re-enabled.</p>
+                          </div>
+                        )}
 
                         {/* Category Section */}
                         <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">

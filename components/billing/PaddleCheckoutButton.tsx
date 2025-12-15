@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { initializePaddle, Paddle } from '@paddle/paddle-js';
+import { ENABLE_PRICING } from '@/lib/config';
 
 type Props = {
   productId: string;
@@ -46,6 +47,10 @@ export default function PaddleCheckoutButton({
 
   async function onClick(e: React.MouseEvent) {
     e.preventDefault();
+    if (!ENABLE_PRICING) {
+      alert('Billing and pricing are currently disabled. ManyMarkets is free to use for now.');
+      return;
+    }
     setLoading(true);
     
     try {
@@ -106,9 +111,10 @@ export default function PaddleCheckoutButton({
     <button
       onClick={onClick}
       className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${className}`}
-      disabled={loading || !paddle}
+      disabled={!ENABLE_PRICING || loading || !paddle}
+      title={!ENABLE_PRICING ? 'Billing is temporarily disabled' : undefined}
     >
-      {loading ? 'Processing...' : children}
+      {(!ENABLE_PRICING) ? 'Billing Disabled' : (loading ? 'Processing...' : children)}
     </button>
   );
 }

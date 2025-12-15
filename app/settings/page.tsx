@@ -78,6 +78,8 @@ const pricingPlans = [
   }
 ];
 
+import { ENABLE_PRICING } from '@/lib/config';
+
 function SettingsContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +151,11 @@ function SettingsContent() {
   }, [router, supabase.auth, searchParams]);
 
   const handleUpgrade = async (planId: string) => {
+    if (!ENABLE_PRICING) {
+      alert('Billing is currently disabled. Upgrades are unavailable at this time.');
+      return;
+    }
+
     if (planId === 'enterprise') {
       // Open contact form or email for enterprise
       window.location.href = 'mailto:contact@manymarkets.com?subject=Enterprise Plan Inquiry';
@@ -450,8 +457,15 @@ function SettingsContent() {
                     </div>
 
                     {/* Pricing Cards */}
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {pricingPlans.map((plan) => {
+                    {!ENABLE_PRICING ? (
+                      <div className="bg-gray-100 border-2 border-gray-200 rounded p-6 text-center">
+                        <p className="font-bold mb-2">Billing Temporarily Disabled</p>
+                        <p className="text-sm text-gray-600">All accounts are currently on the free plan. Paid plans and upgrades are disabled for now.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          {pricingPlans.map((plan) => {
                         const Icon = plan.icon;
                         const isCurrentPlan = plan.id === currentPlan;
                         const isUpgrading = upgrading === plan.id;
@@ -518,7 +532,9 @@ function SettingsContent() {
                           </div>
                         );
                       })}
-                    </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

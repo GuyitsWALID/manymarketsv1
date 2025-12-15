@@ -24,7 +24,7 @@ export default function IdeaScorePage() {
   // Idea scoring state
   const [ideaInput, setIdeaInput] = useState('');
   const [isScoring, setIsScoring] = useState(false);
-  const [scoreResult, setScoreResult] = useState<{ score: number; reason: string } | null>(null);
+  const [scoreResult, setScoreResult] = useState<{ score: number; reason: string; trending?: number; specificity?: number; trust?: number; breakdown?: string[] } | null>(null);
   const [scoringPhase, setScoringPhase] = useState<string>('');
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
 
@@ -141,7 +141,14 @@ export default function IdeaScorePage() {
       
       if (response.ok) {
         const data = await response.json();
-        setScoreResult({ score: data.score, reason: data.reason });
+        setScoreResult({
+          score: data.score,
+          reason: data.reason,
+          trending: data.trending,
+          specificity: data.specificity,
+          trust: data.trust,
+          breakdown: data.breakdown,
+        });
       } else {
         setScoreResult({ score: 0, reason: 'Failed to score idea. Please try again.' });
       }
@@ -391,9 +398,48 @@ export default function IdeaScorePage() {
                     <Sparkles className="w-5 h-5 text-uvz-orange" />
                     AI Analysis
                   </h3>
-                  <p className="text-gray-700 leading-relaxed text-lg">
+                  <p className="text-gray-700 leading-relaxed text-lg mb-4">
                     {scoreResult.reason}
                   </p>
+
+                  {/* Component scores */}
+                  <div className="flex gap-3 flex-wrap mb-4">
+                    <div className="px-3 py-2 bg-white border-2 border-black rounded-xl flex items-center gap-3">
+                      <BarChart3 className="w-5 h-5 text-uvz-orange" />
+                      <div>
+                        <div className="text-xs text-gray-500">Trending</div>
+                        <div className="font-bold">{scoreResult.trending ?? '—'}%</div>
+                      </div>
+                    </div>
+
+                    <div className="px-3 py-2 bg-white border-2 border-black rounded-xl flex items-center gap-3">
+                      <Target className="w-5 h-5 text-uvz-orange" />
+                      <div>
+                        <div className="text-xs text-gray-500">Specificity</div>
+                        <div className="font-bold">{scoreResult.specificity ?? '—'}%</div>
+                      </div>
+                    </div>
+
+                    <div className="px-3 py-2 bg-white border-2 border-black rounded-xl flex items-center gap-3">
+                      <Users className="w-5 h-5 text-uvz-orange" />
+                      <div>
+                        <div className="text-xs text-gray-500">Trust</div>
+                        <div className="font-bold">{scoreResult.trust ?? '—'}%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Breakdown bullets */}
+                  {scoreResult.breakdown && scoreResult.breakdown.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-bold mb-2">Why this score</h4>
+                      <ul className="list-disc list-inside text-gray-700">
+                        {scoreResult.breakdown.map((b, i) => (
+                          <li key={i} className="mb-1">{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}

@@ -4,10 +4,11 @@ import Link from "next/link";
 import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
 import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
-import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Twitter, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
+import FreeBanner from '@/components/FreeBanner';
 import { createClient } from "@/lib/supabase/client";
 
 const HandDrawnCircle = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
@@ -325,28 +326,20 @@ export default function Home() {
           </div>
         </div>
       </header>
-        
-        
+      {/* Announcement banner is rendered inside <main> to sit below the fixed header */}
 
       <main>
+
         {/* Hero Section */}
         <section className="container mt-20 sm:mt-24 md:mt-28 mx-auto px-4 sm:px-6 py-8 md:py-32">
-            <div className="max-w-5xl mx-auto text-center space-y-4 relative">
-            {/* Floating hand-drawn icons - Top side */}
-            <motion.div
-              initial={{ opacity: 0, y: -50, rotate: 10 }}
-              animate={{ opacity: 1, y: 0, rotate: 0 }}
-              transition={{ delay: 0.4, duration: 0.8 }}
-              className="absolute left-1/2 -translate-x-1/2 -top-16 hidden lg:flex gap-18 items-center"
-            >
-              <RoughNotation type="box" show={true} color="#f97316" strokeWidth={3} animationDelay={0}>
-              <Sparkles className="w-12 h-12 text-black" />
-              </RoughNotation>
+            <div className="flex justify-center mb-6 relative z-50 pointer-events-none">
+              <div className="pointer-events-auto">
+                <FreeBanner />
+              </div>
+            </div>
 
-              <RoughNotation type="highlight" show={true} color="#fef08a" strokeWidth={2} animationDelay={0}>
-              <TrendingUp className="w-10 h-10 text-uvz-orange" />
-              </RoughNotation>
-            </motion.div>
+            <div className="max-w-5xl mx-auto text-center space-y-4 relative">
+            
 
             {/* Floating hand-drawn icons - Left side */}
             <motion.div
@@ -696,12 +689,12 @@ export default function Home() {
             
             <div className="flex gap-3 sm:gap-4">
               <Link 
-                href="https://twitter.com/manymarkets" 
+                href="https://x.com/manymarketsai" 
                 target="_blank"
-                className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group"
-                aria-label="Twitter"
+                className="w-10 h-10 sm:w-12 sm:h-12 bg-white border-2 border-white hover:bg-uvz-orange hover:border-uvz-orange transition-all flex items-center justify-center group rounded-full"
+                aria-label="X (ManyMarkets)"
               >
-                <Twitter className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
+                <img src="https://img.icons8.com/?size=100&id=phOKFKYpe00C&format=png&color=000000" alt="X (ManyMarkets)" className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
               </Link>
               <Link 
                 href="https://linkedin.com/company/manymarkets" 

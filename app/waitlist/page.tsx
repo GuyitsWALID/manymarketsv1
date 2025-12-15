@@ -19,7 +19,7 @@ import {
   Loader2,
   PartyPopper,
   BadgePercent
-  , Twitter, Linkedin, Facebook, Mail, Copy, Share2
+  , Linkedin, Facebook, Mail, Copy, Share2
 } from 'lucide-react';
 
 // Popular countries for the dropdown
@@ -303,12 +303,12 @@ export default function WaitlistPage() {
                     <button
                       onClick={() => {
                         const text = `I joined the ManyMarkets waitlist! Discover profitable niches & build digital products with AI. Join me: ${window.location.origin}/waitlist`;
-                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+                        window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
                       }}
                       aria-label="Share on X"
-                      className="flex items-center gap-2 px-3 py-2 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-black rounded-xl font-bold hover:bg-uvz-orange hover:text-white border-2 border-black transition-colors"
                     >
-                      <Twitter className="w-4 h-4" />
+                      <img src="https://img.icons8.com/?size=100&id=phOKFKYpe00C&format=png&color=000000" alt="X" className="w-4 h-4" />
                       Share on X
                     </button>
 
