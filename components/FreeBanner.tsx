@@ -23,10 +23,10 @@ export default function FreeBanner() {
         <div className="text-base">🎉</div>
         <div className="leading-tight">
           <div className="font-bold text-sm sm:text-base">
-            <span className="hidden sm:inline">ManyMarkets is free today (effective {effectiveDate})</span>
+            <span className="hidden sm:inline">ManyMarkets is free today</span>
             <span className="inline sm:hidden">ManyMarkets is free today</span>
           </div>
-          <div className="text-xs text-gray-600 hidden sm:block">Billing & paid plans are temporarily disabled</div>
+          
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export default function FreeBanner() {
           return <Countdown />;
         })()}
 
-        <Link href="/settings" className="hidden sm:inline-block text-xs underline text-gray-700">Learn more</Link>
+        
       </div>
     </div>
   );
