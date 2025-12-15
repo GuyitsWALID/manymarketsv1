@@ -33,37 +33,41 @@ export default function FreeBanner() {
       <div className="flex items-center gap-3">
         {(() => {
           function Countdown() {
-            const [time, setTime] = useState(() => {
+            const [times, setTimes] = useState(() => {
               const diff = newYear.getTime() - Date.now();
-              return formatDiff(diff);
+              return formatDiffs(diff);
             });
 
             useEffect(() => {
               const tick = () => {
                 const diff = newYear.getTime() - Date.now();
-                setTime(formatDiff(diff));
+                setTimes(formatDiffs(diff));
               };
               tick();
               const id = setInterval(tick, 1000);
               return () => clearInterval(id);
             }, []);
 
-            function formatDiff(ms: number) {
-              if (ms <= 0) return '0d 0h 0m 0s';
+            function formatDiffs(ms: number) {
+              if (ms <= 0) return { full: '0d 0h 0m 0s', compact: '0d' };
               const s = Math.floor(ms / 1000);
               const d = Math.floor(s / 86400);
               const h = Math.floor((s % 86400) / 3600);
               const m = Math.floor((s % 3600) / 60);
               const sec = s % 60;
-              return `${d}d ${h}h ${m}m ${sec}s`;
+              const full = `${d}d ${h}h ${m}m ${sec}s`;
+              const compact = d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
+              return { full, compact };
             }
 
             return (
               <div className="text-xs sm:text-sm text-uvz-orange font-medium" aria-live="polite">
-                Ends in {time}
+                <span className="block sm:hidden">Ends in {times.compact}</span>
+                <span className="hidden sm:block">Ends in {times.full}</span>
               </div>
             );
           }
+
           return <Countdown />;
         })()}
 
