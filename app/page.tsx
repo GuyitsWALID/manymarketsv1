@@ -333,8 +333,11 @@ export default function Home() {
         {/* Hero Section */}
         <section className="container mt-20 sm:mt-24 md:mt-28 mx-auto px-4 sm:px-6 py-8 md:py-32">
             <div className="flex justify-center mb-6 relative z-50 pointer-events-none">
-              <div className="pointer-events-auto">
+              <div className="pointer-events-auto flex items-center gap-3">
                 <FreeBanner />
+                <a href="https://www.producthunt.com/products/manymarkets?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-manymarkets" target="_blank" rel="noopener noreferrer" className="ml-3">
+                  <img alt="ManyMarkets - Idea to Launch: AI-Powered Validation & Product Builder | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1050797&amp;theme=light&amp;t=1765977614571" />
+                </a>
               </div>
             </div>
 
