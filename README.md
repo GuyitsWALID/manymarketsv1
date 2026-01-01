@@ -57,6 +57,16 @@ curl -X POST -H "x-admin-token: $ADMIN_API_KEY" https://your-app.com/api/admin/d
     NEXT_PUBLIC_PADDLE_ENV=sandbox # or 'production'
     ```
 
+    Optional: n8n / Waitlist webhook configuration (used to notify your automated CRM when someone signs up):
+    ```bash
+    # n8n will receive a POST with JSON { email, name, country, referralSource, position, message, joinedAt }
+    N8N_WAITLIST_WEBHOOK_URL=https://<your-n8n-host>/webhook/<id>
+    # Optional: secret sent as header 'x-waitlist-secret' (helps verify requests in n8n)
+    N8N_WAITLIST_WEBHOOK_SECRET=supersecretvalue (optional)
+    ```
+
+    When `N8N_WAITLIST_WEBHOOK_URL` is set, the app will POST a small JSON payload to that URL right after a new waitlist entry is inserted.
+
 3.  **Run the development server**:
     ```bash
     npm run dev

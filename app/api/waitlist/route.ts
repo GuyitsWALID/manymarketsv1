@@ -75,6 +75,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Send a webhook to n8n (optional) so your automated CRM can send a personalized message
+    try {
+      const webhookUrl = process.env.N8N_WAITLIST_WEBHOOK_URL;
+      if (webhookUrl) {
+        const firstName = name ? name.trim().split(' ')[0] : '';
+        const personalizedMessage = `Hi ${firstName || ''}! Thank you for joining the ManyMarkets waitlist — you\'re #${data.position} on the list. We\'ll email you when it\'s your turn. Enjoy the early-bird benefits! \n\n— ManyMarkets Team`;
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.N8N_WAITLIST_WEBHOOK_SECRET ? { 'x-waitlist-secret': process.env.N8N_WAITLIST_WEBHOOK_SECRET } : {}),
+          },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            name: name.trim(),
+            country: country.trim(),
+            referralSource: referralSource || null,
+            position: data.position,
+            message: personalizedMessage,
+            joinedAt: new Date().toISOString(),
+          }),
+        });
+      }
+    } catch (err) {
+      console.error('Waitlist webhook error:', err);
+      // Don't fail the signup if webhook fails
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Welcome to the ManyMarkets waitlist!',

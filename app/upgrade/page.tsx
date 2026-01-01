@@ -16,7 +16,7 @@ import {
   Loader2,
   Star
 } from 'lucide-react';
-  import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
+import WhopCheckoutEmbed from '@/components/billing/WhopCheckoutEmbed';
 import { ENABLE_PRICING } from '@/lib/config';
 
 const PRO_FEATURES = [
@@ -169,17 +169,17 @@ export default function UpgradePage() {
             <div className="p-6 bg-gray-50">
               {ENABLE_PRICING ? (
                 <>
-                  <PaddleCheckoutButton
-                    productId={process.env.NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID || 'pro'}
-                    className="w-full py-4 bg-uvz-orange text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <>
-                      <Crown className="w-5 h-5" />
-                      Upgrade to Pro Now
-                    </>
-                  </PaddleCheckoutButton>
+                  <WhopCheckoutEmbed
+                    planId={process.env.NEXT_PUBLIC_WHOP_PRO_PLAN_ID || ''}
+                    theme="light"
+                    onComplete={(planId, receiptId) => {
+                      console.log('Checkout complete:', planId, receiptId);
+                      router.push('/upgrade/complete?status=success&receipt_id=' + receiptId);
+                    }}
+                    className="w-full"
+                  />
                   <p className="text-center text-sm text-gray-500 mt-3">
-                    Secure checkout powered by Paddle
+                    Secure checkout powered by Whop
                   </p>
                 </>
               ) : (

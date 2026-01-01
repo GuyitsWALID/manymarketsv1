@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
 import FreeBanner from '@/components/FreeBanner';
+import NewYearConfetti from '@/components/NewYearConfetti';
 import { createClient } from "@/lib/supabase/client";
 
 const HandDrawnCircle = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
@@ -327,6 +328,9 @@ export default function Home() {
         </div>
       </header>
       {/* Announcement banner is rendered inside <main> to sit below the fixed header */}
+
+      {/* New Year Confetti Celebration */}
+      <NewYearConfetti />
 
       <main>
 

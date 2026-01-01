@@ -48,30 +48,25 @@ export default function FreeBanner() {
               return () => clearInterval(id);
             }, []);
 
-            function formatDiffs(ms: number) {
-              if (ms <= 0) return { full: '0d 0h 0m 0s', compact: '0d' };
-              const s = Math.floor(ms / 1000);
-              const d = Math.floor(s / 86400);
-              const h = Math.floor((s % 86400) / 3600);
-              const m = Math.floor((s % 3600) / 60);
-              const sec = s % 60;
-              const full = `${d}d ${h}h ${m}m ${sec}s`;
-              const compact = d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
-              return { full, compact };
+            function formatDiffs(diff: number) {
+              const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+              const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+              const minutes = Math.floor((diff / (1000 * 60)) % 60);
+              const seconds = Math.floor((diff / 1000) % 60);
+              return { days, hours, minutes, seconds };
             }
 
             return (
-              <div className="text-xs sm:text-sm text-uvz-orange font-medium" aria-live="polite">
-                <span className="block sm:hidden">Ends in {times.compact}</span>
-                <span className="hidden sm:block">Ends in {times.full}</span>
+              <div className="flex gap-1 text-xs font-mono">
+                <span className="bg-uvz-orange/20 px-1 rounded">{times.days}d</span>
+                <span className="bg-uvz-orange/20 px-1 rounded">{times.hours}h</span>
+                <span className="bg-uvz-orange/20 px-1 rounded">{times.minutes}m</span>
+                <span className="bg-uvz-orange/20 px-1 rounded">{times.seconds}s</span>
               </div>
             );
           }
-
           return <Countdown />;
         })()}
-
-        
       </div>
     </div>
   );

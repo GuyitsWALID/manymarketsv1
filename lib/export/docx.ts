@@ -19,6 +19,12 @@ export async function generateDocxBuffer(product: ProductLike): Promise<Uint8Arr
   chapters.forEach((ch: any, i: number) => {
     children.push(new Paragraph({ text: `${i + 1}. ${ch.title}`, heading: HeadingLevel.HEADING_2 }));
     if (ch.content) children.push(new Paragraph({ text: ch.content }));
+    if (ch.assets && ch.assets.length) {
+      children.push(new Paragraph({ text: 'Assets:' }));
+      ch.assets.forEach((a: any) => {
+        children.push(new Paragraph({ text: a.fullUrl || a.url || a.id }));
+      });
+    }
     if (ch.parts) {
       ch.parts.forEach((p: any, j: number) => {
         children.push(new Paragraph({ text: `${i + 1}.${j + 1} ${p.title}`, heading: HeadingLevel.HEADING_3 }));

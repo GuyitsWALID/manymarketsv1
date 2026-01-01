@@ -85,6 +85,8 @@ interface Chapter {
   wordCount?: number;
   readingTimeMinutes?: number;
   keyTakeaways?: string[];
+  // Attached assets for this chapter (persisted): id, url, fullUrl, name, category
+  assets?: { id: string; url?: string; fullUrl?: string; name?: string; category?: string }[];
 }
 
 interface Section {
@@ -1121,11 +1123,58 @@ function BuilderContent() {
       ));
       
       showNotification('success', 'Asset Saved', `"${asset.name}" has been saved to your library.`);
+
+      // Auto-attach to chapter when asset looks chapter-specific
+      try {
+        if (savedAsset.category === 'chapter' && currentProduct?.raw_analysis?.outline?.chapters) {
+          const chapter = currentProduct.raw_analysis.outline.chapters.find((ch: any) => savedAsset.name?.includes(ch.title));
+          if (chapter) {
+            await attachAssetToChapter(savedAsset, chapter.id);
+          }
+        }
+      } catch (err) {
+        console.warn('Auto attach failed', err);
+      }
+
     } catch (error) {
       console.error('Save asset error:', error);
       showNotification('error', 'Save Failed', error instanceof Error ? error.message : 'Failed to save asset');
     } finally {
       setSavingAssetId(null);
+    }
+  };
+
+  // Attach a saved asset to a chapter in the product's outline and persist
+  const attachAssetToChapter = async (savedAsset: any, chapterId: string) => {
+    if (!currentProduct) return;
+    try {
+      const updatedOutline = { ...(currentProduct.raw_analysis?.outline || {}) } as any;
+      updatedOutline.chapters = (updatedOutline.chapters || []).map((ch: any) => {
+        if (ch.id === chapterId) {
+          const existing = ch.assets || [];
+          const assetRef = { id: savedAsset.id || savedAsset.dbId || savedAsset.db_id, url: savedAsset.url || savedAsset.fullUrl, name: savedAsset.name };
+          if (!existing.some((e: any) => e.id === assetRef.id || e.url === assetRef.url)) {
+            ch.assets = [...existing, assetRef];
+          }
+        }
+        return ch;
+      });
+
+      const updatedAnalysis = { ...(currentProduct.raw_analysis || {}), outline: updatedOutline };
+      const response = await fetch(`/api/products/${currentProduct.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+      });
+      if (!response.ok) throw new Error('Failed to attach asset to chapter');
+
+      // Update local state
+      setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : prev);
+      setProducts(prev => prev.map(p => p.id === currentProduct.id ? { ...p, raw_analysis: updatedAnalysis } : p));
+      showNotification('success', 'Asset Attached', 'Asset attached to chapter successfully.');
+    } catch (err) {
+      console.error('Attach asset error', err);
+      showNotification('error', 'Attach Failed', 'Failed to attach asset to chapter.');
     }
   };
 
@@ -1279,8 +1328,41 @@ function BuilderContent() {
           content = content.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
           
           html += `      <p>${content}</p>\n`;
+
+          // Include chapter assets (persisted on product or fallback to current client assets)
+          try {
+            const persistedChapter = (currentProduct?.raw_analysis?.outline?.chapters || []).find((c: any) => c.id === chapter.id);
+            const persistedAssets = persistedChapter?.assets || [];
+            const fallbackAssets = assets.filter(a => a.category === 'chapter' && a.name?.includes(chapter.title));
+            const chapterAssets = (persistedAssets && persistedAssets.length) ? persistedAssets : fallbackAssets;
+            if (chapterAssets && chapterAssets.length > 0) {
+              chapterAssets.forEach((a: any) => {
+                const src = a.fullUrl || a.url || a.thumbnailUrl || a.url || '';
+                if (src) html += `      <img class="asset-image" src="${src}" alt="${(a.name || '').replace(/"/g, '')}">\n`;
+              });
+            }
+          } catch (e) {
+            // ignore export-time asset inclusion errors
+            console.warn('Include chapter assets failed', e);
+          }
         } else {
           html += `      <p><em>${chapter.description || 'Content not yet generated.'}</em></p>\n`;
+
+          // Also include any available assets even if content is missing
+          try {
+            const persistedChapter = (currentProduct?.raw_analysis?.outline?.chapters || []).find((c: any) => c.id === chapter.id);
+            const persistedAssets = persistedChapter?.assets || [];
+            const fallbackAssets = assets.filter(a => a.category === 'chapter' && a.name?.includes(chapter.title));
+            const chapterAssets = (persistedAssets && persistedAssets.length) ? persistedAssets : fallbackAssets;
+            if (chapterAssets && chapterAssets.length > 0) {
+              chapterAssets.forEach((a: any) => {
+                const src = a.fullUrl || a.url || a.thumbnailUrl || a.url || '';
+                if (src) html += `      <img class="asset-image" src="${src}" alt="${(a.name || '').replace(/"/g, '')}">\n`;
+              });
+            }
+          } catch (e) {
+            console.warn('Include chapter assets failed', e);
+          }
         }
 
         // Key Takeaways
@@ -1394,7 +1476,10 @@ function BuilderContent() {
         if (w) {
           // Attempt to print after load
           w.addEventListener('load', () => {
-            try { w.print(); } catch (e) { /* ignore */ }
+            try {
+              // Give images a short time to load before printing
+              setTimeout(() => { try { w.print(); } catch (e) { /* ignore */ } }, 700);
+            } catch (e) { /* ignore */ }
           });
           // Revoke temporary URL after a short delay
           setTimeout(() => URL.revokeObjectURL(url), 5000);
@@ -2490,6 +2575,15 @@ function BuilderContent() {
                                                         className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-green-500 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
                                                       >
                                                         Save
+                                                      </button>
+                                                    )}
+
+                                                    {asset.status === 'saved' && asset.dbId && (
+                                                      <button
+                                                        onClick={() => attachAssetToChapter({ id: asset.dbId, url: asset.fullUrl || asset.url, name: asset.name, category: asset.category }, chapter.id)}
+                                                        className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                      >
+                                                        Attach
                                                       </button>
                                                     )}
                                                   </div>
