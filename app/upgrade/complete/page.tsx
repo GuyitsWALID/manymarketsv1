@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, XCircle, Loader2, ArrowRight, RefreshCw } from 'lucide-react';
 
-export default function UpgradeCompletePage() {
+function UpgradeCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -120,5 +120,21 @@ export default function UpgradeCompletePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UpgradeCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-uvz-orange mx-auto mb-4" />
+          <h1 className="text-2xl font-bold">Processing your upgrade...</h1>
+          <p className="text-gray-600 mt-2">Please wait while we confirm your payment.</p>
+        </div>
+      </div>
+    }>
+      <UpgradeCompleteContent />
+    </Suspense>
   );
 }
