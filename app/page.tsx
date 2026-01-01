@@ -1,7 +1,6 @@
 'use client';
 
 import Link from "next/link";
-import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
 import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
 import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
@@ -604,12 +603,12 @@ export default function Home() {
                       {plan.cta}
                     </Link>
                   ) : (
-                    <PaddleCheckoutButton
-                      productId={process.env.NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID || 'pro'}
-                      className={plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}
+                    <Link
+                      href="/upgrade"
+                      className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}`}
                     >
                       {plan.cta}
-                    </PaddleCheckoutButton>
+                    </Link>
                   )}
                 </motion.div>
               ))}

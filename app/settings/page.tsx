@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown, Loader2, Camera } from 'lucide-react';
-import PaddleCheckoutButton from '@/components/billing/PaddleCheckoutButton';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -162,40 +161,8 @@ function SettingsContent() {
       return;
     }
     
-    setUpgrading(planId);
-    try {
-      const response = await fetch('/api/billing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'checkout', productId: planId }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.url) {
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
-      } else if (data.preview) {
-        // Payment on file, need to confirm
-        const confirmUpgrade = confirm(`Confirm upgrade to ${planId.toUpperCase()}?`);
-        if (confirmUpgrade) {
-          const attachResponse = await fetch('/api/billing', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'attach', productId: planId }),
-          });
-          if (attachResponse.ok) {
-            setCurrentPlan(planId);
-            alert('Successfully upgraded!');
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      alert('Failed to process upgrade. Please try again.');
-    } finally {
-      setUpgrading(null);
-    }
+    // Redirect to upgrade page with Whop checkout
+    router.push('/upgrade');
   };
 
   const handleSaveProfile = async () => {

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
-import PaddleAutoCheckout from '@/components/billing/PaddleAutoCheckout';
-import Script from 'next/script';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -87,9 +85,6 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} font-sans antialiased bg-white text-black`}
       >
-        {/* Include payment provider overlay JS if used by client (e.g. Paddle) via Next.js Script for reliable loading */}
-        <Script src="https://cdn.paddle.com/paddle/paddle.js" strategy="afterInteractive" />
-        <PaddleAutoCheckout />
         {/* FreeBanner is shown only on the homepage to avoid site-wide repetition. */}
 
         {children}
