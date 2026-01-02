@@ -22,6 +22,10 @@ interface Session {
   last_message_at: string;
 }
 
+// Minimum number of exchanges (user + assistant pairs) required before "Build Product" can appear
+// This ensures proper UVZ drilling happens before suggesting to build
+const MIN_EXCHANGES_FOR_COMPLETION = 3; // 3 exchanges = 6 messages minimum
+
 // Helper: strip common markdown formatting (bold/italic/code/blocks) to show clean plain text
 function cleanMarkdown(input: string) {
   if (!input) return input;
@@ -289,6 +293,10 @@ export default function ChatPage() {
             toolResults.length > 0 ? toolResults : undefined
           );
           
+          // Count user messages to determine if we've had enough conversation depth
+          const userMessageCount = messages.filter(m => m.role === 'user').length;
+          const hasMinimumExchanges = userMessageCount >= MIN_EXCHANGES_FOR_COMPLETION;
+          
           // Check for research completion signals in the response
           const completionSignals = [
             'research is complete',
@@ -303,12 +311,14 @@ export default function ChatPage() {
             'validated and ready',
             'validation complete',
             'research journey is complete',
+            'click the build product button',
           ];
           
           const lowerContent = textContent.toLowerCase();
-          const isComplete = completionSignals.some(signal => lowerContent.includes(signal));
+          const hasCompletionSignal = completionSignals.some(signal => lowerContent.includes(signal));
           
-          if (isComplete && !isResearchComplete) {
+          // Only mark as complete if we have BOTH minimum exchanges AND a completion signal
+          if (hasMinimumExchanges && hasCompletionSignal && !isResearchComplete) {
             setIsResearchComplete(true);
           }
         }
@@ -317,12 +327,17 @@ export default function ChatPage() {
         if (toolCalls.length > 0) {
           detectAndUpdatePhase(dbSessionId, toolCalls);
           
+          // Count user messages to ensure minimum depth
+          const userMsgCount = messages.filter(m => m.role === 'user').length;
+          const hasEnoughDepth = userMsgCount >= MIN_EXCHANGES_FOR_COMPLETION;
+          
           // Check if we've reached product_ideation or completed phase
+          // Only allow completion if we have enough conversation depth
           const productTools = ['generate_product_ideas', 'generate_ebook_outline'];
           const hasProductTool = toolCalls.some((tc: any) => 
             productTools.includes(tc.toolName || tc.name)
           );
-          if (hasProductTool && !isResearchComplete) {
+          if (hasProductTool && hasEnoughDepth && !isResearchComplete) {
             setIsResearchComplete(true);
           }
         }
