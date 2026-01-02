@@ -216,11 +216,24 @@ const SOFTWARE_PRODUCT_STEPS = [
   { id: 'export', name: 'Export', icon: Rocket },
 ];
 
+// Steps for Notion templates (structure focused)
+const NOTION_TEMPLATE_STEPS = [
+  { id: 'overview', name: 'Overview', icon: Target },
+  { id: 'structure', name: 'Template Structure', icon: FileText },
+  { id: 'databases', name: 'Databases & Views', icon: Lightbulb },
+  { id: 'content', name: 'Sample Content', icon: BookOpen },
+  { id: 'export', name: 'Export', icon: Rocket },
+];
+
 // Get steps based on product type
 const getProductSteps = (productType: string | undefined) => {
   const softwareTypes = ['saas', 'software-tool', 'mobile-app'];
+  const notionTypes = ['notion-template'];
   if (productType && softwareTypes.includes(productType)) {
     return SOFTWARE_PRODUCT_STEPS;
+  }
+  if (productType && notionTypes.includes(productType)) {
+    return NOTION_TEMPLATE_STEPS;
   }
   return CONTENT_PRODUCT_STEPS;
 };
@@ -235,8 +248,13 @@ const PRODUCT_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   ebook: Book,
   course: Video,
   template: FileText,
+  'notion-template': FileText,
   saas: Code,
+  'software-tool': Code,
+  'mobile-app': Code,
   community: Users,
+  'ai-prompts': Sparkles,
+  'digital-course': Video,
   default: Sparkles,
 };
 
