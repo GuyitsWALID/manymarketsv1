@@ -436,6 +436,115 @@ Respond with exactly this JSON format on a single line:
           estimatedPages: Math.ceil(totalWordCount / 250),
         }
       });
+    } else if (type === 'notion-structure') {
+      // Generate Notion template structure
+      prompt = `You are an expert Notion template designer. Create a comprehensive template structure for a ${product.name} template.
+
+TEMPLATE DETAILS:
+Name: ${product.name}
+Tagline: ${product.tagline || 'Not specified'}
+Description: ${product.description || 'Not specified'}
+Target Users: ${product.raw_analysis?.targetAudience || 'General users'}
+Problem Solved: ${product.raw_analysis?.problemSolved || 'Not specified'}
+
+Design a professional Notion template with:
+1. A home dashboard page
+2. Multiple interconnected databases
+3. Useful views (table, board, calendar, gallery)
+4. Formulas and automations where appropriate
+5. Pre-filled example content
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "template_structure": {
+    "name": "${product.name}",
+    "home_page": {
+      "title": "Dashboard title",
+      "description": "What users see first",
+      "sections": [
+        {
+          "title": "Section name",
+          "type": "linked_database|text|callout|toggle|columns",
+          "description": "What this section contains"
+        }
+      ]
+    },
+    "databases": [
+      {
+        "id": "db1",
+        "name": "Database name",
+        "icon": "📋",
+        "description": "Purpose of this database",
+        "properties": [
+          {
+            "name": "Property name",
+            "type": "title|text|number|select|multi_select|date|checkbox|url|relation|formula|rollup",
+            "options": ["Option 1", "Option 2"],
+            "formula": "formula expression if type is formula",
+            "relation_to": "database id if type is relation"
+          }
+        ],
+        "views": [
+          {
+            "name": "View name",
+            "type": "table|board|calendar|gallery|list|timeline",
+            "filter_by": "property name or null",
+            "group_by": "property name or null",
+            "sort_by": "property name or null"
+          }
+        ],
+        "sample_entries": [
+          {
+            "title": "Example entry title",
+            "properties": {"Property name": "value"}
+          }
+        ]
+      }
+    ],
+    "sub_pages": [
+      {
+        "title": "Page title",
+        "icon": "📚",
+        "type": "documentation|resource|archive",
+        "content_description": "What this page contains"
+      }
+    ],
+    "automations": [
+      {
+        "name": "Automation name",
+        "trigger": "When triggered",
+        "action": "What happens"
+      }
+    ],
+    "setup_instructions": [
+      "Step 1: Duplicate template",
+      "Step 2: Customize properties",
+      "Step 3: Add your content"
+    ]
+  }
+}`;
+
+      const text = await generateWithFallback(prompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result.structure = JSON.parse(jsonMatch[0]);
+        
+        // Save to database
+        await supabase
+          .from('product_ideas')
+          .update({
+            raw_analysis: {
+              ...product.raw_analysis,
+              structure: result.structure,
+            },
+          })
+          .eq('id', id)
+          .eq('user_id', user.id);
+          
+        return NextResponse.json({ success: true, structure: result.structure });
+      } else {
+        throw new Error('Failed to parse Notion template structure');
+      }
     } else {
       return NextResponse.json({ error: 'Invalid generation type' }, { status: 400 });
     }

@@ -110,6 +110,49 @@ interface ProductStructure {
   };
   deliverables?: Deliverable[];
   tech_requirements?: string[];
+  // Notion template structure
+  template_structure?: NotionTemplateStructure;
+}
+
+interface NotionTemplateStructure {
+  name: string;
+  description?: string;
+  home_page?: {
+    title: string;
+    description?: string;
+    sections?: Array<{
+      title: string;
+      type?: string;
+    }>;
+  };
+  databases?: Array<{
+    id: string;
+    name: string;
+    icon?: string;
+    description?: string;
+    properties?: Array<{
+      name: string;
+      type: string;
+      options?: string[];
+    }>;
+    views?: Array<{
+      name: string;
+      type: string;
+    }>;
+    sample_entries?: Record<string, any>[];
+  }>;
+  sub_pages?: Array<{
+    title?: string;
+    name?: string;
+    description?: string;
+  }>;
+  automations?: Array<{
+    name?: string;
+    trigger?: string;
+    action?: string;
+    description?: string;
+  }>;
+  setup_instructions?: string[];
 }
 
 interface Part {
@@ -2330,7 +2373,7 @@ function BuilderContent() {
                     )}
 
                     {/* Step 1: Content Plan (for content products) or Features (for software) */}
-                    {currentStep === 1 && !['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                    {currentStep === 1 && !['saas', 'software-tool', 'mobile-app', 'notion-template'].includes(currentProduct.product_type || '') && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Content Plan</h2>
                         <p className="text-gray-600 mb-6">
@@ -2894,8 +2937,196 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 2: Structure (for content products) */}
-                    {currentStep === 2 && !['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                    {/* Step 1: Template Structure (for Notion templates) */}
+                    {currentStep === 1 && currentProduct.product_type === 'notion-template' && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">Template Structure</h2>
+                        <p className="text-gray-600 mb-6">
+                          Design the pages, databases, and layout of your Notion template.
+                        </p>
+                        
+                        {/* AI Structure Generation for Notion */}
+                        <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+                          <div className="flex items-center gap-2 text-purple-800 font-bold mb-2 text-sm sm:text-base">
+                            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                            AI Template Designer
+                          </div>
+                          <p className="text-xs sm:text-sm text-purple-700 mb-3">
+                            Let AI help you design the perfect Notion template structure with pages, databases, and views.
+                          </p>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingStructure(true);
+                              try {
+                                const response = await fetch(`/api/products/${currentProduct.id}/generate`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ type: 'notion-structure' }),
+                                });
+                                
+                                if (!response.ok) {
+                                  const error = await response.json();
+                                  throw new Error(error.error || 'Failed to generate');
+                                }
+                                
+                                const data = await response.json();
+                                setCurrentProduct(prev => prev ? {
+                                  ...prev,
+                                  raw_analysis: {
+                                    ...prev.raw_analysis,
+                                    structure: data.structure,
+                                  }
+                                } : null);
+                                
+                                showNotification('success', 'Template Structure Generated!', 'Your Notion template structure has been designed.');
+                              } catch (error) {
+                                console.error('Generation error:', error);
+                                showNotification('error', 'Generation Failed', error instanceof Error ? error.message : 'Failed to generate template structure');
+                              } finally {
+                                setIsGeneratingStructure(false);
+                              }
+                            }}
+                            disabled={isGeneratingStructure}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-purple-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center sm:justify-start gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingStructure ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Designing...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4" />
+                                Generate Template Structure
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        
+                        {/* Display Generated Notion Structure */}
+                        {currentProduct.raw_analysis?.structure?.template_structure && (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-black text-lg">{currentProduct.raw_analysis.structure.template_structure.name}</h3>
+                              <button
+                                onClick={async () => {
+                                  setIsGeneratingStructure(true);
+                                  try {
+                                    const response = await fetch(`/api/products/${currentProduct.id}/generate`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ type: 'notion-structure' }),
+                                    });
+                                    if (response.ok) {
+                                      const data = await response.json();
+                                      setCurrentProduct(prev => prev ? {
+                                        ...prev,
+                                        raw_analysis: { ...prev.raw_analysis, structure: data.structure }
+                                      } : null);
+                                    }
+                                  } finally {
+                                    setIsGeneratingStructure(false);
+                                  }
+                                }}
+                                disabled={isGeneratingStructure}
+                                className="text-sm text-purple-600 hover:underline flex items-center gap-1"
+                              >
+                                <RefreshCw className={`w-4 h-4 ${isGeneratingStructure ? 'animate-spin' : ''}`} />
+                                Regenerate
+                              </button>
+                            </div>
+                            
+                            {/* Home Page */}
+                            {currentProduct.raw_analysis.structure.template_structure.home_page && (
+                              <div className="bg-white border-2 border-purple-200 rounded-xl p-4">
+                                <h4 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
+                                  🏠 {currentProduct.raw_analysis.structure.template_structure.home_page.title}
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-3">{currentProduct.raw_analysis.structure.template_structure.home_page.description}</p>
+                                {currentProduct.raw_analysis.structure.template_structure.home_page.sections && (
+                                  <div className="space-y-2">
+                                    {currentProduct.raw_analysis.structure.template_structure.home_page.sections.map((section: any, i: number) => (
+                                      <div key={i} className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg text-sm">
+                                        <span className="capitalize font-medium">{section.title}</span>
+                                        <span className="text-xs px-2 py-0.5 bg-purple-200 rounded-full">{section.type?.replace('_', ' ')}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Databases */}
+                            {currentProduct.raw_analysis.structure.template_structure.databases && (
+                              <div>
+                                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                  🗃️ Databases ({currentProduct.raw_analysis.structure.template_structure.databases.length})
+                                </h4>
+                                <div className="space-y-3">
+                                  {currentProduct.raw_analysis.structure.template_structure.databases.map((db: any) => (
+                                    <div key={db.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                                      <div className="p-4 bg-gray-50">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-xl">{db.icon || '📋'}</span>
+                                          <span className="font-bold">{db.name}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600">{db.description}</p>
+                                      </div>
+                                      <div className="p-4 space-y-3">
+                                        {/* Properties */}
+                                        <div>
+                                          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Properties</p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {db.properties?.map((prop: any, i: number) => (
+                                              <span key={i} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                                {prop.name} <span className="opacity-60">({prop.type})</span>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        {/* Views */}
+                                        {db.views && db.views.length > 0 && (
+                                          <div>
+                                            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Views</p>
+                                            <div className="flex flex-wrap gap-1">
+                                              {db.views.map((view: any, i: number) => (
+                                                <span key={i} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full capitalize">
+                                                  {view.name} ({view.type})
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Setup Instructions */}
+                            {currentProduct.raw_analysis.structure.template_structure.setup_instructions && (
+                              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                                <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                                  📋 Setup Instructions
+                                </h4>
+                                <ol className="space-y-2">
+                                  {currentProduct.raw_analysis.structure.template_structure.setup_instructions.map((step: string, i: number) => (
+                                    <li key={i} className="flex items-start gap-2 text-sm">
+                                      <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
+                                      {step}
+                                    </li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 2: Structure (for content products - excluding Notion templates) */}
+                    {currentStep === 2 && !['saas', 'software-tool', 'mobile-app', 'notion-template'].includes(currentProduct.product_type || '') && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Product Structure</h2>
                         <p className="text-gray-600 mb-6">
@@ -3086,8 +3317,237 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 3: Assets (for all product types) */}
-                    {currentStep === 3 && (
+                    {/* Step 2: Databases & Views (for Notion templates) */}
+                    {currentStep === 2 && currentProduct.product_type === 'notion-template' && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">Databases & Views</h2>
+                        <p className="text-gray-600 mb-6">
+                          Customize the databases and views for your Notion template.
+                        </p>
+                        
+                        {/* Check if structure has been generated */}
+                        {!currentProduct.raw_analysis?.structure?.template_structure ? (
+                          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-6 text-center">
+                            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
+                            <h3 className="font-bold text-yellow-800 mb-2">Template Structure Required</h3>
+                            <p className="text-sm text-yellow-700 mb-4">
+                              Please go back to Step 1 and generate your template structure first.
+                            </p>
+                            <button
+                              onClick={() => setCurrentStep(1)}
+                              className="px-4 py-2 bg-yellow-500 text-white font-bold border-2 border-black rounded-lg hover:bg-yellow-600 transition-colors"
+                            >
+                              Go to Template Structure
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* Database Management */}
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 sm:p-6">
+                              <h3 className="font-black text-blue-800 flex items-center gap-2 mb-4">
+                                🗃️ Database Configuration
+                              </h3>
+                              
+                              {currentProduct.raw_analysis.structure.template_structure.databases?.map((db: any, dbIndex: number) => (
+                                <div key={db.id || dbIndex} className="mb-4 last:mb-0 bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
+                                  <div className="p-4 bg-blue-50 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xl">{db.icon || '📋'}</span>
+                                      <span className="font-bold">{db.name}</span>
+                                    </div>
+                                    <span className="text-xs px-2 py-1 bg-blue-200 text-blue-700 rounded-full">
+                                      {db.properties?.length || 0} properties
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="p-4 space-y-4">
+                                    {/* Properties List */}
+                                    <div>
+                                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Properties</p>
+                                      <div className="grid gap-2">
+                                        {db.properties?.map((prop: any, propIndex: number) => (
+                                          <div key={propIndex} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                                            <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                                              {prop.type === 'title' && '📝'}
+                                              {prop.type === 'text' && '📄'}
+                                              {prop.type === 'number' && '🔢'}
+                                              {prop.type === 'select' && '🏷️'}
+                                              {prop.type === 'multi_select' && '🏷️'}
+                                              {prop.type === 'date' && '📅'}
+                                              {prop.type === 'checkbox' && '☑️'}
+                                              {prop.type === 'url' && '🔗'}
+                                              {prop.type === 'email' && '📧'}
+                                              {prop.type === 'phone' && '📞'}
+                                              {prop.type === 'formula' && '🧮'}
+                                              {prop.type === 'relation' && '🔄'}
+                                              {prop.type === 'rollup' && '📊'}
+                                              {prop.type === 'files' && '📎'}
+                                              {prop.type === 'status' && '🚦'}
+                                              {!['title', 'text', 'number', 'select', 'multi_select', 'date', 'checkbox', 'url', 'email', 'phone', 'formula', 'relation', 'rollup', 'files', 'status'].includes(prop.type) && '📌'}
+                                            </div>
+                                            <div className="flex-1">
+                                              <p className="font-medium text-sm">{prop.name}</p>
+                                              <p className="text-xs text-gray-500 capitalize">{prop.type?.replace('_', ' ')}</p>
+                                            </div>
+                                            {prop.options && (
+                                              <div className="flex gap-1 flex-wrap">
+                                                {prop.options.slice(0, 3).map((opt: string, i: number) => (
+                                                  <span key={i} className="text-xs px-1.5 py-0.5 bg-gray-200 rounded">{opt}</span>
+                                                ))}
+                                                {prop.options.length > 3 && (
+                                                  <span className="text-xs text-gray-400">+{prop.options.length - 3} more</span>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Views */}
+                                    {db.views && db.views.length > 0 && (
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Views</p>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                          {db.views.map((view: any, viewIndex: number) => (
+                                            <div key={viewIndex} className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                                              <span className="text-lg">
+                                                {view.type === 'table' && '📊'}
+                                                {view.type === 'board' && '📋'}
+                                                {view.type === 'calendar' && '📅'}
+                                                {view.type === 'gallery' && '🖼️'}
+                                                {view.type === 'list' && '📝'}
+                                                {view.type === 'timeline' && '📈'}
+                                                {!['table', 'board', 'calendar', 'gallery', 'list', 'timeline'].includes(view.type) && '📊'}
+                                              </span>
+                                              <div>
+                                                <p className="font-medium text-sm">{view.name}</p>
+                                                <p className="text-xs text-gray-500 capitalize">{view.type}</p>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {/* Automations & Integrations */}
+                            {currentProduct.raw_analysis.structure.template_structure.automations && 
+                             currentProduct.raw_analysis.structure.template_structure.automations.length > 0 && (
+                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-4 sm:p-6">
+                                <h3 className="font-black text-purple-800 flex items-center gap-2 mb-4">
+                                  ⚡ Automations & Workflows
+                                </h3>
+                                <div className="space-y-2">
+                                  {currentProduct.raw_analysis.structure.template_structure.automations.map((auto: any, i: number) => (
+                                    <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-purple-200">
+                                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <Zap className="w-4 h-4 text-purple-600" />
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-sm">{auto.name || auto.trigger}</p>
+                                        <p className="text-xs text-gray-500">{auto.description || `${auto.trigger} → ${auto.action}`}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3: Sample Content (for Notion templates) */}
+                    {currentStep === 3 && currentProduct.product_type === 'notion-template' && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">Sample Content</h2>
+                        <p className="text-gray-600 mb-6">
+                          Generate sample entries to showcase your template in action.
+                        </p>
+                        
+                        {/* Check if structure has been generated */}
+                        {!currentProduct.raw_analysis?.structure?.template_structure ? (
+                          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-6 text-center">
+                            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
+                            <h3 className="font-bold text-yellow-800 mb-2">Template Structure Required</h3>
+                            <p className="text-sm text-yellow-700 mb-4">
+                              Please complete the previous steps first.
+                            </p>
+                            <button
+                              onClick={() => setCurrentStep(1)}
+                              className="px-4 py-2 bg-yellow-500 text-white font-bold border-2 border-black rounded-lg hover:bg-yellow-600 transition-colors"
+                            >
+                              Go to Template Structure
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* Sample Entries for Each Database */}
+                            {currentProduct.raw_analysis.structure.template_structure.databases?.map((db: any, dbIndex: number) => (
+                              <div key={db.id || dbIndex} className="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
+                                <div className="p-4 bg-gray-50 flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xl">{db.icon || '📋'}</span>
+                                    <span className="font-bold">{db.name}</span>
+                                  </div>
+                                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                    {db.sample_entries?.length || 0} sample entries
+                                  </span>
+                                </div>
+                                
+                                <div className="p-4">
+                                  {db.sample_entries && db.sample_entries.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {db.sample_entries.map((entry: any, entryIndex: number) => (
+                                        <div key={entryIndex} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                          <div className="grid gap-2">
+                                            {Object.entries(entry).map(([key, value]: [string, any]) => (
+                                              <div key={key} className="flex items-center gap-2 text-sm">
+                                                <span className="font-medium text-gray-600 capitalize min-w-[100px]">{key.replace('_', ' ')}:</span>
+                                                <span className="text-gray-800">
+                                                  {typeof value === 'boolean' ? (value ? '✅' : '❌') : 
+                                                   Array.isArray(value) ? value.join(', ') : 
+                                                   String(value)}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="text-center py-6 text-gray-400">
+                                      <FileText className="w-8 h-8 mx-auto mb-2" />
+                                      <p className="text-sm">No sample entries yet</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {/* Tips for Sample Content */}
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                              <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                                💡 Tips for Great Sample Content
+                              </h4>
+                              <ul className="text-sm text-blue-700 space-y-1">
+                                <li>• Include realistic examples that show your template&apos;s full potential</li>
+                                <li>• Add variety to demonstrate different use cases</li>
+                                <li>• Use sample entries that your target audience can relate to</li>
+                                <li>• Show how views and filters work with actual data</li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3: Assets (for all product types except Notion) */}
+                    {currentStep === 3 && currentProduct.product_type !== 'notion-template' && (
                       <div>
                         <h2 className="text-xl font-black mb-4">
                           {isSoftwareProduct ? 'Product Assets' : 'Assets & Resources'}
@@ -3690,8 +4150,207 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 4: Export (for content products only) */}
-                    {currentStep === 4 && !isSoftwareProduct && (
+                    {/* Step 4: Export (for Notion templates) */}
+                    {currentStep === 4 && currentProduct.product_type === 'notion-template' && (
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                          Export Your Notion Template
+                        </h2>
+                        <p className="text-gray-600 mb-6">
+                          Preview your template and export it for customers.
+                        </p>
+
+                        {/* Notion Template Preview */}
+                        <div className="bg-gradient-to-br from-gray-50 via-purple-50 to-blue-50 border-4 border-black rounded-2xl overflow-hidden shadow-brutal mb-6">
+                          {/* Template Cover */}
+                          <div className="bg-gradient-to-br from-purple-600 to-indigo-700 p-8 sm:p-12 text-center text-white relative overflow-hidden">
+                            <div className="absolute inset-0 opacity-10">
+                              <div className="absolute top-4 left-4 w-32 h-32 border-4 border-white" />
+                              <div className="absolute bottom-4 right-4 w-24 h-24 border-4 border-white" />
+                            </div>
+                            <div className="relative">
+                              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 bg-white/20 border-4 border-white/50 rounded-xl flex items-center justify-center">
+                                <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+                              </div>
+                              <h1 className="text-2xl sm:text-4xl font-black mb-3 drop-shadow-lg">{currentProduct.name}</h1>
+                              <p className="text-lg sm:text-xl opacity-90 mb-4">{currentProduct.tagline || 'Notion Template'}</p>
+                              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-4 py-2 rounded-full text-sm font-bold">
+                                📋 Notion Template
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Template Details */}
+                          <div className="p-6 sm:p-8 bg-white">
+                            {/* Template Structure Summary */}
+                            {currentProduct.raw_analysis?.structure?.template_structure && (
+                              <div className="space-y-4">
+                                {/* Databases Count */}
+                                <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
+                                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    🗃️
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">{currentProduct.raw_analysis.structure.template_structure.databases?.length || 0} Databases</p>
+                                    <p className="text-sm text-gray-500">
+                                      {currentProduct.raw_analysis.structure.template_structure.databases?.map((db: any) => db.name).join(', ') || 'No databases'}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {/* Sub-pages */}
+                                {currentProduct.raw_analysis.structure.template_structure.sub_pages && 
+                                 currentProduct.raw_analysis.structure.template_structure.sub_pages.length > 0 && (
+                                  <div className="flex items-center gap-4 p-4 bg-purple-50 rounded-xl">
+                                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                      📄
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">{currentProduct.raw_analysis.structure.template_structure.sub_pages.length} Sub-pages</p>
+                                      <p className="text-sm text-gray-500">
+                                        {currentProduct.raw_analysis.structure.template_structure.sub_pages.slice(0, 3).map((page: any) => page.title || page.name).join(', ')}
+                                        {currentProduct.raw_analysis.structure.template_structure.sub_pages.length > 3 && '...'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Automations */}
+                                {currentProduct.raw_analysis.structure.template_structure.automations && 
+                                 currentProduct.raw_analysis.structure.template_structure.automations.length > 0 && (
+                                  <div className="flex items-center gap-4 p-4 bg-amber-50 rounded-xl">
+                                    <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                                      ⚡
+                                    </div>
+                                    <div>
+                                      <p className="font-bold">{currentProduct.raw_analysis.structure.template_structure.automations.length} Automations</p>
+                                      <p className="text-sm text-gray-500">Ready-to-use workflows included</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Pricing Section */}
+                        {ENABLE_PRICING ? (
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                            <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                              💰 Set Your Price
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Template Price</label>
+                                <div className="relative">
+                                  <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                  <input
+                                    type="text"
+                                    value={productPrice}
+                                    onChange={(e) => {
+                                      setProductPrice(e.target.value);
+                                      if (e.target.value && parseFloat(e.target.value) > 0) {
+                                        setExportChecklist(prev => ({ ...prev, pricingSet: true }));
+                                      }
+                                    }}
+                                    placeholder="29.00"
+                                    className="w-full pl-7 sm:pl-8 pr-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-lg sm:text-xl font-bold"
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Suggested: $19 - $79 for Notion templates
+                                </p>
+                              </div>
+                              <div>
+                                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">License Type</label>
+                                <select
+                                  className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                                  defaultValue="personal"
+                                >
+                                  <option value="personal">Personal License</option>
+                                  <option value="team">Team License</option>
+                                  <option value="extended">Extended License</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-100 border-2 border-gray-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 text-center">
+                            <h3 className="font-black mb-2">💰 Pricing Disabled</h3>
+                            <p className="text-sm text-gray-600">Pricing and checkout are temporarily disabled. You can set pricing later.</p>
+                          </div>
+                        )}
+
+                        {/* Category Section */}
+                        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+                          <h3 className="font-black mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            🏷️ Template Category
+                          </h3>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2">Category</label>
+                            <select
+                              value={selectedCategory}
+                              onChange={(e) => setSelectedCategory(e.target.value)}
+                              className="w-full px-4 py-2.5 sm:py-3 border-2 border-black rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                            >
+                              <option value="">Select a category...</option>
+                              {categories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.icon} {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Export Options */}
+                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 sm:p-6 mb-6">
+                          <h3 className="font-black mb-4 flex items-center gap-2 text-sm sm:text-base">
+                            📦 Export Format
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="p-4 bg-white border-2 border-purple-300 rounded-xl cursor-pointer hover:border-purple-500 transition-colors">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                  🔗
+                                </div>
+                                <div>
+                                  <p className="font-bold">Notion Template Link</p>
+                                  <p className="text-xs text-gray-500">Shareable duplication link</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="p-4 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 transition-colors">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  📄
+                                </div>
+                                <div>
+                                  <p className="font-bold">Documentation PDF</p>
+                                  <p className="text-xs text-gray-500">Setup guide & instructions</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Finalize Button */}
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => setShowExportModal(true)}
+                            disabled={!productPrice && ENABLE_PRICING}
+                            className="px-8 py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-black text-lg border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
+                          >
+                            <Rocket className="w-6 h-6" />
+                            Finalize Template
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: Export (for content products only - excluding Notion templates) */}
+                    {currentStep === 4 && !isSoftwareProduct && currentProduct.product_type !== 'notion-template' && (
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
                           <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-uvz-orange" />

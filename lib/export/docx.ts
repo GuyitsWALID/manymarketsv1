@@ -143,7 +143,6 @@ export async function generateDocxBuffer(product: ProductLike): Promise<Uint8Arr
                     width: 450, // pixels
                     height: 338, // 4:3 aspect ratio
                   },
-                  type: 'png',
                 }),
               ],
             }));
