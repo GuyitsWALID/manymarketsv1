@@ -235,6 +235,7 @@ export default function Home() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6 font-bold text-base">
+        <Link href="/daily-ideas" className="hover:underline decoration-4 decoration-uvz-orange flex items-center gap-1">Daily Ideas 🔥</Link>
         <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
         <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Idea Scorer</Link>
@@ -272,6 +273,16 @@ export default function Home() {
           
 
           <nav className="flex flex-col gap-3 text-lg font-bold">
+            <Link
+          href="/daily-ideas"
+          className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
+          onClick={() => {
+            const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
+            if (el) el.checked = false;
+          }}
+            >
+          Daily Ideas 🔥
+            </Link>
             <Link
           href="#features"
           className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"

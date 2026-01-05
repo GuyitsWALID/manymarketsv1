@@ -33,6 +33,7 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-rough-notation": "^1.0.8",
+    "resend": "^6.6.0",
     "stripe": "^20.0.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.1.13",

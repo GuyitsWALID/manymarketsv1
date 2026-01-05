@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, MessageSquare, Trash2, Target, Search, Crosshair, CheckCircle, Lightbulb, Zap } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Target, Search, Crosshair, CheckCircle, Lightbulb, Zap, Flame } from 'lucide-react';
 
 interface Session {
   id: string;
@@ -183,6 +183,14 @@ export default function ChatSidebar({
                 Quick Actions
               </h3>
               <div className="space-y-2">
+                <Link
+                  href="/daily-ideas"
+                  onClick={() => isMobile && onClose()}
+                  className="flex items-center justify-center gap-2 text-sm font-bold text-center py-2 bg-gradient-to-r from-uvz-orange to-pink-500 text-white border-2 border-black rounded hover:shadow-brutal transition-shadow"
+                >
+                  <Flame className="w-4 h-4" />
+                  Daily Ideas 🔥
+                </Link>
                 <Link
                   href="/idea-score"
                   onClick={() => isMobile && onClose()}
