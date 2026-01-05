@@ -7,22 +7,6 @@
     {
       "path": "/api/cron/send-daily-emails",
       "schedule": "5 8 * * *"
-    },
-    {
-      "path": "/api/cron/send-daily-emails",
-      "schedule": "10 8 * * *"
-    },
-    {
-      "path": "/api/cron/send-daily-emails",
-      "schedule": "15 8 * * *"
-    },
-    {
-      "path": "/api/cron/send-daily-emails",
-      "schedule": "20 8 * * *"
-    },
-    {
-      "path": "/api/cron/send-daily-emails",
-      "schedule": "25 8 * * *"
     }
   ]
 }
