@@ -125,15 +125,19 @@ export default function GuestDemoChat() {
 
     try {
       // Call the actual chat API (same as real chat)
+      // Format messages in UIMessage format expected by AI SDK
+      const formattedMessages = [...messages, userMessage].map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        parts: [{ type: 'text', text: m.content }],
+      }));
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-          isGuestDemo: true,
+          messages: formattedMessages,
         }),
       });
 
