@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 import { getModel } from '@/lib/ai/provider';
 import { searchWeb } from '@/lib/research/web-search';
@@ -8,11 +8,17 @@ import { queueEmailsForIdea } from '@/lib/email';
 // Verify cron secret to prevent unauthorized access
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Supabase admin client
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy-initialized Supabase admin client (prevents build-time errors)
+let _supabaseAdmin: SupabaseClient | null = null;
+function getSupabaseAdmin(): SupabaseClient {
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabaseAdmin;
+}
 
 // Rotating industries for variety
 const INDUSTRIES = [
@@ -58,7 +64,7 @@ export async function POST(request: NextRequest) {
     const today = new Date().toISOString().split('T')[0];
     
     // Check if we already have an idea for today
-    const { data: existingIdea } = await supabaseAdmin
+    const { data: existingIdea } = await getSupabaseAdmin()
       .from('daily_niche_ideas')
       .select('id')
       .eq('featured_date', today)
@@ -210,7 +216,7 @@ Return ONLY valid JSON:
     }
     
     // Step 3: Save to database
-    const { data: newIdea, error: insertError } = await supabaseAdmin
+    const { data: newIdea, error: insertError } = await getSupabaseAdmin()
       .from('daily_niche_ideas')
       .insert({
         featured_date: today,

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Create a public Supabase client for waitlist (no auth required)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Lazy-initialized Supabase client for waitlist (no auth required)
+let _supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return _supabase;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const { data: existing } = await supabase
+    const { data: existing } = await getSupabase()
       .from('waitlist')
       .select('id, position')
       .eq('email', email.toLowerCase())
@@ -46,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert new waitlist entry
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('waitlist')
       .insert({
         email: email.toLowerCase(),
@@ -127,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     if (email) {
       // Check specific user's position
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from('waitlist')
         .select('position, created_at')
         .eq('email', email.toLowerCase())
@@ -145,7 +151,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const { count } = await supabase
+    const { count } = await getSupabase()
       .from('waitlist')
       .select('*', { count: 'exact', head: true });
 
