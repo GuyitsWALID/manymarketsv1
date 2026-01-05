@@ -133,6 +133,67 @@ export default function ChatPage() {
           } catch {
             setIsPro(false);
           }
+          
+          // Check for guest session data to restore
+          const hasGuestData = localStorage.getItem('manymarkets_has_guest_data');
+          const guestSessions = localStorage.getItem('manymarkets_guest_sessions');
+          
+          if (hasGuestData === 'true' && guestSessions) {
+            try {
+              const sessions = JSON.parse(guestSessions);
+              if (sessions.length > 0) {
+                // Get the most recent guest session with messages
+                const latestSession = sessions[sessions.length - 1];
+                if (latestSession.messages && latestSession.messages.length > 0) {
+                  // Create a new session in the database with the guest messages
+                  const firstMessage = latestSession.messages.find((m: any) => m.role === 'user')?.content || 'Restored session';
+                  const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? '...' : '');
+                  
+                  const createRes = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title }),
+                  });
+                  
+                  if (createRes.ok) {
+                    const { session: newSession } = await createRes.json();
+                    
+                    // Save all guest messages to the new session
+                    for (const msg of latestSession.messages) {
+                      await fetch(`/api/sessions/${newSession.id}/messages`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ role: msg.role, content: msg.content }),
+                      });
+                    }
+                    
+                    // Set the restored session as active
+                    setDbSessionId(newSession.id);
+                    localStorage.setItem('uvz_active_session', newSession.id);
+                    
+                    // Reload messages into the chat
+                    const restoredMessages = latestSession.messages.map((msg: any, idx: number) => ({
+                      id: `restored-${idx}`,
+                      role: msg.role,
+                      content: msg.content,
+                    }));
+                    setMessages(restoredMessages);
+                    
+                    // Update sessions list
+                    setSessions(prev => [newSession, ...prev]);
+                    
+                    console.log('Guest session restored successfully!');
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Error restoring guest session:', e);
+            }
+            
+            // Clear guest data after restore attempt
+            localStorage.removeItem('manymarkets_has_guest_data');
+            localStorage.removeItem('manymarkets_guest_sessions');
+          }
         }
       } catch {
         setCurrentUser(null);

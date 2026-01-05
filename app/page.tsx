@@ -10,6 +10,7 @@ import Logo from "@/components/Logo";
 import FreeBanner from '@/components/FreeBanner';
 import NewYearConfetti from '@/components/NewYearConfetti';
 import { createClient } from "@/lib/supabase/client";
+import GuestDemoChat from '@/components/demo/GuestDemoChat';
 
 const HandDrawnCircle = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
   <RoughNotation type="circle" show={true} color="#f97316" strokeWidth={3} animationDelay={delay} animationDuration={1000}>
@@ -422,8 +423,8 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 sm:mb-6">
-          Build & Sell{" "}
-          <span className="text-uvz-orange">AI Prompts & Ebooks</span>
+          Market Research{" "}
+          <span className="text-uvz-orange">At Your Fingertips</span>
               </h2>
             </motion.div>
             
@@ -433,7 +434,7 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium max-w-3xl mx-auto text-left sm:text-center px-2"
             >
-              The fastest way to create <strong>AI prompt packs</strong> and <strong>ebooks</strong> that sell. Find your niche, build with AI, and export ready-to-sell products in hours.
+              Validate your ideas in minutes, not months. Our AI finds <strong>profitable niches</strong>, scores your concepts, and helps you <strong>build digital products</strong>—all in one place.
             </motion.p>
             
             <motion.div 
@@ -487,89 +488,23 @@ export default function Home() {
                 <HandDrawnBox delay={100}>Try It Now — No Signup Required</HandDrawnBox>
               </h2>
               <p className="text-lg md:text-xl max-w-2xl mx-auto text-gray-700">
-                See how our AI finds profitable niches for your prompts & ebooks in seconds
+                Chat with our AI to discover profitable niches for your next digital product
               </p>
             </motion.div>
 
-            {/* Interactive Demo Card */}
+            {/* Interactive Demo Chat */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="max-w-4xl mx-auto"
             >
-              <div className="bg-white border-4 border-black rounded-2xl shadow-brutal overflow-hidden">
-                {/* Demo Header */}
-                <div className="bg-gradient-to-r from-uvz-orange to-pink-500 p-4 border-b-4 border-black">
-                  <div className="flex items-center gap-2 text-white">
-                    <Sparkles className="w-6 h-6" />
-                    <span className="font-black text-lg">AI Niche Finder</span>
-                    <span className="ml-auto text-sm bg-white/20 px-3 py-1 rounded-full">Live Demo</span>
-                  </div>
-                </div>
-
-                {/* Demo Content */}
-                <div className="p-6 md:p-8">
-                  {/* Simulated Chat */}
-                  <div className="space-y-4 mb-6">
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-uvz-orange rounded-full flex items-center justify-center shrink-0">
-                        <Sparkles className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="bg-gray-100 rounded-2xl rounded-tl-none p-4 max-w-xl">
-                        <p className="font-medium">👋 Hi! I help creators find profitable niches for AI prompts and ebooks. What topics are you interested in or skilled at?</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3 justify-end">
-                      <div className="bg-uvz-orange/10 border-2 border-uvz-orange rounded-2xl rounded-tr-none p-4 max-w-xl">
-                        <p className="font-medium">I'm good at writing and I know a lot about productivity and personal development</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-uvz-orange rounded-full flex items-center justify-center shrink-0">
-                        <Sparkles className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="bg-gray-100 rounded-2xl rounded-tl-none p-4 max-w-xl">
-                        <p className="font-medium mb-3">🎯 Great combination! Here are 3 hot niches I found:</p>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 p-2 bg-green-100 rounded-lg">
-                            <span className="text-green-600 font-bold">🔥 High Demand</span>
-                            <span className="font-medium">AI Journaling Prompts for Anxiety</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-blue-100 rounded-lg">
-                            <span className="text-blue-600 font-bold">💎 Low Competition</span>
-                            <span className="font-medium">ChatGPT Prompts for ADHD Adults</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2 bg-purple-100 rounded-lg">
-                            <span className="text-purple-600 font-bold">📈 Trending</span>
-                            <span className="font-medium">AI-Powered Morning Routine Ebook</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CTA */}
-                  <div className="text-center pt-4 border-t-2 border-gray-200">
-                    <p className="text-gray-600 mb-4">Want to explore these niches deeper and build your product?</p>
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-2 bg-uvz-orange text-white font-bold px-8 py-4 border-4 border-black shadow-brutal hover:-translate-y-1 transition-all"
-                    >
-                      <Rocket className="w-5 h-5" />
-                      Start Building — It's Free
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              <GuestDemoChat />
 
               {/* Trust indicators */}
               <div className="flex flex-wrap justify-center gap-4 mt-8 text-sm text-gray-600">
                 <span className="flex items-center gap-1">✓ No credit card required</span>
                 <span className="flex items-center gap-1">✓ 2 free research sessions</span>
-                <span className="flex items-center gap-1">✓ Export your first product free</span>
+                <span className="flex items-center gap-1">✓ Your progress is saved</span>
               </div>
             </motion.div>
           </div>

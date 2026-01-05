@@ -1,20 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Sparkles, Github, Chrome, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+  
+  // Get return URL from query params (for guest session restoration)
+  const returnTo = searchParams.get('returnTo') || '/chat';
+  const restoreGuest = searchParams.get('restoreGuest') === 'true';
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,14 +55,14 @@ export default function LoginPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`,
           },
         });
         if (error) throw error;
         setError('Check your email for the confirmation link!');
         return;
       }
-      router.push('/chat');
+      router.push(returnTo);
       router.refresh();
     } catch (error: any) {
       setError(error.message || 'An error occurred');
@@ -74,7 +79,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/chat`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`,
         },
       });
       if (error) throw error;
@@ -335,5 +340,21 @@ export default function LoginPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-uvz-orange" />
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 }
