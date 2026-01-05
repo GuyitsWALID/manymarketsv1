@@ -237,7 +237,7 @@ export default function Home() {
           <nav className="hidden md:flex items-center gap-6 font-bold text-base">
         <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
         <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
-        <Link href="/idea-score" className="hover:underline decoration-4 decoration-uvz-orange">Idea Scorer</Link>
+        <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Idea Scorer</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Login</Link>
         <Link href="/login" className="bg-uvz-orange text-black px-6 py-2 border-2 border-black hover:bg-white hover:text-black transition-all shadow-brutal active:translate-x-1 active:translate-y-1 active:shadow-none text-base">
           Get Started
@@ -293,7 +293,7 @@ export default function Home() {
           Pricing
             </Link>
             <Link
-          href="/idea-score"
+          href="/login"
           className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
           onClick={() => {
             const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
@@ -703,7 +703,7 @@ export default function Home() {
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/features" className="hover:text-uvz-orange transition-colors">Features</Link></li>
                 <li><Link href="/pricing" className="hover:text-uvz-orange transition-colors">Pricing</Link></li>
-                <li><Link href="/idea-score" className="hover:text-uvz-orange transition-colors">Idea Scorer</Link></li>
+                <li><Link href="/login" className="hover:text-uvz-orange transition-colors">Idea Scorer</Link></li>
                 <li><Link href="/builder" className="hover:text-uvz-orange transition-colors">Product Builder</Link></li>
               </ul>
             </div>
