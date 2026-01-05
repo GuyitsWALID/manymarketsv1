@@ -108,9 +108,13 @@ export default function GuestDemoChat() {
     }
   }, [messages, sessionId, isInitialized]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages (only when there are messages, not on mount)
+  const prevMessageCount = useRef(0);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0 && messages.length > prevMessageCount.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessageCount.current = messages.length;
   }, [messages]);
 
   const handleSendMessage = () => {
