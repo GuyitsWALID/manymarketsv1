@@ -139,8 +139,8 @@ export default function UpgradePage() {
                     <span className="font-bold text-sm uppercase tracking-wide text-gray-600">Pro Plan</span>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-red-500 line-through">$29</span>
-                    <span className="text-4xl font-black">$19</span>
+                    <span className="text-2xl font-bold text-red-500 line-through">$10</span>
+                    <span className="text-4xl font-black">$8</span>
                     <span className="text-gray-500 font-bold">/month</span>
                   </div>
                 </div>

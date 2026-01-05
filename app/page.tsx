@@ -166,11 +166,13 @@ export default function Home() {
         "UVZ Report (Limited)"
       ],
       cta: "Start Free",
-      popular: false
+      popular: false,
+      originalPrice: null
     },
     {
       name: "PRO",
-      price: "$29",
+      price: "$8",
+      originalPrice: "$10",
       period: "per month",
       description: "Everything you need to build and launch profitable digital products",
       features: [
@@ -185,24 +187,6 @@ export default function Home() {
       ],
       cta: "Start Pro Trial",
       popular: true
-    },
-    {
-      name: "ENTERPRISE",
-      price: "Custom",
-      period: "contact us",
-      description: "For agencies, consultants, and teams scaling digital product businesses",
-      features: [
-        "Everything in Pro",
-        "White-Label Options",
-        "API Access",
-        "Custom Integrations",
-        "Dedicated Account Manager",
-        "Custom Training",
-        "Advanced Analytics",
-        "Multi-user Teams"
-      ],
-      cta: "Contact Sales",
-      popular: false
     }
   ];
 
@@ -579,7 +563,10 @@ export default function Home() {
                   )}
                   <div className="text-center mb-4 sm:mb-6 md:mb-8">
                     <h3 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-2">{plan.name}</h3>
-                    <div className="text-3xl sm:text-4xl md:text-5xl font-black mb-1 sm:mb-2">
+                    <div className="text-3xl sm:text-4xl md:text-5xl font-black mb-1 sm:mb-2 flex items-center justify-center gap-2">
+                      {plan.originalPrice && (
+                        <span className="text-xl sm:text-2xl text-red-500 line-through">{plan.originalPrice}</span>
+                      )}
                       <HandDrawnCircle delay={300 + i * 100}>{plan.price}</HandDrawnCircle>
                     </div>
                     <div className="text-xs sm:text-sm font-bold text-gray-600 uppercase">{plan.period}</div>
@@ -616,7 +603,7 @@ export default function Home() {
 
             <div className="text-center mt-8 sm:mt-12 max-w-3xl mx-auto px-2">
               <p className="text-xs sm:text-sm font-medium border-2 sm:border-4 border-black p-4 sm:p-6 bg-white shadow-brutal">
-                <strong>💡 How It Works:</strong> Free users get basic research capabilities. Pro users get unlimited AI research sessions, full builder access, and advanced idea scoring. Enterprise users get everything plus API access and team collaboration.
+                <strong>💡 How It Works:</strong> Free users get basic research capabilities. Pro users get unlimited AI research sessions, full builder access, advanced idea scoring, and everything you need to build profitable digital products.
               </p>
             </div>
           </div>

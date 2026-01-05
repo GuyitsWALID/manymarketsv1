@@ -64,6 +64,11 @@ export default function ChatPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([]);
   const [researchSummary, setResearchSummary] = useState({ niche: '', uvz: '', targetAudience: '' });
+  
+  // Pro/Free tier state
+  const [isPro, setIsPro] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const FREE_SESSION_LIMIT = 2;
 
   // Daily quick prompts
   const [dailyPrompts, setDailyPrompts] = useState<string[]>([]);
@@ -84,6 +89,10 @@ export default function ChatPage() {
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+  
+  // Computed: check if user has reached session limit
+  const sessionCount = sessions.length;
+  const hasReachedLimit = !isPro && sessionCount >= FREE_SESSION_LIMIT;
 
   // Handle responsive
   useEffect(() => {
@@ -112,6 +121,17 @@ export default function ChatPage() {
           if (response.ok) {
             const { sessions: userSessions } = await response.json();
             setSessions(userSessions || []);
+          }
+          
+          // Check if user is Pro
+          try {
+            const billingRes = await fetch('/api/billing');
+            if (billingRes.ok) {
+              const billingData = await billingRes.json();
+              setIsPro(billingData.currentPlan === 'pro' || billingData.currentPlan === 'enterprise');
+            }
+          } catch {
+            setIsPro(false);
           }
         }
       } catch {
@@ -162,6 +182,12 @@ export default function ChatPage() {
   const createDbSession = useCallback(async (firstMessage: string) => {
     if (!currentUser || dbSessionId || isCreatingSession) return null;
     
+    // Check session limit for free users
+    if (!isPro && sessions.length >= FREE_SESSION_LIMIT) {
+      setIsUpgradeModalOpen(true);
+      return null;
+    }
+    
     setIsCreatingSession(true);
     try {
       const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? '...' : '');
@@ -184,7 +210,7 @@ export default function ChatPage() {
       setIsCreatingSession(false);
     }
     return null;
-  }, [currentUser, dbSessionId, isCreatingSession]);
+  }, [currentUser, dbSessionId, isCreatingSession, isPro, sessions.length, FREE_SESSION_LIMIT]);
 
   // Save message to database
   const saveMessageToDb = useCallback(async (sessionId: string, role: string, content: string, toolCalls?: any, toolResults?: any) => {
@@ -568,7 +594,72 @@ export default function ChatPage() {
         profileMenuOpen={profileMenuOpen}
         setProfileMenuOpen={setProfileMenuOpen}
         setIsLogoutOpen={setIsLogoutOpen}
+        sessionCount={sessionCount}
+        isPro={isPro}
+        onUpgradeClick={() => setIsUpgradeModalOpen(true)}
       />
+
+      {/* Upgrade Modal */}
+      {isUpgradeModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border-4 border-black rounded-2xl shadow-brutal max-w-md w-full p-6"
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-uvz-orange to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Rocket className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-black mb-2">Upgrade to Pro</h2>
+              <p className="text-gray-600 mb-4">
+                You've used all {FREE_SESSION_LIMIT} free research sessions. Upgrade to Pro for unlimited sessions and full access to the product builder!
+              </p>
+              
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-4 mb-6">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-xl text-red-500 line-through">$10</span>
+                  <span className="text-3xl font-black">$8</span>
+                  <span className="text-gray-500">/month</span>
+                </div>
+                <ul className="text-sm text-left space-y-2">
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    Unlimited AI Research Sessions
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    Full Builder Studio Access
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    Advanced Market Analytics
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    Unlimited Products
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsUpgradeModalOpen(false)}
+                  className="flex-1 px-4 py-3 border-2 border-black rounded-xl font-bold hover:bg-gray-100 transition-colors"
+                >
+                  Maybe Later
+                </button>
+                <Link
+                  href="/upgrade"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-uvz-orange to-pink-500 text-white border-2 border-black rounded-xl font-bold shadow-brutal hover:-translate-y-0.5 transition-all text-center"
+                >
+                  Upgrade Now
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Sidebar */}
       <ChatSidebar
