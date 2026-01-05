@@ -14,7 +14,10 @@ import {
   Package, 
   Rocket,
   Loader2,
-  Star
+  Star,
+  Gift,
+  Infinity,
+  MessageCircle
 } from 'lucide-react';
 import WhopCheckoutEmbed from '@/components/billing/WhopCheckoutEmbed';
 import { ENABLE_PRICING } from '@/lib/config';
@@ -57,6 +60,7 @@ export default function UpgradePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<string>('free');
   const [checkingPlan, setCheckingPlan] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
 
   useEffect(() => {
     checkCurrentPlan();
@@ -130,25 +134,74 @@ export default function UpgradePage() {
               </p>
             </div>
 
-            {/* Pricing Banner */}
+            {/* Pricing Toggle */}
             <div className="bg-white border-4 border-black rounded-2xl shadow-brutal p-6 mb-8">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Star className="w-5 h-5 text-uvz-orange" />
-                    <span className="font-bold text-sm uppercase tracking-wide text-gray-600">Pro Plan</span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-red-500 line-through">$10</span>
-                    <span className="text-4xl font-black">$8</span>
-                    <span className="text-gray-500 font-bold">/month</span>
-                  </div>
-                </div>
-                <div className="text-right text-sm text-gray-500">
-                  <p>✓ Cancel anytime</p>
-                  <p>✓ No hidden fees</p>
-                </div>
+              {/* Plan Selector */}
+              <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+                <button
+                  onClick={() => setSelectedPlan('monthly')}
+                  className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all ${
+                    selectedPlan === 'monthly'
+                      ? 'bg-white border-2 border-black shadow-md'
+                      : 'hover:bg-gray-200'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setSelectedPlan('lifetime')}
+                  className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all relative ${
+                    selectedPlan === 'lifetime'
+                      ? 'bg-gradient-to-r from-uvz-orange to-pink-500 text-white border-2 border-black shadow-md'
+                      : 'hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">
+                    BEST VALUE
+                  </span>
+                  Lifetime
+                </button>
               </div>
+
+              {/* Selected Plan Details */}
+              {selectedPlan === 'monthly' ? (
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Star className="w-5 h-5 text-uvz-orange" />
+                      <span className="font-bold text-sm uppercase tracking-wide text-gray-600">Pro Monthly</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-red-500 line-through">$10</span>
+                      <span className="text-4xl font-black">$8</span>
+                      <span className="text-gray-500 font-bold">/month</span>
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <p>✓ Cancel anytime</p>
+                    <p>✓ No hidden fees</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Gift className="w-5 h-5 text-uvz-orange" />
+                      <span className="font-bold text-sm uppercase tracking-wide text-gray-600">Lifetime Deal</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-red-500 line-through">$97</span>
+                      <span className="text-4xl font-black">$49</span>
+                      <span className="text-gray-500 font-bold">one-time</span>
+                    </div>
+                    <p className="text-sm text-green-600 font-bold mt-1">🎉 Save $48 - Pay once, own forever!</p>
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <p>✓ Never pay again</p>
+                    <p>✓ All future updates</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Features List */}
@@ -168,6 +221,39 @@ export default function UpgradePage() {
                   </div>
                 );
               })}
+
+              {/* Extra Lifetime Perks */}
+              {selectedPlan === 'lifetime' && (
+                <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-300">
+                  <h3 className="font-black text-lg mb-4 flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-uvz-orange" />
+                    Exclusive Lifetime Bonuses:
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-200 rounded-xl">
+                      <Infinity className="w-6 h-6 text-uvz-orange" />
+                      <div>
+                        <span className="font-bold">Lifetime Updates</span>
+                        <p className="text-sm text-gray-600">Get all future features and improvements forever</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-200 rounded-xl">
+                      <Crown className="w-6 h-6 text-uvz-orange" />
+                      <div>
+                        <span className="font-bold">Founding Member Badge</span>
+                        <p className="text-sm text-gray-600">Exclusive badge on your profile and marketplace listings</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-200 rounded-xl">
+                      <MessageCircle className="w-6 h-6 text-uvz-orange" />
+                      <div>
+                        <span className="font-bold">1-on-1 Onboarding Call</span>
+                        <p className="text-sm text-gray-600">30-minute strategy session to maximize your success</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* FAQ Section */}
@@ -176,11 +262,20 @@ export default function UpgradePage() {
               <div className="space-y-3">
                 <details className="bg-white border-2 border-black rounded-xl p-4 group">
                   <summary className="font-bold cursor-pointer list-none flex items-center justify-between text-sm">
+                    What&apos;s the difference between Monthly and Lifetime?
+                    <span className="transform group-open:rotate-180 transition-transform">▼</span>
+                  </summary>
+                  <p className="mt-3 text-gray-600 text-sm">
+                    Monthly is $8/month with all Pro features. Lifetime is a one-time $49 payment that gives you permanent access plus exclusive bonuses like founding member badge, 1-on-1 onboarding, and all future updates forever.
+                  </p>
+                </details>
+                <details className="bg-white border-2 border-black rounded-xl p-4 group">
+                  <summary className="font-bold cursor-pointer list-none flex items-center justify-between text-sm">
                     Can I cancel anytime?
                     <span className="transform group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <p className="mt-3 text-gray-600 text-sm">
-                    Yes! You can cancel your subscription at any time. You&apos;ll continue to have access until the end of your billing period.
+                    Yes! Monthly subscribers can cancel anytime. You&apos;ll continue to have access until the end of your billing period. Lifetime members never need to worry about this—you own it forever.
                   </p>
                 </details>
                 <details className="bg-white border-2 border-black rounded-xl p-4 group">
@@ -198,7 +293,7 @@ export default function UpgradePage() {
                     <span className="transform group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <p className="mt-3 text-gray-600 text-sm">
-                    We offer a free tier with limited research sessions so you can try the platform. When you&apos;re ready to build products, upgrade to Pro!
+                    We offer a free tier with 2 research sessions so you can try the platform. When you&apos;re ready to build products, upgrade to Pro!
                   </p>
                 </details>
               </div>
@@ -209,11 +304,27 @@ export default function UpgradePage() {
           <div className="lg:sticky lg:top-8">
             <div className="bg-white border-4 border-black rounded-2xl shadow-brutal overflow-hidden">
               {/* Checkout Header */}
-              <div className="p-4 bg-gradient-to-r from-uvz-orange to-pink-500 text-white text-center">
+              <div className={`p-4 text-white text-center ${
+                selectedPlan === 'lifetime' 
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500' 
+                  : 'bg-gradient-to-r from-uvz-orange to-pink-500'
+              }`}>
                 <div className="flex items-center justify-center gap-2">
-                  <Crown className="w-5 h-5" />
-                  <span className="font-bold">Complete Your Upgrade</span>
+                  {selectedPlan === 'lifetime' ? (
+                    <>
+                      <Gift className="w-5 h-5" />
+                      <span className="font-bold">Get Lifetime Access</span>
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="w-5 h-5" />
+                      <span className="font-bold">Complete Your Upgrade</span>
+                    </>
+                  )}
                 </div>
+                {selectedPlan === 'lifetime' && (
+                  <p className="text-sm opacity-90 mt-1">One-time payment • Forever access</p>
+                )}
               </div>
 
               {/* Checkout Content */}
@@ -221,7 +332,10 @@ export default function UpgradePage() {
                 {ENABLE_PRICING ? (
                   <>
                     <WhopCheckoutEmbed
-                      planId={process.env.NEXT_PUBLIC_WHOP_PRO_PLAN_ID || ''}
+                      planId={selectedPlan === 'lifetime' 
+                        ? (process.env.NEXT_PUBLIC_WHOP_LIFETIME_PLAN_ID || process.env.NEXT_PUBLIC_WHOP_PRO_PLAN_ID || '')
+                        : (process.env.NEXT_PUBLIC_WHOP_PRO_PLAN_ID || '')
+                      }
                       theme="light"
                       onComplete={(planId, receiptId) => {
                         console.log('Checkout complete:', planId, receiptId);
@@ -258,6 +372,14 @@ export default function UpgradePage() {
                 <span className="text-sm font-bold ml-1">4.9/5</span>
               </div>
             </div>
+
+            {/* Money Back Guarantee */}
+            {selectedPlan === 'lifetime' && (
+              <div className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl text-center">
+                <p className="font-bold text-green-800">💚 30-Day Money Back Guarantee</p>
+                <p className="text-sm text-green-600">Not satisfied? Get a full refund, no questions asked.</p>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -127,21 +127,21 @@ export default function Home() {
   const features = [
     { 
       icon: Sparkles, 
-      title: "AI-Powered Discovery", 
-      desc: "Our intelligent chatbot analyzes thousands of market data points to find your Unique Value Zone—a validated, low-competition, high-demand niche that matches your skills.",
-      detail: "Get 3-5 validated niche ideas in minutes, not months."
+      title: "AI Prompt Pack Builder", 
+      desc: "Create professional prompt packs that sell. Our AI helps you structure, categorize, and optimize prompts for ChatGPT, Midjourney, and more.",
+      detail: "Turn your prompt expertise into a sellable product in minutes."
     },
     { 
       icon: Rocket, 
-      title: "All-in-One Creation Studio", 
-      desc: "Build professional digital products with our integrated suite. Create ebooks, online courses, templates, and more—all without leaving the platform.",
-      detail: "No need for expensive tools or technical expertise."
+      title: "Ebook Creation Studio", 
+      desc: "Build complete ebooks with AI assistance. Generate outlines, chapters, and even images—then export as beautifully formatted PDFs.",
+      detail: "From idea to published ebook in hours, not weeks."
     },
     { 
       icon: TrendingUp, 
-      title: "Idea Validation & Scoring", 
-      desc: "Score your product ideas instantly with AI-powered analysis. Get detailed feedback on market demand, competition, and profitability potential.",
-      detail: "Know if your idea will succeed before you build it."
+      title: "Niche Finder & Validator", 
+      desc: "Discover untapped markets for your prompts and ebooks. Our AI analyzes demand, competition, and profitability before you build.",
+      detail: "Know exactly what will sell before you create it."
     }
   ];
 
@@ -157,36 +157,53 @@ export default function Home() {
       name: "FREE",
       price: "$0",
       period: "forever",
-      description: "Perfect for exploring and validating your first niche idea",
+      description: "Try it out—2 free AI research sessions to explore",
       features: [
-        "1 AI Research Session",
-        "Basic Market Insights",
-        "Niche Comparison Tools",
-        "Community Access",
-        "UVZ Report (Limited)"
+        "2 AI Research Sessions",
+        "Basic Niche Insights",
+        "Preview Builder Features",
+        "Community Access"
       ],
-      cta: "Start Free",
+      cta: "Try Free",
       popular: false,
-      originalPrice: null
+      originalPrice: null,
+      isLifetime: false
     },
     {
-      name: "PRO",
+      name: "PRO MONTHLY",
       price: "$8",
       originalPrice: "$10",
       period: "per month",
-      description: "Everything you need to build and launch profitable digital products",
+      description: "Unlimited access to build AI prompts & ebooks",
       features: [
-        "Unlimited AI Research Sessions",
-        "Full Builder Studio Access",
-        "Advanced Market Analytics",
-        "Unlimited Products",
-        "Idea Scorer Pro",
-        "Priority Support",
-        "Marketing Asset Generator",
-        "Analytics Dashboard"
+        "Unlimited AI Research",
+        "Prompt Pack Builder",
+        "Ebook Creation Studio",
+        "AI Image Generation",
+        "Export to PDF/DOCX",
+        "Priority Support"
       ],
-      cta: "Start Pro Trial",
-      popular: true
+      cta: "Start Pro",
+      popular: false,
+      isLifetime: false
+    },
+    {
+      name: "LIFETIME",
+      price: "$49",
+      originalPrice: "$199",
+      period: "one-time payment",
+      description: "Pay once, own forever. Best value for serious creators.",
+      features: [
+        "Everything in Pro",
+        "Lifetime Updates",
+        "Early Access Features",
+        "Founding Member Badge",
+        "1-on-1 Onboarding Call",
+        "Private Discord Access"
+      ],
+      cta: "Get Lifetime Access",
+      popular: true,
+      isLifetime: true
     }
   ];
 
@@ -405,8 +422,8 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 sm:mb-6">
-          From Market Insight to{" "}
-          <span className="text-uvz-orange">Product Success</span>
+          Build & Sell{" "}
+          <span className="text-uvz-orange">AI Prompts & Ebooks</span>
               </h2>
             </motion.div>
             
@@ -416,7 +433,7 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium max-w-3xl mx-auto text-left sm:text-center px-2"
             >
-              The only platform that guides you from <strong>"I have an idea"</strong> to <strong>"I'm ready to launch"</strong>—with AI doing the heavy lifting. Discover profitable niches, validate your ideas, and build digital products in days, not months.
+              The fastest way to create <strong>AI prompt packs</strong> and <strong>ebooks</strong> that sell. Find your niche, build with AI, and export ready-to-sell products in hours.
             </motion.p>
             
             <motion.div 
@@ -453,6 +470,107 @@ export default function Home() {
                   <div className="text-sm font-bold uppercase">{stat.label}</div>
                 </motion.div>
               ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Try It Now - Interactive Demo */}
+        <section className="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 border-y-4 border-black py-16 md:py-24">
+          <div className="container mx-auto px-4 sm:px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-8 md:mb-12"
+            >
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black mb-4">
+                <HandDrawnBox delay={100}>Try It Now — No Signup Required</HandDrawnBox>
+              </h2>
+              <p className="text-lg md:text-xl max-w-2xl mx-auto text-gray-700">
+                See how our AI finds profitable niches for your prompts & ebooks in seconds
+              </p>
+            </motion.div>
+
+            {/* Interactive Demo Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="max-w-4xl mx-auto"
+            >
+              <div className="bg-white border-4 border-black rounded-2xl shadow-brutal overflow-hidden">
+                {/* Demo Header */}
+                <div className="bg-gradient-to-r from-uvz-orange to-pink-500 p-4 border-b-4 border-black">
+                  <div className="flex items-center gap-2 text-white">
+                    <Sparkles className="w-6 h-6" />
+                    <span className="font-black text-lg">AI Niche Finder</span>
+                    <span className="ml-auto text-sm bg-white/20 px-3 py-1 rounded-full">Live Demo</span>
+                  </div>
+                </div>
+
+                {/* Demo Content */}
+                <div className="p-6 md:p-8">
+                  {/* Simulated Chat */}
+                  <div className="space-y-4 mb-6">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 bg-uvz-orange rounded-full flex items-center justify-center shrink-0">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="bg-gray-100 rounded-2xl rounded-tl-none p-4 max-w-xl">
+                        <p className="font-medium">👋 Hi! I help creators find profitable niches for AI prompts and ebooks. What topics are you interested in or skilled at?</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 justify-end">
+                      <div className="bg-uvz-orange/10 border-2 border-uvz-orange rounded-2xl rounded-tr-none p-4 max-w-xl">
+                        <p className="font-medium">I'm good at writing and I know a lot about productivity and personal development</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 bg-uvz-orange rounded-full flex items-center justify-center shrink-0">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="bg-gray-100 rounded-2xl rounded-tl-none p-4 max-w-xl">
+                        <p className="font-medium mb-3">🎯 Great combination! Here are 3 hot niches I found:</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 p-2 bg-green-100 rounded-lg">
+                            <span className="text-green-600 font-bold">🔥 High Demand</span>
+                            <span className="font-medium">AI Journaling Prompts for Anxiety</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-blue-100 rounded-lg">
+                            <span className="text-blue-600 font-bold">💎 Low Competition</span>
+                            <span className="font-medium">ChatGPT Prompts for ADHD Adults</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-purple-100 rounded-lg">
+                            <span className="text-purple-600 font-bold">📈 Trending</span>
+                            <span className="font-medium">AI-Powered Morning Routine Ebook</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="text-center pt-4 border-t-2 border-gray-200">
+                    <p className="text-gray-600 mb-4">Want to explore these niches deeper and build your product?</p>
+                    <Link
+                      href="/login"
+                      className="inline-flex items-center gap-2 bg-uvz-orange text-white font-bold px-8 py-4 border-4 border-black shadow-brutal hover:-translate-y-1 transition-all"
+                    >
+                      <Rocket className="w-5 h-5" />
+                      Start Building — It's Free
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trust indicators */}
+              <div className="flex flex-wrap justify-center gap-4 mt-8 text-sm text-gray-600">
+                <span className="flex items-center gap-1">✓ No credit card required</span>
+                <span className="flex items-center gap-1">✓ 2 free research sessions</span>
+                <span className="flex items-center gap-1">✓ Export your first product free</span>
+              </div>
             </motion.div>
           </div>
         </section>
