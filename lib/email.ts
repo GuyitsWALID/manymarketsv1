@@ -1,13 +1,26 @@
 import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to avoid build-time errors
+let resendClient: Resend | null = null;
+let supabaseAdminClient: SupabaseClient | null = null;
 
-// Initialize Supabase client with service role for admin operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getResend(): Resend {
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
+
+function getSupabaseAdmin(): SupabaseClient {
+  if (!supabaseAdminClient) {
+    supabaseAdminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return supabaseAdminClient;
+}
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://manymarketv1.vercel.app';
 // Use Resend's test sender if no custom domain - works without verification!
@@ -174,7 +187,7 @@ export async function sendDailyIdeaEmail(
     const unsubscribeToken = generateUnsubscribeToken(user.id);
     const html = generateEmailHtml(idea, user, unsubscribeToken);
     
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: user.email,
       subject: `🔥 Today's Niche: ${idea.name} (${idea.opportunity_score}/10)`,
@@ -202,7 +215,7 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
   remaining: number;
 }> {
   // Get pending emails from queue
-  const { data: queueItems, error: queueError } = await supabaseAdmin
+  const { data: queueItems, error: queueError } = await getSupabaseAdmin()
     .from('daily_idea_email_queue')
     .select(`
       id,
@@ -233,7 +246,7 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
   
   // Get user emails
   const userIds = queueItems.map(q => q.user_id);
-  const { data: profiles } = await supabaseAdmin
+  const { data: profiles } = await getSupabaseAdmin()
     .from('profiles')
     .select('id, email, subscription_tier')
     .in('id', userIds);
@@ -248,7 +261,7 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
     const user = userMap.get(item.user_id);
     if (!user || !user.email) {
       // Mark as failed - no email
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('daily_idea_email_queue')
         .update({ status: 'failed', error: 'No email found' })
         .eq('id', item.id);
@@ -260,13 +273,13 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
     const result = await sendDailyIdeaEmail(idea, user);
     
     if (result.success) {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('daily_idea_email_queue')
         .update({ status: 'sent', sent_at: new Date().toISOString() })
         .eq('id', item.id);
       succeeded++;
     } else {
-      await supabaseAdmin
+      await getSupabaseAdmin()
         .from('daily_idea_email_queue')
         .update({ status: 'failed', error: result.error })
         .eq('id', item.id);
@@ -275,7 +288,7 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
   }
   
   // Get remaining count
-  const { count: remaining } = await supabaseAdmin
+  const { count: remaining } = await getSupabaseAdmin()
     .from('daily_idea_email_queue')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'pending');
@@ -293,7 +306,7 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
  */
 export async function queueEmailsForIdea(ideaId: string): Promise<{ queued: number }> {
   // Get all users who haven't unsubscribed and have an email
-  const { data: users, error } = await supabaseAdmin
+  const { data: users, error } = await getSupabaseAdmin()
     .from('profiles')
     .select('id')
     .eq('email_unsubscribed', false)
@@ -319,7 +332,7 @@ export async function queueEmailsForIdea(ideaId: string): Promise<{ queued: numb
       status: 'pending',
     }));
     
-    const { error: insertError } = await supabaseAdmin
+    const { error: insertError } = await getSupabaseAdmin()
       .from('daily_idea_email_queue')
       .insert(batch)
       .select();
@@ -338,7 +351,7 @@ export async function queueEmailsForIdea(ideaId: string): Promise<{ queued: numb
  * Unsubscribe a user from daily emails
  */
 export async function unsubscribeUser(userId: string): Promise<{ success: boolean }> {
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from('profiles')
     .update({ email_unsubscribed: true })
     .eq('id', userId);
