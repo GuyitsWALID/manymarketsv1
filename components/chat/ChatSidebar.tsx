@@ -92,21 +92,9 @@ export default function ChatSidebar({
         }`}
       >
         <div className="flex-1 overflow-y-auto p-4 pt-20 md:pt-4">
-          {/* New Session Button */}
-          <button
-            onClick={() => {
-              createNewChat();
-              if (isMobile) onClose();
-            }}
-            className="w-full bg-uvz-orange text-white py-3 px-4 border-2 border-black shadow-brutal hover:-translate-y-0.5 transition-transform font-bold flex items-center justify-center gap-2 rounded"
-          >
-            <Plus className="w-5 h-5 shrink-0" />
-            <span>New Session</span>
-          </button>
-
           {/* Sessions List */}
           {sessions.length > 0 && (
-            <div className="mt-6">
+            <div>
               <h3 className="text-xs font-bold uppercase text-gray-500 mb-2">
                 Recent Sessions
               </h3>
