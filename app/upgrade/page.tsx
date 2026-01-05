@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Crown, 
@@ -55,16 +55,29 @@ const PRO_FEATURES = [
   }
 ];
 
-export default function UpgradePage() {
+function UpgradeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<string>('free');
   const [checkingPlan, setCheckingPlan] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
+  
+  // Read plan from URL query param, default to lifetime
+  const planFromUrl = searchParams.get('plan');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>(
+    planFromUrl === 'monthly' ? 'monthly' : 'lifetime'
+  );
 
   useEffect(() => {
     checkCurrentPlan();
   }, []);
+  
+  // Update selected plan if URL param changes
+  useEffect(() => {
+    if (planFromUrl === 'monthly' || planFromUrl === 'lifetime') {
+      setSelectedPlan(planFromUrl);
+    }
+  }, [planFromUrl]);
 
   const checkCurrentPlan = async () => {
     try {
@@ -72,9 +85,9 @@ export default function UpgradePage() {
       if (response.ok) {
         const data = await response.json();
         setCurrentPlan(data.currentPlan || 'free');
-        // If already Pro, redirect to builder
+        // If already Pro, redirect to chat (they're already upgraded!)
         if (data.currentPlan === 'pro' || data.currentPlan === 'enterprise') {
-          router.push('/builder');
+          router.push('/chat');
         }
       }
     } catch (error) {
@@ -384,5 +397,21 @@ export default function UpgradePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function UpgradeFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-uvz-orange" />
+    </div>
+  );
+}
+
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<UpgradeFallback />}>
+      <UpgradeContent />
+    </Suspense>
   );
 }

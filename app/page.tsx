@@ -635,7 +635,7 @@ export default function Home() {
                   </ul>
                   {plan.name === 'FREE' ? (
                     <Link 
-                      href="/signup" 
+                      href="/login" 
                       className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${
                         plan.popular ? "bg-uvz-orange text-white" : "bg-white text-black"
                       }`}
@@ -644,7 +644,7 @@ export default function Home() {
                     </Link>
                   ) : (
                     <Link
-                      href="/upgrade"
+                      href={`/login?returnTo=${encodeURIComponent(`/upgrade?plan=${plan.isLifetime ? 'lifetime' : 'monthly'}`)}`}
                       className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}`}
                     >
                       {plan.cta}

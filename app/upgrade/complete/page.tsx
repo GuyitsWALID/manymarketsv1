@@ -101,21 +101,21 @@ function UpgradeCompleteContent() {
         </div>
         <h1 className="text-3xl font-black mb-2">Welcome to Pro! 🎉</h1>
         <p className="text-gray-600 mb-6">
-          Your upgrade was successful. You now have access to all Pro features including the Product Builder and Marketplace.
+          Your upgrade was successful. You now have unlimited access to AI research sessions and all Pro features.
         </p>
         <div className="space-y-3">
           <Link
-            href="/builder"
+            href="/chat"
             className="flex items-center justify-center gap-2 w-full py-3 bg-uvz-orange text-white font-bold rounded-xl border-2 border-black shadow-brutal hover:-translate-y-0.5 transition-all"
           >
-            Start Building
+            Start Researching
             <ArrowRight className="w-5 h-5" />
           </Link>
           <Link
-            href="/chat"
+            href="/builder"
             className="flex items-center justify-center gap-2 w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl border-2 border-black hover:-translate-y-0.5 transition-all"
           >
-            Continue Research
+            Go to Product Builder
           </Link>
         </div>
       </div>
