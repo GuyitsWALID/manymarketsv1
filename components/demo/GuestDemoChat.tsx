@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Send, Loader2, Lock, ArrowRight, X } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-interface Message {
+interface GuestMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -15,7 +16,7 @@ interface Message {
 
 interface GuestSession {
   id: string;
-  messages: Message[];
+  messages: GuestMessage[];
   createdAt: number;
 }
 
@@ -24,17 +25,27 @@ const MAX_GUEST_SESSIONS = 2;
 const BLUR_AFTER_MESSAGES = 4; // After 4 messages (2 exchanges), blur and prompt signup
 
 export default function GuestDemoChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>(() => `guest-${Date.now()}`);
   const [guestSessions, setGuestSessions] = useState<GuestSession[]>([]);
   const [showBlur, setShowBlur] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Load guest sessions from localStorage
+  // Create transport for useChat
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [sessionId]);
+  
+  // Use the AI SDK useChat hook - same as the real chat page
+  const { messages, sendMessage, status } = useChat({
+    id: sessionId,
+    transport,
+  });
+
+  const isLoading = status === 'streaming' || status === 'submitted';
+
+  // Load guest sessions from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(GUEST_STORAGE_KEY);
     if (stored) {
@@ -42,37 +53,49 @@ export default function GuestDemoChat() {
         const sessions: GuestSession[] = JSON.parse(stored);
         setGuestSessions(sessions);
         
-        // If there are existing sessions, load the most recent one
+        // Check if we should show blur from previous session
         if (sessions.length > 0) {
           const latestSession = sessions[sessions.length - 1];
-          setSessionId(latestSession.id);
-          setMessages(latestSession.messages);
-          
-          // Check if we should show blur
           if (latestSession.messages.length >= BLUR_AFTER_MESSAGES) {
             setShowBlur(true);
           }
         }
       } catch {
         // Invalid stored data, start fresh
-        createNewSession();
       }
-    } else {
-      createNewSession();
     }
+    setIsInitialized(true);
   }, []);
 
-  // Save to localStorage whenever messages change
+  // Save messages to localStorage whenever they change
   useEffect(() => {
-    if (!sessionId || messages.length === 0) return;
+    if (!isInitialized || messages.length === 0) return;
     
-    const updatedSessions = guestSessions.map(s => 
-      s.id === sessionId ? { ...s, messages } : s
-    );
+    // Convert AI SDK messages to our format for storage
+    const guestMessages: GuestMessage[] = messages.map(m => {
+      // AI SDK v5 uses parts array instead of content
+      const textContent = m.parts
+        ?.filter((part: any) => part.type === 'text')
+        .map((part: any) => part.text)
+        .join('') || '';
+      return {
+        id: m.id,
+        role: m.role as 'user' | 'assistant',
+        content: textContent,
+        timestamp: Date.now(),
+      };
+    });
     
-    // If current session doesn't exist yet, add it
-    if (!guestSessions.find(s => s.id === sessionId)) {
-      updatedSessions.push({ id: sessionId, messages, createdAt: Date.now() });
+    // Update or create session
+    const existingSessionIndex = guestSessions.findIndex(s => s.id === sessionId);
+    let updatedSessions: GuestSession[];
+    
+    if (existingSessionIndex >= 0) {
+      updatedSessions = guestSessions.map((s, i) => 
+        i === existingSessionIndex ? { ...s, messages: guestMessages } : s
+      );
+    } else {
+      updatedSessions = [...guestSessions, { id: sessionId, messages: guestMessages, createdAt: Date.now() }];
     }
     
     setGuestSessions(updatedSessions);
@@ -83,28 +106,15 @@ export default function GuestDemoChat() {
       setShowBlur(true);
       setTimeout(() => setShowSignupModal(true), 500);
     }
-  }, [messages, sessionId]);
+  }, [messages, sessionId, isInitialized]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const createNewSession = () => {
-    // Check if max sessions reached
-    if (guestSessions.length >= MAX_GUEST_SESSIONS) {
-      setShowSignupModal(true);
-      return;
-    }
-    
-    const newId = `guest-${Date.now()}`;
-    setSessionId(newId);
-    setMessages([]);
-    setShowBlur(false);
-  };
-
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSendMessage = () => {
+    if (!input.trim() || isLoading || showBlur) return;
     
     // Check session limit
     if (guestSessions.length >= MAX_GUEST_SESSIONS && messages.length === 0) {
@@ -112,91 +122,8 @@ export default function GuestDemoChat() {
       return;
     }
     
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: input.trim(),
-      timestamp: Date.now(),
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
+    sendMessage({ text: input.trim() });
     setInput('');
-    setIsLoading(true);
-
-    try {
-      // Call the actual chat API (same as real chat)
-      // Format messages in UIMessage format expected by AI SDK
-      const formattedMessages = [...messages, userMessage].map(m => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        parts: [{ type: 'text', text: m.content }],
-      }));
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: formattedMessages,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to get response');
-
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-
-      const assistantMessage: Message = {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('0:')) {
-            // Parse the AI SDK streaming format
-            try {
-              const content = JSON.parse(line.slice(2));
-              if (typeof content === 'string') {
-                assistantContent += content;
-                setMessages(prev => 
-                  prev.map(m => 
-                    m.id === assistantMessage.id 
-                      ? { ...m, content: assistantContent }
-                      : m
-                  )
-                );
-              }
-            } catch {
-              // Skip unparseable lines
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Add error message
-      setMessages(prev => [...prev, {
-        id: `msg-${Date.now() + 1}`,
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again!',
-        timestamp: Date.now(),
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleSignup = () => {
@@ -213,7 +140,7 @@ export default function GuestDemoChat() {
           <Sparkles className="w-6 h-6" />
           <span className="font-black text-lg">AI Market Research</span>
           <span className="ml-auto text-sm bg-white/20 px-3 py-1 rounded-full">
-            Try it Free • {MAX_GUEST_SESSIONS - guestSessions.length} sessions left
+            Try it Free • {Math.max(0, MAX_GUEST_SESSIONS - guestSessions.length)} sessions left
           </span>
         </div>
       </div>
@@ -238,7 +165,7 @@ export default function GuestDemoChat() {
 
           {/* Messages */}
           <div className="space-y-4">
-            {messages.map((message, index) => (
+            {messages.map((message) => (
               <motion.div
                 key={message.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -255,7 +182,12 @@ export default function GuestDemoChat() {
                     ? 'bg-uvz-orange/10 border-2 border-uvz-orange rounded-tr-none' 
                     : 'bg-gray-100 rounded-tl-none'
                 }`}>
-                  <p className="font-medium whitespace-pre-wrap">{message.content}</p>
+                  <p className="font-medium whitespace-pre-wrap">
+                    {message.parts
+                      ?.filter((part: any) => part.type === 'text')
+                      .map((part: any) => part.text)
+                      .join('') || ''}
+                  </p>
                 </div>
               </motion.div>
             ))}
@@ -307,7 +239,7 @@ export default function GuestDemoChat() {
         {/* Input Area */}
         <div className="border-t-4 border-black p-4 bg-gray-50">
           <form 
-            onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+            onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
             className="flex gap-3"
           >
             <input
@@ -344,7 +276,7 @@ export default function GuestDemoChat() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white border-4 border-black rounded-2xl shadow-brutal p-6 md:p-8 max-w-md w-full"
+              className="bg-white border-4 border-black rounded-2xl shadow-brutal p-6 md:p-8 max-w-md w-full relative"
             >
               <button
                 onClick={() => setShowSignupModal(false)}
