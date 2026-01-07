@@ -782,18 +782,18 @@ function DailyIdeasContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] flex items-start md:items-center justify-center p-0 md:p-4 bg-black/50"
+            className="fixed inset-0 z-[90] flex items-start md:items-center justify-center p-0 md:p-4 bg-black/50 overflow-y-auto"
             onClick={handleCloseDetail}
           >
             <div 
-              className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl overflow-hidden"
+              className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl flex flex-col"
               onClick={e => e.stopPropagation()}
             >
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
-                className="bg-white md:border-4 md:border-black md:rounded-2xl h-full md:h-auto overflow-hidden flex flex-col"
+                className="bg-white md:border-4 md:border-black md:rounded-2xl h-full md:max-h-[90vh] overflow-hidden flex flex-col"
               >
                 {detailLoading ? (
                   <div className="flex items-center justify-center py-20">
@@ -820,7 +820,7 @@ function DailyIdeasContent() {
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                    <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
                       <h2 className="text-2xl md:text-3xl font-black mb-2">{selectedIdea.name}</h2>
                       <p className="text-lg text-gray-600 mb-6">{selectedIdea.one_liner}</p>
 
