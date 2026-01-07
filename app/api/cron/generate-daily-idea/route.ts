@@ -44,13 +44,33 @@ const INDUSTRIES = [
   'B2B SaaS & Enterprise',
 ];
 
-// Helper function to generate AI analysis
+// Helper function to generate AI analysis with fallback
 async function generateAnalysis(prompt: string): Promise<string> {
-  const { text } = await generateText({
-    model: getModel(),
-    prompt,
-  });
-  return text;
+  // Try primary model first
+  try {
+    console.log('Attempting AI generation with primary model...');
+    const { text } = await generateText({
+      model: getModel(),
+      prompt,
+    });
+    return text;
+  } catch (primaryError: any) {
+    console.error('Primary AI model failed:', primaryError?.message || primaryError);
+    
+    // If Groq fails, try Gemini directly
+    try {
+      console.log('Falling back to Gemini...');
+      const { google } = await import('@/lib/ai/provider');
+      const { text } = await generateText({
+        model: google('gemini-2.0-flash'),
+        prompt,
+      });
+      return text;
+    } catch (fallbackError: any) {
+      console.error('Fallback model also failed:', fallbackError?.message || fallbackError);
+      throw new Error(`AI generation failed: ${primaryError?.message || 'Unknown error'}`);
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -94,19 +114,24 @@ export async function POST(request: NextRequest) {
     const allResults = await Promise.all(searchQueries.map(q => searchWeb(q)));
     const searchContext = allResults.flat().slice(0, 20);
     
+    // Build context string - works with or without web results
+    const webResearchSection = searchContext.length > 0 
+      ? `Web Research Context:
+${searchContext.map(r => `- ${r.title}: ${r.snippet}`).join('\n')}`
+      : `Note: Use your training knowledge about ${industry} trends, pain points, and opportunities from 2024-2025.`;
+    
     // Step 2: Generate a complete niche idea with full research
     const generationPrompt = `You are an expert market researcher finding a hidden gem niche opportunity.
 
 Industry: "${industry}"
 
-Web Research Context:
-${searchContext.map(r => `- ${r.title}: ${r.snippet}`).join('\n')}
+${webResearchSection}
 
 Find ONE highly specific, underserved niche opportunity (Unique Value Zone) in this industry.
 
 Requirements:
 1. Must be SPECIFIC - not broad like "health apps" but specific like "Sleep tracking for night shift nurses"
-2. Must have REAL demand signals from the research
+2. Must have REAL demand signals based on market trends
 3. Must have LOW to MEDIUM competition
 4. Must be actionable for a solo founder or small team
 
@@ -202,16 +227,32 @@ Return ONLY valid JSON:
 
     const analysis = await generateAnalysis(generationPrompt);
     
+    // Log the raw response for debugging
+    console.log('AI Response length:', analysis.length);
+    console.log('AI Response first 500 chars:', analysis.substring(0, 500));
+    
     let ideaData: any;
     try {
-      const jsonMatch = analysis.match(/\{[\s\S]*\}/);
+      // Try to extract JSON from the response - handle markdown code blocks
+      let jsonStr = analysis;
+      
+      // Remove markdown code blocks if present
+      const codeBlockMatch = analysis.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      }
+      
+      // Find the JSON object
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         ideaData = JSON.parse(jsonMatch[0]);
       } else {
+        console.error('No JSON found in response. Full response:', analysis);
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
+      console.error('Raw response:', analysis.substring(0, 1000));
       return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
     }
     

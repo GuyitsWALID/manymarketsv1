@@ -48,7 +48,8 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [isDesktop, setIsDesktop] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [isDesktop, setIsDesktop] = useState<boolean>(true); // Default to desktop, update after mount
+  const [hasMounted, setHasMounted] = useState(false); // Track hydration complete
   
   // Database session state
   const [dbSessionId, setDbSessionId] = useState<string | null>(null);
@@ -94,12 +95,14 @@ export default function ChatPage() {
   const sessionCount = sessions.length;
   const hasReachedLimit = !isPro && sessionCount >= FREE_SESSION_LIMIT;
 
-  // Handle responsive
+  // Handle responsive - only run after hydration to prevent mismatch
   useEffect(() => {
     function handleResize() {
       setIsDesktop(window.innerWidth >= 768);
     }
+    // Set initial value after mount (hydration complete)
     handleResize();
+    setHasMounted(true);
     window.addEventListener('resize', handleResize);
     
     return () => {
@@ -362,14 +365,14 @@ export default function ChatPage() {
   useEffect(() => {
     if (status === 'ready' && messages.length > 0 && dbSessionId) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        const textContent = lastMessage.parts
+      if (lastMessage.role === 'assistant' && lastMessage.parts) {
+        const textContent = (lastMessage.parts || [])
           .filter((part: any) => part.type === 'text')
           .map((part: any) => part.text)
           .join('');
         
-        const toolCalls = lastMessage.parts.filter((part: any) => part.type === 'tool-call');
-        const toolResults = lastMessage.parts.filter((part: any) => part.type === 'tool-result');
+        const toolCalls = (lastMessage.parts || []).filter((part: any) => part.type === 'tool-call');
+        const toolResults = (lastMessage.parts || []).filter((part: any) => part.type === 'tool-result');
 
         if (textContent) {
           saveMessageToDb(
@@ -722,10 +725,10 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - only render mobile overlay after hydration to prevent mismatch */}
       <ChatSidebar
         isOpen={isSidebarOpen}
-        isMobile={!isDesktop}
+        isMobile={hasMounted ? !isDesktop : false}
         onClose={() => setIsSidebarOpen(false)}
         createNewChat={createNewChat}
         isLogoutOpen={isLogoutOpen}
@@ -786,12 +789,12 @@ export default function ChatPage() {
             {/* Messages */}
             <div className="space-y-6">
               {messages.map((message: UIMessage) => {
-                const textContent = message.parts
+                const textContent = (message.parts || [])
                   .filter((part: any) => part.type === 'text')
                   .map((part: any) => part.text)
                   .join('');
                 const cleanText = cleanMarkdown(textContent);
-                const toolParts = message.parts.filter((part: any) => part.type === 'tool-call' || part.type === 'tool-result');
+                const toolParts = (message.parts || []).filter((part: any) => part.type === 'tool-call' || part.type === 'tool-result');
 
                 return (
                   <motion.div
