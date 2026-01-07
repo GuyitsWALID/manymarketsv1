@@ -884,40 +884,105 @@ function DailyIdeasContent() {
 
                         {activeTab === 'market' && (
                           <div className="space-y-6">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              <div className="bg-blue-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-gray-500 mb-1">Market Size</p>
-                                <p className="font-black text-lg">{selectedIdea.market_size || 'N/A'}</p>
+                            {/* Key Metrics Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                                  <p className="text-sm font-bold text-blue-800">Market Size</p>
+                                </div>
+                                <p className="font-black text-2xl text-blue-900">{selectedIdea.market_size || 'N/A'}</p>
                               </div>
-                              <div className="bg-green-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-gray-500 mb-1">Growth Rate</p>
-                                <p className="font-black text-lg text-green-600">{selectedIdea.growth_rate || 'N/A'}</p>
-                              </div>
-                              <div className="bg-yellow-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-gray-500 mb-1">Demand</p>
-                                <p className="font-black text-lg capitalize">{selectedIdea.demand_level}</p>
-                              </div>
-                              <div className="bg-purple-50 p-4 rounded-xl text-center">
-                                <p className="text-xs text-gray-500 mb-1">Competition</p>
-                                <p className="font-black text-lg capitalize">{selectedIdea.competition_level}</p>
+                              <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border-2 border-green-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <TrendingUp className="w-5 h-5 text-green-600" />
+                                  <p className="text-sm font-bold text-green-800">Growth Rate</p>
+                                </div>
+                                <p className="font-black text-2xl text-green-900">{selectedIdea.growth_rate || 'N/A'}</p>
                               </div>
                             </div>
 
-                            <div className="bg-orange-50 p-4 rounded-xl">
-                              <div className="flex items-center gap-2 mb-2">
-                                <TrendingUp className="w-5 h-5 text-uvz-orange" />
-                                <span className="font-black">Trending Score</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-gradient-to-r from-uvz-orange to-pink-500 rounded-full"
-                                    style={{ width: `${(selectedIdea.trending_score / 10) * 100}%` }}
-                                  />
+                            {/* Demand & Competition */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className={`p-5 rounded-xl border-2 ${
+                                selectedIdea.demand_level === 'high' 
+                                  ? 'bg-green-50 border-green-200' 
+                                  : selectedIdea.demand_level === 'medium'
+                                  ? 'bg-yellow-50 border-yellow-200'
+                                  : 'bg-red-50 border-red-200'
+                              }`}>
+                                <p className="text-sm font-bold text-gray-600 mb-1">Demand Level</p>
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-3 h-3 rounded-full ${
+                                    selectedIdea.demand_level === 'high' ? 'bg-green-500' :
+                                    selectedIdea.demand_level === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`}></span>
+                                  <p className="font-black text-xl capitalize">{selectedIdea.demand_level}</p>
                                 </div>
-                                <span className="font-black text-lg">{selectedIdea.trending_score}/10</span>
+                              </div>
+                              <div className={`p-5 rounded-xl border-2 ${
+                                selectedIdea.competition_level === 'low' 
+                                  ? 'bg-green-50 border-green-200' 
+                                  : selectedIdea.competition_level === 'medium'
+                                  ? 'bg-yellow-50 border-yellow-200'
+                                  : 'bg-red-50 border-red-200'
+                              }`}>
+                                <p className="text-sm font-bold text-gray-600 mb-1">Competition</p>
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-3 h-3 rounded-full ${
+                                    selectedIdea.competition_level === 'low' ? 'bg-green-500' :
+                                    selectedIdea.competition_level === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`}></span>
+                                  <p className="font-black text-xl capitalize">{selectedIdea.competition_level}</p>
+                                </div>
                               </div>
                             </div>
+
+                            {/* Trending Score - Fixed to /10 */}
+                            <div className="bg-gradient-to-r from-orange-50 to-pink-50 p-5 rounded-xl border-2 border-orange-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Flame className="w-5 h-5 text-uvz-orange" />
+                                  <span className="font-black text-lg">Trending Score</span>
+                                </div>
+                                <span className="font-black text-2xl text-uvz-orange">
+                                  {Math.min(selectedIdea.trending_score, 10).toFixed(1)}/10
+                                </span>
+                              </div>
+                              <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-uvz-orange to-pink-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min((selectedIdea.trending_score / 10) * 100, 100)}%` }}
+                                />
+                              </div>
+                              <p className="text-sm text-gray-600 mt-2">
+                                {selectedIdea.trending_score >= 8 ? '🔥 Hot opportunity - Act fast!' :
+                                 selectedIdea.trending_score >= 6 ? '📈 Growing trend - Good timing' :
+                                 selectedIdea.trending_score >= 4 ? '⏳ Emerging - Early mover advantage' :
+                                 '🌱 Nascent market - Long-term play'}
+                              </p>
+                            </div>
+
+                            {/* Market Analysis from Full Report */}
+                            {selectedIdea.full_research_report?.market_analysis && (
+                              <div className="bg-gray-50 p-5 rounded-xl border-2 border-gray-200">
+                                <h4 className="font-black text-lg mb-3">Market Analysis</h4>
+                                <p className="text-gray-700 mb-4">{selectedIdea.full_research_report.market_analysis.overview}</p>
+                                
+                                {selectedIdea.full_research_report.market_analysis.key_trends && (
+                                  <div className="mt-4">
+                                    <p className="font-bold text-sm text-gray-600 mb-2">Key Trends:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {selectedIdea.full_research_report.market_analysis.key_trends.map((trend: string, i: number) => (
+                                        <span key={i} className="bg-white px-3 py-1 rounded-full text-sm border border-gray-300">
+                                          {trend}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -926,26 +991,58 @@ function DailyIdeasContent() {
                             {gatedSections.includes('validation_signals') ? (
                               <GatedContent onUpgrade={() => setIsUpgradeModalOpen(true)} />
                             ) : (
-                              <>
+                              <div className="space-y-4">
                                 {selectedIdea.validation_signals && selectedIdea.validation_signals.length > 0 ? (
-                                  <div className="space-y-4">
-                                    {selectedIdea.validation_signals.map((signal: any, i: number) => (
-                                      <div key={i} className="bg-green-50 p-4 rounded-xl">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <CheckCircle className="w-5 h-5 text-green-500" />
-                                          <span className="font-bold">{signal.type}</span>
+                                  <>
+                                    <p className="text-gray-600 mb-4">Evidence supporting this opportunity:</p>
+                                    {selectedIdea.validation_signals.map((signal: any, i: number) => {
+                                      // Handle both old format (signal/source) and new format (type/description/evidence)
+                                      const signalType = signal.type || signal.signal || 'Validation Signal';
+                                      const signalDesc = signal.description || signal.source || '';
+                                      const signalEvidence = signal.evidence || '';
+                                      const strength = signal.strength || 'Strong';
+                                      
+                                      return (
+                                        <div key={i} className="bg-white border-2 border-green-200 p-5 rounded-xl hover:border-green-400 transition-colors">
+                                          <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                              </div>
+                                              <div>
+                                                <span className="font-black text-lg">{signalType}</span>
+                                                {strength && (
+                                                  <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                                                    strength === 'Strong' ? 'bg-green-100 text-green-700' :
+                                                    strength === 'Moderate' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                                  }`}>
+                                                    {strength}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <p className="text-gray-700 mb-2">{signalDesc}</p>
+                                          {signalEvidence && (
+                                            <div className="bg-gray-50 p-3 rounded-lg mt-3">
+                                              <p className="text-sm text-gray-600">
+                                                <span className="font-bold">Evidence:</span> {signalEvidence}
+                                              </p>
+                                            </div>
+                                          )}
                                         </div>
-                                        <p className="text-sm text-gray-700">{signal.description}</p>
-                                        {signal.evidence && (
-                                          <p className="text-xs text-gray-500 mt-2 italic">{signal.evidence}</p>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
+                                      );
+                                    })}
+                                  </>
                                 ) : (
-                                  <p className="text-gray-500 text-center py-8">No validation signals available</p>
+                                  <div className="text-center py-12 bg-gray-50 rounded-xl">
+                                    <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-gray-500 font-bold">No validation signals available yet</p>
+                                    <p className="text-sm text-gray-400 mt-2">Check back after the next idea generation</p>
+                                  </div>
                                 )}
-                              </>
+                              </div>
                             )}
                           </div>
                         )}
@@ -955,41 +1052,116 @@ function DailyIdeasContent() {
                             {gatedSections.includes('product_ideas') ? (
                               <GatedContent onUpgrade={() => setIsUpgradeModalOpen(true)} />
                             ) : (
-                              <>
+                              <div className="space-y-8">
+                                {/* Product Ideas Carousel */}
                                 {selectedIdea.product_ideas && selectedIdea.product_ideas.length > 0 && (
-                                  <div className="mb-6">
-                                    <h3 className="font-black text-lg mb-4">Product Ideas</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <div className="flex items-center justify-between mb-4">
+                                      <h3 className="font-black text-lg flex items-center gap-2">
+                                        <Rocket className="w-5 h-5 text-uvz-orange" />
+                                        Product Ideas ({selectedIdea.product_ideas.length})
+                                      </h3>
+                                      <p className="text-sm text-gray-500">← Scroll →</p>
+                                    </div>
+                                    <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                       {selectedIdea.product_ideas.map((product: any, i: number) => (
-                                        <div key={i} className="bg-blue-50 p-4 rounded-xl">
-                                          <p className="font-bold mb-1">{product.name}</p>
-                                          <p className="text-sm text-gray-600 mb-2">{product.description}</p>
-                                          {product.price_range && (
-                                            <p className="text-sm text-blue-600 font-bold">{product.price_range}</p>
+                                        <div 
+                                          key={i} 
+                                          className="flex-shrink-0 w-[300px] bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 p-5 rounded-xl snap-start hover:border-blue-400 transition-all hover:shadow-lg"
+                                        >
+                                          {/* Product Type Badge */}
+                                          <div className="flex items-center justify-between mb-3">
+                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                              product.type?.toLowerCase().includes('saas') ? 'bg-purple-100 text-purple-700' :
+                                              product.type?.toLowerCase().includes('course') ? 'bg-blue-100 text-blue-700' :
+                                              product.type?.toLowerCase().includes('template') || product.type?.toLowerCase().includes('tool') ? 'bg-green-100 text-green-700' :
+                                              product.type?.toLowerCase().includes('community') ? 'bg-yellow-100 text-yellow-700' :
+                                              product.type?.toLowerCase().includes('service') || product.type?.toLowerCase().includes('consulting') ? 'bg-orange-100 text-orange-700' :
+                                              'bg-gray-100 text-gray-700'
+                                            }`}>
+                                              {product.type || 'Product'}
+                                            </span>
+                                            {product.build_difficulty && (
+                                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                product.build_difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                                                product.build_difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
+                                              }`}>
+                                                {product.build_difficulty}
+                                              </span>
+                                            )}
+                                          </div>
+                                          
+                                          {/* Product Name & Tagline */}
+                                          <h4 className="font-black text-lg mb-1">{product.name}</h4>
+                                          {product.tagline && (
+                                            <p className="text-sm text-gray-500 italic mb-2">"{product.tagline}"</p>
                                           )}
+                                          
+                                          {/* Description */}
+                                          <p className="text-sm text-gray-700 mb-4 line-clamp-3">{product.description}</p>
+                                          
+                                          {/* Core Features */}
+                                          {product.core_features && product.core_features.length > 0 && (
+                                            <div className="mb-4">
+                                              <p className="text-xs font-bold text-gray-500 mb-2">Key Features:</p>
+                                              <div className="flex flex-wrap gap-1">
+                                                {product.core_features.slice(0, 3).map((feature: string, fi: number) => (
+                                                  <span key={fi} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                                    {feature}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          
+                                          {/* Bottom Stats */}
+                                          <div className="border-t pt-3 mt-auto">
+                                            <div className="flex items-center justify-between text-sm">
+                                              {product.price_point && (
+                                                <span className="font-black text-green-600">{product.price_point}</span>
+                                              )}
+                                              {product.build_time && (
+                                                <span className="text-gray-500">⏱ {product.build_time}</span>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
                                   </div>
                                 )}
 
+                                {/* Monetization Strategies */}
                                 {selectedIdea.monetization_ideas && selectedIdea.monetization_ideas.length > 0 && (
                                   <div>
-                                    <h3 className="font-black text-lg mb-4">Monetization Strategies</h3>
+                                    <h3 className="font-black text-lg mb-4 flex items-center gap-2">
+                                      <Zap className="w-5 h-5 text-green-600" />
+                                      Monetization Strategies
+                                    </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                       {selectedIdea.monetization_ideas.map((idea: any, i: number) => (
-                                        <div key={i} className="bg-green-50 p-4 rounded-xl">
-                                          <p className="font-bold">{idea.model}</p>
-                                          <p className="text-sm text-gray-600">{idea.description}</p>
+                                        <div key={i} className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 p-4 rounded-xl">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <p className="font-black text-lg">{idea.model}</p>
+                                            {idea.recurring !== undefined && (
+                                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                idea.recurring ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                                              }`}>
+                                                {idea.recurring ? '🔄 Recurring' : '💰 One-time'}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-sm text-gray-600 mb-2">{idea.description}</p>
                                           {idea.price_range && (
-                                            <p className="text-sm text-green-600 font-bold mt-2">{idea.price_range}</p>
+                                            <p className="text-lg font-black text-green-600">{idea.price_range}</p>
                                           )}
                                         </div>
                                       ))}
                                     </div>
                                   </div>
                                 )}
-                              </>
+                              </div>
                             )}
                           </div>
                         )}

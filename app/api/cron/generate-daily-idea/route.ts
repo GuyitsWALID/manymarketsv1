@@ -146,9 +146,9 @@ Return ONLY valid JSON:
   "opportunity_score": 8.5,
   "demand_level": "high",
   "competition_level": "low",
-  "trending_score": 75,
-  "market_size": "Estimated market size (e.g., $2.5B growing at 12% CAGR)",
-  "growth_rate": "Annual growth rate with reasoning",
+  "trending_score": 7.5,
+  "market_size": "$X.XB (be specific with a number)",
+  "growth_rate": "XX% CAGR",
   "pain_points": [
     "Specific pain point 1 with context",
     "Specific pain point 2 with context",
@@ -161,27 +161,92 @@ Return ONLY valid JSON:
       "model": "SaaS/Course/Template/Community/Marketplace/Consulting",
       "description": "How to monetize",
       "price_range": "$X-$Y",
-      "recurring": true/false
+      "recurring": true
+    },
+    {
+      "model": "Second monetization model",
+      "description": "Alternative way to monetize",
+      "price_range": "$X-$Y",
+      "recurring": false
     }
   ],
   "product_ideas": [
     {
-      "type": "SaaS/Course/Template/Community/Tool",
-      "name": "Product name",
+      "type": "SaaS",
+      "name": "Product 1 name",
       "tagline": "One-liner",
-      "description": "What it does",
+      "description": "What it does and why it's valuable",
       "core_features": ["Feature 1", "Feature 2", "Feature 3"],
-      "price_point": "$X/month or $X one-time",
+      "price_point": "$X/month",
       "build_time": "X weeks",
       "build_difficulty": "Easy/Medium/Hard",
       "mvp_scope": "Minimum viable product description"
+    },
+    {
+      "type": "Course",
+      "name": "Product 2 name",
+      "tagline": "One-liner",
+      "description": "Educational product idea",
+      "core_features": ["Module 1", "Module 2", "Module 3"],
+      "price_point": "$X one-time",
+      "build_time": "X weeks",
+      "build_difficulty": "Easy/Medium/Hard",
+      "mvp_scope": "MVP description"
+    },
+    {
+      "type": "Template/Tool",
+      "name": "Product 3 name",
+      "tagline": "One-liner",
+      "description": "Downloadable or tool-based product",
+      "core_features": ["Feature 1", "Feature 2", "Feature 3"],
+      "price_point": "$X one-time",
+      "build_time": "X weeks",
+      "build_difficulty": "Easy",
+      "mvp_scope": "MVP description"
+    },
+    {
+      "type": "Community",
+      "name": "Product 4 name",
+      "tagline": "One-liner",
+      "description": "Community or membership product",
+      "core_features": ["Benefit 1", "Benefit 2", "Benefit 3"],
+      "price_point": "$X/month",
+      "build_time": "X weeks",
+      "build_difficulty": "Medium",
+      "mvp_scope": "MVP description"
+    },
+    {
+      "type": "Service/Consulting",
+      "name": "Product 5 name",
+      "tagline": "One-liner",
+      "description": "Done-for-you or consulting service",
+      "core_features": ["Deliverable 1", "Deliverable 2", "Deliverable 3"],
+      "price_point": "$X per project",
+      "build_time": "X weeks",
+      "build_difficulty": "Medium",
+      "mvp_scope": "MVP description"
     }
   ],
   "validation_signals": [
     {
-      "signal": "What demand signal was found",
-      "source": "Where it was found",
-      "strength": "Strong/Moderate/Weak"
+      "type": "Search Demand",
+      "description": "Evidence of people searching for solutions in this space",
+      "evidence": "Specific data point or observation"
+    },
+    {
+      "type": "Social Proof",
+      "description": "Communities, discussions, or groups focused on this problem",
+      "evidence": "Where you found this (Reddit, Facebook groups, etc.)"
+    },
+    {
+      "type": "Competitor Activity",
+      "description": "Existing solutions and their limitations",
+      "evidence": "What competitors exist and where they fall short"
+    },
+    {
+      "type": "Market Trend",
+      "description": "Growing trend supporting this opportunity",
+      "evidence": "Data or news supporting the trend"
     }
   ],
   "full_research_report": {
