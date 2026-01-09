@@ -144,6 +144,8 @@ Requirements:
 3. Must have LOW to MEDIUM competition
 4. Must be actionable for a solo founder or small team
 
+CRITICAL: Return ONLY valid, parseable JSON. Do NOT include literal newlines inside string values - use \\n if needed. Keep all text on single lines within quotes.
+
 Return ONLY valid JSON:
 {
   "name": "Specific Niche Name (5-8 words max)",
@@ -319,7 +321,32 @@ Return ONLY valid JSON:
       // Find the JSON object
       const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        ideaData = JSON.parse(jsonMatch[0]);
+        let rawJson = jsonMatch[0];
+        
+        // Fix common JSON issues from AI responses:
+        // 1. Replace literal newlines inside strings with escaped newlines
+        // This regex matches content between quotes and fixes unescaped newlines
+        rawJson = rawJson.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
+          // Replace actual newlines/carriage returns with escaped versions inside strings
+          return match
+            .replace(/\r\n/g, '\\n')
+            .replace(/\r/g, '\\n')
+            .replace(/\n/g, '\\n')
+            .replace(/\t/g, '\\t');
+        });
+        
+        // 2. Try to parse, if it fails, try a more aggressive cleanup
+        try {
+          ideaData = JSON.parse(rawJson);
+        } catch (firstParseError) {
+          console.log('First parse attempt failed, trying aggressive cleanup...');
+          // More aggressive: remove all control characters except those that are properly escaped
+          rawJson = rawJson.replace(/[\x00-\x1F\x7F]/g, (char) => {
+            // Keep only if it's a space
+            return char === ' ' ? ' ' : '';
+          });
+          ideaData = JSON.parse(rawJson);
+        }
       } else {
         console.error('No JSON found in response. Full response:', analysis);
         throw new Error('No JSON found in response');
