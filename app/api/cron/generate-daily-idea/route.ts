@@ -52,6 +52,7 @@ async function generateAnalysis(prompt: string): Promise<string> {
     const { text } = await generateText({
       model: getModel(),
       prompt,
+      maxTokens: 8000, // Ensure enough tokens for full JSON response
     });
     return text;
   } catch (primaryError: any) {
@@ -64,6 +65,7 @@ async function generateAnalysis(prompt: string): Promise<string> {
       const { text } = await generateText({
         model: google('gemini-2.0-flash'),
         prompt,
+        maxTokens: 8000,
       });
       return text;
     } catch (fallbackError: any) {
@@ -338,14 +340,41 @@ Return ONLY valid JSON:
         // 2. Try to parse, if it fails, try a more aggressive cleanup
         try {
           ideaData = JSON.parse(rawJson);
-        } catch (firstParseError) {
+        } catch (firstParseError: any) {
           console.log('First parse attempt failed, trying aggressive cleanup...');
+          
+          // Check if JSON is truncated (common with token limits)
+          // Look for unclosed braces/brackets
+          const openBraces = (rawJson.match(/\{/g) || []).length;
+          const closeBraces = (rawJson.match(/\}/g) || []).length;
+          const openBrackets = (rawJson.match(/\[/g) || []).length;
+          const closeBrackets = (rawJson.match(/\]/g) || []).length;
+          
+          if (openBraces > closeBraces || openBrackets > closeBrackets) {
+            console.log('Detected truncated JSON, attempting to close it...');
+            // Find the last complete key-value pair and close from there
+            // Remove any incomplete string at the end
+            rawJson = rawJson.replace(/,\s*"[^"]*"?\s*:?\s*"?[^"]*$/, '');
+            rawJson = rawJson.replace(/,\s*"[^"]*$/, '');
+            rawJson = rawJson.replace(/,\s*\[[^\]]*$/, '');
+            rawJson = rawJson.replace(/,\s*\{[^}]*$/, '');
+            // Add closing brackets/braces
+            for (let i = 0; i < openBrackets - closeBrackets; i++) rawJson += ']';
+            for (let i = 0; i < openBraces - closeBraces; i++) rawJson += '}';
+          }
+          
           // More aggressive: remove all control characters except those that are properly escaped
           rawJson = rawJson.replace(/[\x00-\x1F\x7F]/g, (char) => {
             // Keep only if it's a space
             return char === ' ' ? ' ' : '';
           });
-          ideaData = JSON.parse(rawJson);
+          
+          try {
+            ideaData = JSON.parse(rawJson);
+          } catch (secondParseError) {
+            console.error('Second parse also failed:', secondParseError);
+            throw firstParseError; // Throw original error
+          }
         }
       } else {
         console.error('No JSON found in response. Full response:', analysis);
