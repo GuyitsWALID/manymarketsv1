@@ -10,9 +10,17 @@ const BATCH_SIZE = 100;
 const MAX_BATCHES = 50; // Safety limit: 50 batches x 100 = 5000 emails max
 
 export async function POST(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret - Vercel sends x-vercel-cron header for cron jobs
   const authHeader = request.headers.get('authorization');
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+  const vercelCronHeader = request.headers.get('x-vercel-cron');
+  
+  // Allow if: Vercel cron header present, OR valid CRON_SECRET auth header, OR no CRON_SECRET set
+  const isVercelCron = vercelCronHeader === '1';
+  const isValidAuth = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`;
+  const noSecretConfigured = !CRON_SECRET;
+  
+  if (!isVercelCron && !isValidAuth && !noSecretConfigured) {
+    console.log('Unauthorized email cron attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   

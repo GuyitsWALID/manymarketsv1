@@ -74,9 +74,18 @@ async function generateAnalysis(prompt: string): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret - Vercel sends this automatically for cron jobs
+  // For manual triggers, use Authorization header
   const authHeader = request.headers.get('authorization');
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+  const vercelCronHeader = request.headers.get('x-vercel-cron');
+  
+  // Allow if: Vercel cron header present, OR valid CRON_SECRET auth header, OR no CRON_SECRET set
+  const isVercelCron = vercelCronHeader === '1';
+  const isValidAuth = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`;
+  const noSecretConfigured = !CRON_SECRET;
+  
+  if (!isVercelCron && !isValidAuth && !noSecretConfigured) {
+    console.log('Unauthorized cron attempt. Headers:', { authHeader: !!authHeader, vercelCron: vercelCronHeader });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
