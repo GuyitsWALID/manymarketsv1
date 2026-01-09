@@ -49,11 +49,12 @@ async function generateAnalysis(prompt: string): Promise<string> {
   // Try primary model first
   try {
     console.log('Attempting AI generation with primary model...');
+    // Use `as any` to allow provider-specific token options (not in TS types)
     const { text } = await generateText({
       model: getModel(),
       prompt,
       maxTokens: 8000, // Ensure enough tokens for full JSON response
-    });
+    } as any);
     return text;
   } catch (primaryError: any) {
     console.error('Primary AI model failed:', primaryError?.message || primaryError);
@@ -62,11 +63,12 @@ async function generateAnalysis(prompt: string): Promise<string> {
     try {
       console.log('Falling back to Gemini...');
       const { google } = await import('@/lib/ai/provider');
+      // Use `as any` here too for model-specific options
       const { text } = await generateText({
         model: google('gemini-2.0-flash'),
         prompt,
         maxTokens: 8000,
-      });
+      } as any);
       return text;
     } catch (fallbackError: any) {
       console.error('Fallback model also failed:', fallbackError?.message || fallbackError);
