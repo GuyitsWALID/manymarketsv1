@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
-import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Linkedin, Github, Mail, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Linkedin, Github, Mail, ArrowRight, Flame, Target, Lock, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
@@ -29,9 +29,23 @@ const HandDrawnBox = ({ children, delay = 0 }: { children: React.ReactNode; dela
   </RoughNotation>
 );
 
+interface DailyIdea {
+  id: string;
+  name: string;
+  industry: string;
+  one_liner: string;
+  description: string;
+  opportunity_score: number;
+  demand_level: string;
+  competition_level: string;
+  featured_date: string;
+}
+
 export default function Home() {
   const [hoveredFeature, setHoveredFeature] = useState<number | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [dailyIdea, setDailyIdea] = useState<DailyIdea | null>(null);
+  const [loadingIdea, setLoadingIdea] = useState(true);
   const router = useRouter();
   const supabase = createClient();
 
@@ -99,6 +113,26 @@ export default function Home() {
       checkbox.removeEventListener('change', onChange);
       document.removeEventListener('keydown', onKeyDown);
     };
+  }, []);
+
+  // Fetch today's daily idea for the public section
+  useEffect(() => {
+    async function fetchDailyIdea() {
+      try {
+        const res = await fetch('/api/daily-ideas?limit=1');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ideas && data.ideas.length > 0) {
+            setDailyIdea(data.ideas[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch daily idea:', error);
+      } finally {
+        setLoadingIdea(false);
+      }
+    }
+    fetchDailyIdea();
   }, []);
 
   // If the OAuth provider redirects back to the app root with a `code` query param (e.g. /?code=...),
@@ -235,7 +269,7 @@ export default function Home() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6 font-bold text-base">
-        <Link href="/daily-ideas" className="hover:underline decoration-4 decoration-uvz-orange flex items-center gap-1">Daily Ideas 🔥</Link>
+        <Link href="#daily-ideas" className="hover:underline decoration-4 decoration-uvz-orange flex items-center gap-1">Daily Ideas 🔥</Link>
         <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
         <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Idea Scorer</Link>
@@ -274,7 +308,7 @@ export default function Home() {
 
           <nav className="flex flex-col gap-3 text-lg font-bold">
             <Link
-          href="/daily-ideas"
+          href="#daily-ideas"
           className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
           onClick={() => {
             const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
@@ -554,6 +588,155 @@ export default function Home() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Daily Ideas Section */}
+        <section id="daily-ideas" className="bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 border-y-2 sm:border-y-4 border-black py-12 sm:py-16 md:py-20 lg:py-32">
+          <div className="container mx-auto px-4 sm:px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-8 sm:mb-12"
+            >
+              <span className="inline-flex items-center gap-2 bg-uvz-orange text-white px-4 py-2 rounded-full text-sm font-bold mb-4">
+                <Flame className="w-4 h-4" />
+                Fresh Ideas Daily
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black mb-4 uppercase">
+                Today's <span className="text-uvz-orange"><HandDrawnUnderline delay={100}>AI-Researched</HandDrawnUnderline></span> Niche Idea
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl font-medium max-w-2xl mx-auto text-gray-600">
+                Every day, our AI researches and validates a new niche opportunity. Sign in to unlock the full research report.
+              </p>
+            </motion.div>
+
+            {loadingIdea ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin w-10 h-10 border-4 border-uvz-orange border-t-transparent rounded-full"></div>
+              </div>
+            ) : dailyIdea ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="max-w-4xl mx-auto"
+              >
+                <div className="bg-white border-4 border-black rounded-2xl shadow-brutal overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-uvz-orange to-pink-500 p-6 text-white">
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                      <span className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-sm font-bold">
+                        {dailyIdea.industry}
+                      </span>
+                      <span className="bg-white text-uvz-orange px-3 py-1 rounded-full text-sm font-black">
+                        {dailyIdea.opportunity_score}/10 Score
+                      </span>
+                      <span className="flex items-center gap-1 text-sm">
+                        <Calendar className="w-4 h-4" />
+                        {new Date(dailyIdea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl md:text-4xl font-black mb-2">{dailyIdea.name}</h3>
+                    <p className="text-lg opacity-90">{dailyIdea.one_liner}</p>
+                  </div>
+
+                  {/* Content Preview */}
+                  <div className="p-6">
+                    <p className="text-gray-700 mb-6 line-clamp-3">{dailyIdea.description}</p>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                      <div className={`p-4 rounded-xl text-center ${
+                        dailyIdea.demand_level === 'high' ? 'bg-green-50 border-2 border-green-200' :
+                        dailyIdea.demand_level === 'medium' ? 'bg-yellow-50 border-2 border-yellow-200' :
+                        'bg-red-50 border-2 border-red-200'
+                      }`}>
+                        <p className="text-xs text-gray-500 mb-1">Demand</p>
+                        <p className="font-black capitalize">{dailyIdea.demand_level}</p>
+                      </div>
+                      <div className={`p-4 rounded-xl text-center ${
+                        dailyIdea.competition_level === 'low' ? 'bg-green-50 border-2 border-green-200' :
+                        dailyIdea.competition_level === 'medium' ? 'bg-yellow-50 border-2 border-yellow-200' :
+                        'bg-red-50 border-2 border-red-200'
+                      }`}>
+                        <p className="text-xs text-gray-500 mb-1">Competition</p>
+                        <p className="font-black capitalize">{dailyIdea.competition_level}</p>
+                      </div>
+                      <div className="p-4 rounded-xl text-center bg-orange-50 border-2 border-orange-200 col-span-2 sm:col-span-1">
+                        <p className="text-xs text-gray-500 mb-1">Opportunity</p>
+                        <p className="font-black text-uvz-orange">{dailyIdea.opportunity_score}/10</p>
+                      </div>
+                    </div>
+
+                    {/* Locked Content Preview */}
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent z-10 flex items-end justify-center pb-6">
+                        <div className="text-center">
+                          <Lock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-gray-600 font-bold mb-4">Sign in to unlock full research</p>
+                          <Link 
+                            href="/login" 
+                            className="inline-flex items-center gap-2 bg-uvz-orange text-white px-6 py-3 font-bold rounded-lg border-2 border-black shadow-brutal hover:bg-orange-600 transition-colors"
+                          >
+                            <Sparkles className="w-5 h-5" />
+                            Sign In to View Research
+                          </Link>
+                        </div>
+                      </div>
+                      <div className="space-y-4 blur-sm pointer-events-none select-none">
+                        <div className="bg-gray-100 p-4 rounded-xl">
+                          <h4 className="font-bold mb-2">📊 Market Analysis</h4>
+                          <p className="text-gray-500">Detailed market size, growth trends, and competitive landscape...</p>
+                        </div>
+                        <div className="bg-gray-100 p-4 rounded-xl">
+                          <h4 className="font-bold mb-2">🎯 Target Audience</h4>
+                          <p className="text-gray-500">Deep dive into demographics, psychographics, and buyer behaviors...</p>
+                        </div>
+                        <div className="bg-gray-100 p-4 rounded-xl">
+                          <h4 className="font-bold mb-2">💡 Product Ideas</h4>
+                          <p className="text-gray-500">5 validated product concepts with pricing and build estimates...</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA Below Card */}
+                <div className="text-center mt-8">
+                  <p className="text-gray-600 mb-4">
+                    Join <span className="font-bold text-uvz-orange">thousands of entrepreneurs</span> discovering daily opportunities
+                  </p>
+                  <Link 
+                    href="/login" 
+                    className="inline-flex items-center gap-2 bg-black text-white px-8 py-4 font-bold text-lg rounded-lg border-2 border-black shadow-brutal hover:bg-gray-900 transition-colors"
+                  >
+                    Get Started Free
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="max-w-2xl mx-auto text-center"
+              >
+                <div className="bg-white border-4 border-black rounded-2xl shadow-brutal p-8">
+                  <Flame className="w-16 h-16 text-uvz-orange mx-auto mb-4" />
+                  <h3 className="text-2xl font-black mb-2">Generating Today's Idea...</h3>
+                  <p className="text-gray-600 mb-6">Our AI is researching a fresh niche opportunity. Check back soon!</p>
+                  <Link 
+                    href="/login" 
+                    className="inline-flex items-center gap-2 bg-uvz-orange text-white px-6 py-3 font-bold rounded-lg border-2 border-black shadow-brutal"
+                  >
+                    Get Notified When Ready
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              </motion.div>
+            )}
           </div>
         </section>
 
