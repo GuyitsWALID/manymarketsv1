@@ -204,10 +204,10 @@ function UpgradeContent() {
                     </div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-bold text-red-500 line-through">$97</span>
-                      <span className="text-4xl font-black">$49</span>
+                      <span className="text-4xl font-black">$12</span>
                       <span className="text-gray-500 font-bold">one-time</span>
                     </div>
-                    <p className="text-sm text-green-600 font-bold mt-1">🎉 Save $48 - Pay once, own forever!</p>
+                    <p className="text-sm text-green-600 font-bold mt-1">🎉 Save $85 - Pay once, own forever!</p>
                   </div>
                   <div className="text-right text-sm text-gray-500">
                     <p>✓ Never pay again</p>
@@ -279,7 +279,7 @@ function UpgradeContent() {
                     <span className="transform group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <p className="mt-3 text-gray-600 text-sm">
-                    Monthly is $8/month with all Pro features. Lifetime is a one-time $49 payment that gives you permanent access plus exclusive bonuses like founding member badge, 1-on-1 onboarding, and all future updates forever.
+                    Monthly is $8/month with all Pro features. Lifetime is a one-time $12 payment that gives you permanent access plus exclusive bonuses like founding member badge, 1-on-1 onboarding, and all future updates forever.
                   </p>
                 </details>
                 <details className="bg-white border-2 border-black rounded-xl p-4 group">

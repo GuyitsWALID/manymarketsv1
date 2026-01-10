@@ -224,7 +224,7 @@ export default function Home() {
     },
     {
       name: "LIFETIME",
-      price: "$49",
+      price: "$12",
       originalPrice: "$199",
       period: "one-time payment",
       description: "Pay once, own forever. Best value for serious creators.",

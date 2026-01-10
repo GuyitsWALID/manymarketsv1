@@ -144,7 +144,7 @@ Respond ONLY with a valid JSON array (no markdown, no explanation):
     "matchScore": 85,
     "skillsMatch": ["skill1", "skill2"],
     "timeToLaunch": "2-4 weeks",
-    "revenueModel": "One-time purchase $49",
+    "revenueModel": "One-time purchase $12",
     "difficulty": "Easy|Medium|Hard",
     "whyThisProduct": "1-2 sentences explaining why this is perfect for them",
     "mvpScope": ["Feature 1", "Feature 2", "Feature 3"],

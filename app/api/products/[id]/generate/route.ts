@@ -235,7 +235,7 @@ Description: ${product.description || 'Not specified'}
 Product Type: ${product.product_type || 'ebook'}
 Target Audience: ${product.raw_analysis?.targetAudience || 'General audience'}
 Problem Solved: ${product.raw_analysis?.problemSolved || 'Not specified'}
-Price: ${product.price_point || '$49'}
+Price: ${product.price_point || '$12'}
 
 Generate marketing materials including a headline, subheadline, benefits, and call to action.
 
