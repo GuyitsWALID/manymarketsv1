@@ -4,7 +4,7 @@ import { useChat, type UIMessage } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, Loader2, Bot, User, Rocket } from 'lucide-react';
 import Link from 'next/link';
@@ -65,6 +65,18 @@ export default function ChatPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([]);
   const [researchSummary, setResearchSummary] = useState({ niche: '', uvz: '', targetAudience: '' });
+
+  // Source idea context when the session was started from a Daily Idea deep-link
+  const [sourceIdeaId, setSourceIdeaId] = useState<string | null>(null);
+  const [sourceProductIndex, setSourceProductIndex] = useState<number | null>(null);
+  const [sourceIdeaResearch, setSourceIdeaResearch] = useState<string | null>(null);
+
+  // Query params for deep-linking from Daily Ideas
+  const searchParams = useSearchParams();
+  const ideaParam = searchParams.get('idea');
+  const productIndexParam = searchParams.get('productIndex');
+  const productParam = searchParams.get('product');
+  const processedRef = useRef<{ idea?: string }>({});
   
   // Pro/Free tier state
   const [isPro, setIsPro] = useState(false);
@@ -610,6 +622,96 @@ export default function ChatPage() {
     }
   }, [loadSession]);
 
+  // Deep-linking: start a research chat from Daily Ideas (idea + optional productIndex or product JSON)
+  useEffect(() => {
+    // Only run once per idea param
+    if (!ideaParam) return;
+    if (processedRef.current.idea === ideaParam) return;
+    processedRef.current.idea = ideaParam;
+
+    (async () => {
+      try {
+        // Fetch idea detail
+        const res = await fetch(`/api/daily-ideas/${ideaParam}`);
+        if (!res.ok) {
+          console.error('Failed to fetch idea for deep-linking');
+          return;
+        }
+        const { idea } = await res.json();
+
+        // Determine selected product
+        let product = null;
+        let idxUsed: number | null = null;
+        if (productIndexParam !== null) {
+          const idx = parseInt(productIndexParam, 10);
+          if (!isNaN(idx) && idea.product_ideas && idea.product_ideas[idx]) {
+            product = idea.product_ideas[idx];
+            idxUsed = idx;
+          }
+        } else if (productParam) {
+          try {
+            const decoded = atob(productParam);
+            product = JSON.parse(decoded);
+            // productParam may be a full product JSON — don't have index in this case
+            idxUsed = null;
+          } catch (e) {
+            console.warn('Failed to parse product param', e);
+          }
+        }
+
+        // Compose initial message with full research + product context
+        const research = typeof idea.full_research_report === 'string' ? idea.full_research_report : JSON.stringify(idea.full_research_report, null, 2);
+        let initialMessage = `Research Request: ${idea.name}\n\nOne-liner: ${idea.one_liner}\n\nFull Research:\n${research}`;
+
+        // Save source idea context to allow converting research -> builder later
+        setSourceIdeaId(idea.id || null);
+        setSourceProductIndex(idxUsed);
+        setSourceIdeaResearch(research);
+
+        if (product) {
+          initialMessage += `\n\nSelected Product: ${product.name} - ${product.tagline || ''}\n${product.description || ''}\n\nPlease analyze this product opportunity: market, competitors, pricing, monetization, go-to-market strategies, validation experiments, and provide a prioritized 30/60/90 day plan with actionable next steps.`;
+        } else {
+          initialMessage += `\n\nPlease analyze this idea and suggest product concepts, market strategies, and validation steps with actionable next steps.`;
+        }
+
+        // Create a new session in the DB
+        const title = `Research: ${idea.name}`;
+        const createRes = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, industry: idea.industry }),
+        });
+
+        if (!createRes.ok) {
+          console.error('Failed to create research session');
+          return;
+        }
+
+        const { session } = await createRes.json();
+
+        // Reset UI state and start a fresh chat transport
+        const newChatId = `uvz-chat-${Date.now()}`;
+        setMessages([]);
+        setInput('');
+        setDbSessionId(session.id);
+        if (typeof window !== 'undefined') localStorage.setItem('uvz_active_session', session.id);
+        setChatSessionId(newChatId);
+        setSessions(prev => [session, ...prev]);
+
+        // Send the initial message and save it
+        requestAnimationFrame(() => {
+          sendMessage({ text: initialMessage });
+          saveMessageToDb(session.id, 'user', initialMessage).catch(err => console.error('Error saving initial research message:', err));
+        });
+
+        // Clean up URL (remove query params)
+        router.replace('/chat');
+      } catch (err) {
+        console.error('Error starting research chat from link:', err);
+      }
+    })();
+  }, [ideaParam, productIndexParam, productParam, router, saveMessageToDb, sendMessage, setMessages]);
+
   // Delete session
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -886,7 +988,16 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsSkillsModalOpen(true)}
+                  onClick={() => {
+                    // If this session originated from a Daily Idea, route to builder with that idea + productIndex
+                    if (sourceIdeaId) {
+                      const q = `/builder/create?idea=${sourceIdeaId}${sourceProductIndex !== null ? `&productIndex=${sourceProductIndex}` : ''}`;
+                      router.push(q);
+                      return;
+                    }
+                    // Fallback: open skills modal as before
+                    setIsSkillsModalOpen(true);
+                  }}
                   className="px-6 py-2 bg-white text-green-600 font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all flex items-center gap-2"
                 >
                   <Rocket className="w-5 h-5" />

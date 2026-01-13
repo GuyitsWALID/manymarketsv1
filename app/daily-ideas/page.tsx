@@ -105,6 +105,8 @@ function DailyIdeasContent() {
   const [ideas, setIdeas] = useState<DailyIdea[]>([]);
   const [todaysIdea, setTodaysIdea] = useState<DailyIdea | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<DailyIdea | null>(null);
+  // Selected product index for the currently opened idea (null = none selected)
+  const [selectedProductIdx, setSelectedProductIdx] = useState<number | null>(null);
   const [gatedSections, setGatedSections] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -219,7 +221,9 @@ function DailyIdeasContent() {
         const res = await fetch(`/api/daily-ideas/${selectedId}`);
         const data: IdeaDetailResponse = await res.json();
         
-        setSelectedIdea(data.idea);
+          setSelectedIdea(data.idea);
+        // Reset any product selection when switching ideas
+        setSelectedProductIdx(null);
         setIsPro(data.isPro);
         setGatedSections(data.gatedSections);
       } catch (error) {
@@ -298,6 +302,8 @@ function DailyIdeasContent() {
   };
 
   const today = new Date().toISOString().split('T')[0];
+
+  const productIndexForHref = selectedProductIdx !== null ? selectedProductIdx : (selectedIdea && selectedIdea.product_ideas && selectedIdea.product_ideas.length > 0 ? 0 : undefined);
 
   return (
     <div className="h-screen bg-uvz-cream overflow-hidden">
@@ -1062,13 +1068,23 @@ function DailyIdeasContent() {
                                         Product Ideas ({selectedIdea.product_ideas.length})
                                       </h3>
                                       <p className="text-sm text-gray-500">← Scroll →</p>
+                                      <p className="text-xs text-gray-500 mt-1">Select a product card to choose it, then use the <span className="font-bold">Research</span> or <span className="font-bold">Build</span> buttons below.</p>
                                     </div>
                                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                       {selectedIdea.product_ideas.map((product: any, i: number) => (
                                         <div 
                                           key={i} 
-                                          className="flex-shrink-0 w-[300px] bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 p-5 rounded-xl snap-start hover:border-blue-400 transition-all hover:shadow-lg"
+                                          onClick={() => setSelectedProductIdx(i)}
+                                          aria-selected={selectedProductIdx === i}
+                                          className={`flex-shrink-0 w-[300px] bg-gradient-to-br from-white to-blue-50 p-5 rounded-xl snap-start transition-all hover:shadow-lg cursor-pointer relative ${selectedProductIdx === i ? 'ring-4 ring-uvz-orange' : 'border-2 border-blue-200 hover:border-blue-400'}`}
                                         >
+                                          {/* Selection tick */}
+                                          <div className="absolute top-3 right-3">
+                                            {selectedProductIdx === i && (
+                                              <CheckCircle className="w-6 h-6 text-green-600" />
+                                            )}
+                                          </div>
+
                                           {/* Product Type Badge */}
                                           <div className="flex items-center justify-between mb-3">
                                             <span className={`text-xs font-bold px-2 py-1 rounded-full ${
@@ -1173,15 +1189,15 @@ function DailyIdeasContent() {
                       {isPro ? (
                         <div className="flex flex-col sm:flex-row gap-3">
                           <Link
-                            href={`/chat?idea=${selectedIdea.id}`}
-                            className="flex-1 flex items-center justify-center gap-2 bg-uvz-orange text-white font-bold px-4 py-3 border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all"
+                            href={`/chat?idea=${selectedIdea.id}${typeof productIndexForHref !== 'undefined' ? `&productIndex=${productIndexForHref}` : ''}`}
+                            className={`flex-1 flex items-center justify-center gap-2 bg-uvz-orange text-white font-bold px-4 py-3 border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all ${typeof productIndexForHref === 'undefined' ? 'opacity-80' : ''}`}
                           >
                             <Sparkles className="w-5 h-5" />
                             Research in Chat
                           </Link>
                           <Link
-                            href={`/builder/create?idea=${selectedIdea.id}`}
-                            className="flex-1 flex items-center justify-center gap-2 bg-white text-black font-bold px-4 py-3 border-2 border-black rounded-xl hover:bg-gray-100 transition-all"
+                            href={`/builder/create?idea=${selectedIdea.id}${typeof productIndexForHref !== 'undefined' ? `&productIndex=${productIndexForHref}` : ''}`}
+                            className={`flex-1 flex items-center justify-center gap-2 bg-white text-black font-bold px-4 py-3 border-2 border-black rounded-xl hover:bg-gray-100 transition-all ${typeof productIndexForHref === 'undefined' ? 'opacity-80' : ''}`}
                           >
                             <Rocket className="w-5 h-5" />
                             Build Product

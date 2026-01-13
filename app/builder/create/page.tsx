@@ -66,6 +66,90 @@ function CreateProductContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Prefill builder when deep-linked from Daily Ideas: ?idea=<id>&productIndex=<i>
+  useEffect(() => {
+    const ideaParam = searchParams.get('idea');
+    const productIndex = searchParams.get('productIndex');
+
+    if (!ideaParam || isLoading) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/daily-ideas/${ideaParam}`);
+        if (!res.ok) return;
+        const { idea } = await res.json();
+
+        let product = null;
+        if (productIndex) {
+          const idx = parseInt(productIndex, 10);
+          if (!isNaN(idx) && idea.product_ideas && idea.product_ideas[idx]) {
+            product = idea.product_ideas[idx];
+          }
+        }
+
+        if (!product) return;
+
+        // Map product.type to a product type config if possible
+        let matchedType: ProductTypeConfig | undefined;
+        if (product.type) {
+          const t = product.type.toLowerCase();
+          matchedType = PRODUCT_TYPES.find(pt => pt.id.toLowerCase() === t || pt.name.toLowerCase().includes(t));
+        }
+        if (!matchedType) {
+          // fallback to first recommended type or default
+          const recommended = getRecommendedProductTypes([], 'Beginner');
+          matchedType = recommended[0] || PRODUCT_TYPES[0];
+        }
+
+        // Prepare idea research summary
+        const research = typeof idea.full_research_report === 'string' ? idea.full_research_report : JSON.stringify(idea.full_research_report, null, 2);
+
+        // Prefill product data and include idea context for the builder
+        const problemText = product.problem || idea.core_problem || (idea.full_research_report && (idea.full_research_report.core_problem || idea.full_research_report.problem)) || '';
+        const solutionText = product.description || (idea.full_research_report && (idea.full_research_report.solution_overview || idea.full_research_report.solution)) || '';
+        const targetText = product.target_users || idea.target_audience || (idea.full_research_report && (idea.full_research_report.target_audience || idea.full_research_report.targetUsers)) || '';
+
+        setProductData({
+          // Primary fields
+          name: product.name || idea.name || `${idea.name} Product`,
+          title: product.name || idea.name || '',
+          tagline: product.tagline || '',
+          description: `${product.description || ''}\n\nIdea Context: ${idea.one_liner || ''}\n\nResearch Summary:\n${research}`,
+
+          // Key contextual fields requested by the user
+          problem_statement: problemText,
+          problem: problemText,
+          core_problem: problemText,
+
+          solution_overview: solutionText,
+          solution: solutionText,
+
+          // Target audience variants
+          'target-audience': targetText,
+          target_audience: targetText,
+          targetUsers: targetText,
+          target_users: targetText,
+
+          // Other helpful fields
+          price_point: product.price_point || '',
+          core_features: (product.core_features && product.core_features.slice(0, 6).join(', ')) || '',
+          sourceIdeaName: idea.name || '',
+          sourceIdeaId: idea.id || '',
+        });
+
+        // Set a helpful default build prompt so the builder has direction immediately
+        const defaultPrompt = `Build a ${product.name || matchedType?.name || 'product'} for the idea "${idea.name}". Context: ${idea.one_liner || ''}\n\nResearch Summary:\n${research}\n\nPlease provide: core features, monetization strategy, pricing recommendations, positioning, go-to-market plan, and a prioritized 30/60/90 day roadmap with actionable tasks.`;
+        setFinalPrompt(defaultPrompt);
+
+        setSelectedProductType(matchedType);
+        setStep('building');
+      } catch (e) {
+        console.error('Failed to prefill builder from daily idea product:', e);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isLoading]);
+
   const loadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {

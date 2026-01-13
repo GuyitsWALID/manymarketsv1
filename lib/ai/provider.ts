@@ -16,6 +16,11 @@ export const groqDaily = createGroq({
   apiKey: process.env.GROQ_DAILY_API_KEY || process.env.GROQ_API_KEY,
 });
 
+// Optional: Product Builder specific Groq provider (use a separate API key to isolate builder traffic)
+export const groqProductBuilder = createGroq({
+  apiKey: process.env.GROQ_PRODUCT_BUILDER_API_KEY || process.env.GROQ_API_KEY,
+});
+
 
 // Model configuration with fallback support
 // Primary: Groq Llama 3.3 70B - fast and capable, generous free tier
@@ -53,6 +58,7 @@ export const models = {
   groqLlama70B: () => groq('llama-3.3-70b-versatile'),    // Best quality
   groqLlama8B: () => groq('llama-3.1-8b-instant'),        // Fastest
   groqMixtral: () => groq('mixtral-8x7b-32768'),          // Good balance
+  groqProductBuilder: () => groqProductBuilder('llama-3.3-70b-versatile'), // Use product-builder scoped key
   
   // Google models - free tier with limits
   geminiFlash: () => google('gemini-2.0-flash'),          // Fast
