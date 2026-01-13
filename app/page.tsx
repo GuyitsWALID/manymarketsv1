@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
 import FreeBanner from '@/components/FreeBanner';
+import PromoBanner from '@/components/PromoBanner';
 import NewYearConfetti from '@/components/NewYearConfetti';
 import { createClient } from "@/lib/supabase/client";
 import GuestDemoChat from '@/components/demo/GuestDemoChat';
@@ -187,60 +188,7 @@ export default function Home() {
     { number: "95%", label: "Success Rate", icon: TrendingUp }
   ];
 
-  const pricingPlans = [
-    {
-      name: "FREE",
-      price: "$0",
-      period: "forever",
-      description: "Try it out—2 free AI research sessions to explore",
-      features: [
-        "2 AI Research Sessions",
-        "Basic Niche Insights",
-        "Preview Builder Features",
-        "Community Access"
-      ],
-      cta: "Try Free",
-      popular: false,
-      originalPrice: null,
-      isLifetime: false
-    },
-    {
-      name: "PRO MONTHLY",
-      price: "$8",
-      originalPrice: "$10",
-      period: "per month",
-      description: "Unlimited access to build AI prompts & ebooks",
-      features: [
-        "Unlimited AI Research",
-        "Prompt Pack Builder",
-        "Ebook Creation Studio",
-        "AI Image Generation",
-        "Export to PDF/DOCX",
-        "Priority Support"
-      ],
-      cta: "Start Pro",
-      popular: false,
-      isLifetime: false
-    },
-    {
-      name: "LIFETIME",
-      price: "$12",
-      originalPrice: "$199",
-      period: "one-time payment",
-      description: "Pay once, own forever. Best value for serious creators.",
-      features: [
-        "Everything in Pro",
-        "Lifetime Updates",
-        "Early Access Features",
-        "Founding Member Badge",
-        "1-on-1 Onboarding Call",
-        "Private Discord Access"
-      ],
-      cta: "Get Lifetime Access",
-      popular: true,
-      isLifetime: true
-    }
-  ];
+  // Pricing plans removed — pricing is promoted via the banner and `/upgrade` page.
 
   const workflow = [
     {
@@ -262,16 +210,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans overflow-hidden">
+      <PromoBanner />
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-sm ">
+      <header style={{ top: 'var(--promo-banner-height, 3rem)' }} className="fixed left-0 w-full z-50 bg-white/80 backdrop-blur-sm ">
         <div className="flex items-center justify-between container mx-auto px-4 sm:px-6 py-3">
           <img src="/3-Photoroom.png" alt="ManyMarkets Logo" className="h-8 sm:h-10 md:h-14 w-auto" />
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6 font-bold text-base">
+          <nav className="hidden md:flex pt-4 items-center gap-6 font-bold text-base">
         <Link href="#daily-ideas" className="hover:underline decoration-4 decoration-uvz-orange flex items-center gap-1">Daily Ideas 🔥</Link>
         <Link href="#features" className="hover:underline decoration-4 decoration-uvz-orange">Features</Link>
-        <Link href="#pricing" className="hover:underline decoration-4 decoration-uvz-orange">Pricing</Link>
+        <Link href="/upgrade" className="hover:underline decoration-4 decoration-uvz-orange">Upgrade</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Idea Scorer</Link>
         <Link href="/login" className="hover:underline decoration-4 decoration-uvz-orange">Login</Link>
         <Link href="/login" className="bg-uvz-orange text-black px-6 py-2 border-2 border-black hover:bg-white hover:text-black transition-all shadow-brutal active:translate-x-1 active:translate-y-1 active:shadow-none text-base">
@@ -328,14 +277,14 @@ export default function Home() {
           Features
             </Link>
             <Link
-          href="#pricing"
+          href="/upgrade"
           className="block px-4 py-3 hover:underline decoration-4 decoration-uvz-orange border-l-4 border-transparent hover:border-uvz-orange transition-all"
           onClick={() => {
             const el = document.getElementById('menu-toggle') as HTMLInputElement | null;
             if (el) el.checked = false;
           }}
             >
-          Pricing
+          Upgrade
             </Link>
             <Link
           href="/login"
@@ -781,18 +730,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section id="pricing" className="bg-blue-50 border-y-2 sm:border-y-4 border-black py-12 sm:py-16 md:py-20 lg:py-32">
+        {/* Pricing section removed */}
           <div className="container mx-auto px-4 sm:px-6">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-4 sm:mb-6 uppercase">
-              <HandDrawnBox delay={100}>Simple, Transparent Pricing</HandDrawnBox>
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-center mb-8 sm:mb-12 md:mb-16 font-medium max-w-2xl mx-auto px-2">
-              Start free, upgrade when you're ready. No hidden fees, no surprises. Pay only for what you use.
-            </p>
+
+
             
+            {false && (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
-              {pricingPlans.map((plan, i) => (
+              {([] as any).map((plan: any, i: number) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 50 }}
@@ -820,7 +765,7 @@ export default function Home() {
                   </div>
                   <p className="text-center font-medium mb-4 sm:mb-6 min-h-10 sm:min-h-12 text-sm sm:text-base">{plan.description}</p>
                   <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
-                    {plan.features.map((feature, fi) => (
+                    {plan.features.map((feature: any, fi: number) => (
                       <li key={fi} className="flex items-start gap-2">
                         <Check className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 shrink-0 text-uvz-orange" strokeWidth={3} />
                         <span className="font-medium text-xs sm:text-sm">{feature}</span>
@@ -847,6 +792,7 @@ export default function Home() {
                 </motion.div>
               ))}
             </div>
+            )}
 
             <div className="text-center mt-8 sm:mt-12 max-w-3xl mx-auto px-2">
               <p className="text-xs sm:text-sm font-medium border-2 sm:border-4 border-black p-4 sm:p-6 bg-white shadow-brutal">
@@ -854,7 +800,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-        </section>
 
         {/* CTA Section */}
         <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20 lg:py-32">
@@ -896,7 +841,7 @@ export default function Home() {
               <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Product</h4>
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/features" className="hover:text-uvz-orange transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-uvz-orange transition-colors">Pricing</Link></li>
+                <li><Link href="/upgrade" className="hover:text-uvz-orange transition-colors">Upgrade</Link></li>
                 <li><Link href="/login" className="hover:text-uvz-orange transition-colors">Idea Scorer</Link></li>
                 <li><Link href="/builder" className="hover:text-uvz-orange transition-colors">Product Builder</Link></li>
               </ul>
