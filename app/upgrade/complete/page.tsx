@@ -52,6 +52,16 @@ function UpgradeCompleteContent() {
     }
   };
 
+  useEffect(() => {
+    if (status === 'success') {
+      // Redirect to chat shortly after showing success state so users land directly in the app
+      const t = setTimeout(() => {
+        router.push('/chat');
+      }, 1200);
+      return () => clearTimeout(t);
+    }
+  }, [status]);
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50 flex items-center justify-center">

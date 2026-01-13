@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Copy } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function PromoBanner() {
   const CODE = 'LIFETIMEOFFERS';
@@ -69,6 +71,22 @@ export default function PromoBanner() {
   }, []);
 
   const message = `One time payment for a full pro lifetime access of ManyMarkets — Use code "${CODE}" for 50% off`;
+  const router = useRouter();
+
+  const handleJoin = async () => {
+    const supabase = createClient();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        router.push('/upgrade');
+      } else {
+        router.push(`/login?returnTo=${encodeURIComponent('/upgrade')}`);
+      }
+    } catch (err) {
+      console.error('Join click auth check failed:', err);
+      window.location.href = '/login?returnTo=' + encodeURIComponent('/upgrade');
+    }
+  };
 
   return (
     <div className="fixed top-0 left-0 w-full z-[9999] bg-orange-600 text-black pointer-events-auto">
@@ -112,9 +130,12 @@ export default function PromoBanner() {
               <span className="sm:hidden">{copied ? '✓' : CODE}</span>
             </button>
 
-            <Link href="/upgrade" className="ml-2 bg-black text-white px-2 py-1 rounded border-2 border-black font-bold shadow-brutal hover:bg-white hover:text-black transition text-xs sm:text-sm">
+            <button
+              onClick={handleJoin}
+              className="ml-2 bg-black text-white px-2 py-1 rounded border-2 border-black font-bold shadow-brutal hover:bg-white hover:text-black transition text-xs sm:text-sm"
+            >
               Join
-            </Link>
+            </button>
           </div>
         </div>
       </div>
