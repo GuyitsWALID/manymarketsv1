@@ -326,8 +326,10 @@ Return ONLY valid JSON:
       const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         let rawJson = jsonMatch[0];
-        
-        // Fix common JSON issues from AI responses:
+
+        // Trim any trailing characters after the final closing brace (common when AI output is followed by extra text)
+        const lastClose = rawJson.lastIndexOf('}');
+        if (lastClose !== -1) rawJson = rawJson.substring(0, lastClose + 1);
         // 1. Replace literal newlines inside strings with escaped newlines
         // This regex matches content between quotes and fixes unescaped newlines
         rawJson = rawJson.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
@@ -388,41 +390,101 @@ Return ONLY valid JSON:
       return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
     }
     
-    // Step 3: Save to database
-    const { data: newIdea, error: insertError } = await getSupabaseAdmin()
+    // Step 3: Sanitize/normalize fields before saving to database
+    function sanitizeScore(value: any) {
+      if (value === null || value === undefined) return null;
+      const s = String(value).trim();
+      const m = s.match(/-?\d+(?:\.\d+)?/);
+      if (!m) return null;
+      const num = parseFloat(m[0]);
+      if (!isFinite(num)) return null;
+      // Round to nearest integer to avoid DB integer/decimal mismatches
+      return Math.round(num);
+    }
+
+    function normalizeLevel(value: any) {
+      if (!value) return 'medium';
+      const v = String(value).toLowerCase();
+      if (['low', 'medium', 'high'].includes(v)) return v;
+      return 'medium';
+    }
+
+    const sanitizedIdea = {
+      featured_date: today,
+      display_order: 0,
+      name: String(ideaData.name || 'Untitled').slice(0, 4000),
+      industry: ideaData.industry || industry,
+      one_liner: ideaData.one_liner || '',
+      description: ideaData.description || '',
+      target_audience: ideaData.target_audience || '',
+      core_problem: ideaData.core_problem || '',
+      opportunity_score: sanitizeScore(ideaData.opportunity_score),
+      demand_level: normalizeLevel(ideaData.demand_level),
+      competition_level: normalizeLevel(ideaData.competition_level),
+      trending_score: sanitizeScore(ideaData.trending_score),
+      market_size: ideaData.market_size || null,
+      growth_rate: ideaData.growth_rate || null,
+      pain_points: Array.isArray(ideaData.pain_points) ? ideaData.pain_points : (ideaData.pain_points ? [ideaData.pain_points] : []),
+      monetization_ideas: Array.isArray(ideaData.monetization_ideas) ? ideaData.monetization_ideas : [],
+      product_ideas: Array.isArray(ideaData.product_ideas) ? ideaData.product_ideas : [],
+      validation_signals: Array.isArray(ideaData.validation_signals) ? ideaData.validation_signals : [],
+      full_research_report: ideaData.full_research_report || null,
+      sources: searchContext.slice(0, 10).map(r => ({ title: r.title, link: r.link })),
+      is_published: true,
+      is_featured: true,
+      generated_by: 'ai-cron',
+      generation_prompt: industry,
+    };
+
+    console.log('Sanitized idea before insert:', {
+      opportunity_score: sanitizedIdea.opportunity_score,
+      trending_score: sanitizedIdea.trending_score,
+      demand_level: sanitizedIdea.demand_level,
+      competition_level: sanitizedIdea.competition_level,
+    });
+
+    let newIdea: any = null;
+    let insertError: any = null;
+    const insertResult = await getSupabaseAdmin()
       .from('daily_niche_ideas')
-      .insert({
-        featured_date: today,
-        display_order: 0,
-        name: ideaData.name,
-        industry: ideaData.industry || industry,
-        one_liner: ideaData.one_liner,
-        description: ideaData.description,
-        target_audience: ideaData.target_audience,
-        core_problem: ideaData.core_problem,
-        opportunity_score: ideaData.opportunity_score,
-        demand_level: ideaData.demand_level?.toLowerCase() || 'medium',
-        competition_level: ideaData.competition_level?.toLowerCase() || 'medium',
-        trending_score: ideaData.trending_score,
-        market_size: ideaData.market_size,
-        growth_rate: ideaData.growth_rate,
-        pain_points: ideaData.pain_points || [],
-        monetization_ideas: ideaData.monetization_ideas || [],
-        product_ideas: ideaData.product_ideas || [],
-        validation_signals: ideaData.validation_signals || [],
-        full_research_report: ideaData.full_research_report,
-        sources: searchContext.slice(0, 10).map(r => ({ title: r.title, link: r.link })),
-        is_published: true,
-        is_featured: true,
-        generated_by: 'ai-cron',
-        generation_prompt: industry,
-      })
+      .insert(sanitizedIdea)
       .select()
       .single();
+    newIdea = insertResult.data;
+    insertError = insertResult.error;
     
     if (insertError || !newIdea) {
       console.error('Failed to insert idea:', insertError);
-      return NextResponse.json({ error: 'Failed to save idea' }, { status: 500 });
+
+      // Retry with relaxed numeric fields if there's an integer parsing error
+      const errMsg = insertError?.message || '';
+      if (errMsg.includes('invalid input syntax for type integer') || errMsg.includes('invalid input syntax')) {
+        console.log('Retrying insert with integer fields coerced to integers or null');
+        const fallback = { ...sanitizedIdea } as any;
+        try {
+          if (fallback.opportunity_score != null) fallback.opportunity_score = Math.round(Number(fallback.opportunity_score));
+        } catch (e) { fallback.opportunity_score = null; }
+        try {
+          if (fallback.trending_score != null) fallback.trending_score = Math.round(Number(fallback.trending_score));
+        } catch (e) { fallback.trending_score = null; }
+
+        const { data: retryIdea, error: retryError } = await getSupabaseAdmin()
+          .from('daily_niche_ideas')
+          .insert(fallback)
+          .select()
+          .single();
+
+        if (retryError || !retryIdea) {
+          console.error('Retry insert failed:', retryError);
+          return NextResponse.json({ error: 'Failed to save idea' }, { status: 500 });
+        }
+
+        console.log(`Created daily idea on retry: ${retryIdea.id} - ${retryIdea.name}`);
+        newIdea = retryIdea;
+
+      } else {
+        return NextResponse.json({ error: 'Failed to save idea' }, { status: 500 });
+      }
     }
     
     console.log(`Created daily idea: ${newIdea.id} - ${newIdea.name}`);
