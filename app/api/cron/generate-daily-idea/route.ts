@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateText } from 'ai';
-import { getModel } from '@/lib/ai/provider';
+import { getModel, getDailyModel } from '@/lib/ai/provider';
 import { searchWeb } from '@/lib/research/web-search';
 import { queueEmailsForIdea } from '@/lib/email';
 
@@ -51,7 +51,7 @@ async function generateAnalysis(prompt: string): Promise<string> {
     console.log('Attempting AI generation with primary model...');
     // Use `as any` to allow provider-specific token options (not in TS types)
     const { text } = await generateText({
-      model: getModel(),
+      model: getDailyModel(),
       prompt,
       maxTokens: 8000, // Ensure enough tokens for full JSON response
     } as any);

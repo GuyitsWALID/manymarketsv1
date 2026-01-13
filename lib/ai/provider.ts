@@ -11,6 +11,12 @@ export const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+// Optional: Daily-ideas specific Groq provider (use a separate API key to avoid rate limits)
+export const groqDaily = createGroq({
+  apiKey: process.env.GROQ_DAILY_API_KEY || process.env.GROQ_API_KEY,
+});
+
+
 // Model configuration with fallback support
 // Primary: Groq Llama 3.3 70B - fast and capable, generous free tier
 // Fallback: Gemini 2.0 Flash - if Groq key not available
@@ -24,6 +30,16 @@ export const getModel = () => {
   // Fallback to Gemini
   console.log('Using Google Gemini 2.0 Flash (fallback)');
   return google('gemini-2.0-flash');
+};
+
+// Model getter that prefers the daily-ideas Groq key when available
+export const getDailyModel = () => {
+  if (process.env.GROQ_DAILY_API_KEY && process.env.GROQ_DAILY_API_KEY !== '' && process.env.GROQ_DAILY_API_KEY !== 'your_groq_api_key') {
+    console.log('Using Groq DAILY API key for daily idea generation');
+    return groqDaily('llama-3.3-70b-versatile');
+  }
+  // Fall back to the default model selection
+  return getModel();
 };
 
 // Export default model getter for backwards compatibility
