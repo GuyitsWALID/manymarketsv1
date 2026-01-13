@@ -7,7 +7,7 @@ import { Copy } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function PromoBanner() {
-  const CODE = 'LIFETIMEOFFERS';
+  const CODE = 'lifetimeoffer';
   const [copied, setCopied] = useState(false);
   const [repeats, setRepeats] = useState(2);
   const [duration, setDuration] = useState(16);
