@@ -46,35 +46,66 @@ const INDUSTRIES = [
 
 // Helper function to generate AI analysis with fallback
 async function generateAnalysis(prompt: string): Promise<string> {
-  // Try primary model first
+  // Try a series of models with sensible token limits and fallbacks.
+  // Prefer the daily API key models (groqDaily) and fall back to smaller groq models
+  // before attempting Gemini.
+  const modelCandidates: { name: string; modelFactory: any; maxTokens: number }[] = [];
+
+  // Primary (prefers GROQ_DAILY_API_KEY via getDailyModel)
+  modelCandidates.push({ name: 'groq-daily-primary', modelFactory: getDailyModel(), maxTokens: 4000 });
+
+  // Lower-cost groq alternatives using the same daily key (if set)
+  // Import groqDaily at runtime to avoid module load issues
   try {
-    console.log('Attempting AI generation with primary model...');
-    // Use `as any` to allow provider-specific token options (not in TS types)
-    const { text } = await generateText({
-      model: getDailyModel(),
-      prompt,
-      maxTokens: 8000, // Ensure enough tokens for full JSON response
-    } as any);
-    return text;
-  } catch (primaryError: any) {
-    console.error('Primary AI model failed:', primaryError?.message || primaryError);
-    
-    // If Groq fails, try Gemini directly
-    try {
-      console.log('Falling back to Gemini...');
-      const { google } = await import('@/lib/ai/provider');
-      // Use `as any` here too for model-specific options
-      const { text } = await generateText({
-        model: google('gemini-2.0-flash'),
-        prompt,
-        maxTokens: 8000,
-      } as any);
-      return text;
-    } catch (fallbackError: any) {
-      console.error('Fallback model also failed:', fallbackError?.message || fallbackError);
-      throw new Error(`AI generation failed: ${primaryError?.message || 'Unknown error'}`);
+    const { groqDaily } = await import('@/lib/ai/provider');
+    modelCandidates.push({ name: 'groq-daily-8b', modelFactory: groqDaily('llama-3.1-8b-instant'), maxTokens: 2500 });
+    modelCandidates.push({ name: 'groq-daily-mixtral', modelFactory: groqDaily('mixtral-8x7b-32768'), maxTokens: 2500 });
+  } catch (e) {
+    // If groqDaily isn't available for some reason, we'll skip these
+    console.warn('groqDaily import failed or unavailable, skipping smaller groq alternatives');
+  }
+
+  // Finally, try Gemini fallback (if groq options exhausted)
+  modelCandidates.push({ name: 'gemini-flash', modelFactory: (await import('@/lib/ai/provider')).google('gemini-2.0-flash'), maxTokens: 2000 });
+
+  // Helper to detect rate-limit/quota errors
+  function isRateLimitError(err: any) {
+    const msg = String(err?.message || err || '').toLowerCase();
+    return msg.includes('rate limit') || msg.includes('quota') || msg.includes('tokens per day') || msg.includes('exceeded');
+  }
+
+  for (const candidate of modelCandidates) {
+    console.log(`Attempting AI generation with model candidate: ${candidate.name}`);
+
+    // Try several attempts with exponential backoff for transient errors
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { text } = await generateText({ model: candidate.modelFactory, prompt, maxTokens: candidate.maxTokens } as any);
+        console.log(`AI generation succeeded with ${candidate.name} on attempt ${attempt}`);
+        return text;
+      } catch (err: any) {
+        console.error(`Model ${candidate.name} attempt ${attempt} failed:`, err?.message || err);
+        if (isRateLimitError(err)) {
+          console.warn(`Model ${candidate.name} hit rate/quota limits: ${err?.message || err}`);
+          // Break out of attempts and try next candidate model
+          break;
+        }
+        // For transient errors, wait and retry
+        if (attempt < maxAttempts) {
+          const waitMs = Math.min(5000 * Math.pow(2, attempt - 1), 20000);
+          console.log(`Retrying ${candidate.name} after ${waitMs}ms (attempt ${attempt + 1})`);
+          await new Promise(r => setTimeout(r, waitMs));
+          continue;
+        } else {
+          console.warn(`Exhausted attempts for ${candidate.name}, moving to next candidate`);
+        }
+      }
     }
   }
+
+  // If we reach here, all models failed
+  throw new Error('AI generation failed: All models exhausted or rate-limited');
 }
 
 export async function POST(request: NextRequest) {
