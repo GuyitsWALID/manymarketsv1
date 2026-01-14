@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(20);
 
-    return NextResponse.json({ pending: pending || 0, sent: sent || 0, failed: failed || 0, pendingRows, recentFailed });
+    const enabled = (process.env.ENABLE_DAILY_IDEA_EMAILS || 'true').toLowerCase() !== 'false';
+    return NextResponse.json({ pending: pending || 0, sent: sent || 0, failed: failed || 0, pendingRows, recentFailed, enabled });
   } catch (err: any) {
     console.error('Debug endpoint error:', err?.message || err);
     return NextResponse.json({ error: 'Failed to query queue', details: err?.message || String(err) }, { status: 500 });

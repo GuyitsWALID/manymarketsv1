@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
   }
   
   try {
+    // Respect feature flag at the cron level for quick early feedback
+    const enabled = (process.env.ENABLE_DAILY_IDEA_EMAILS || 'true').toLowerCase() !== 'false';
+    if (!enabled) {
+      console.log('Email sending is currently disabled via ENABLE_DAILY_IDEA_EMAILS=false');
+      return NextResponse.json({ success: true, message: 'Email sending disabled' });
+    }
+
     let totalSucceeded = 0;
     let totalFailed = 0;
     let batchCount = 0;

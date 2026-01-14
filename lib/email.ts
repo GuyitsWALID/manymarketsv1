@@ -182,7 +182,7 @@ function generateEmailHtml(idea: DailyIdea, user: EmailUser, unsubscribeToken: s
 export async function sendDailyIdeaEmail(
   idea: DailyIdea,
   user: EmailUser
-): Promise<{ success: boolean; error?: string; messageId?: string; response?: any }> {
+): Promise<{ success: boolean; error?: string; messageId?: string; response?: any; code?: 'rate_limit' | 'test_mode' | 'other' }> {
   try {
     const unsubscribeToken = generateUnsubscribeToken(user.id);
     const html = generateEmailHtml(idea, user, unsubscribeToken);
@@ -203,8 +203,18 @@ export async function sendDailyIdeaEmail(
 
     return { success: true, messageId, response };
   } catch (err: any) {
-    console.error('Error sending daily idea email to', user.email, err?.message || err);
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    const msg = err?.message ? String(err.message) : String(err || 'Unknown error');
+    console.error('Error sending daily idea email to', user.email, msg);
+
+    // Classify common errors to allow calling code to react
+    if (/too many requests|rate limit|429/i.test(msg)) {
+      return { success: false, error: msg, code: 'rate_limit' };
+    }
+    if (/testing emails|verify a domain|verify.*domain|change the `from` address to an email using this domain/i.test(msg)) {
+      return { success: false, error: msg, code: 'test_mode' };
+    }
+
+    return { success: false, error: msg, code: 'other' };
   }
 }
 
@@ -218,6 +228,19 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
   failed: number;
   remaining: number;
 }> {
+  // Feature flag - allow temporarily disabling the actual sending of emails
+  const enabled = (process.env.ENABLE_DAILY_IDEA_EMAILS || 'true').toLowerCase() !== 'false';
+  if (!enabled) {
+    console.log('Daily email sending is disabled via ENABLE_DAILY_IDEA_EMAILS=false');
+    // Return remaining pending count for visibility
+    const { count: remaining } = await getSupabaseAdmin()
+      .from('daily_idea_email_queue')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    return { processed: 0, succeeded: 0, failed: 0, remaining: remaining || 0 };
+  }
+
   // Get pending emails from queue
   const { data: queueItems, error: queueError } = await getSupabaseAdmin()
     .from('daily_idea_email_queue')
@@ -260,7 +283,7 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
   let succeeded = 0;
   let failed = 0;
   
-  // Process each email
+  // Process each email (with simple spacing to respect rate limits)
   for (const item of queueItems) {
     const user = userMap.get(item.user_id);
     if (!user || !user.email) {
@@ -272,10 +295,10 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
       failed++;
       continue;
     }
-    
+
     const idea = item.daily_niche_ideas as unknown as DailyIdea;
     const result = await sendDailyIdeaEmail(idea, user);
-    
+
     if (result.success) {
       // Update queue entry with sent status and provider message id if available
       const updatePayload: any = { status: 'sent', sent_at: new Date().toISOString() };
@@ -287,13 +310,52 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
         .update(updatePayload)
         .eq('id', item.id);
       succeeded++;
+
+      // Spacing between sends to avoid hitting rate limits (Resend default: 2 req/sec)
+      await new Promise((r) => setTimeout(r, 600));
     } else {
-      // Store the error returned by the send operation for debugging
+      // Handle rate limit specially: requeue remaining items and stop processing this run
+      if ((result as any).code === 'rate_limit') {
+        console.warn('Rate limit hit while sending. Re-queueing item and aborting current run.', (result as any).error);
+        // Leave this and remaining items as 'pending' (do not mark failed) so next cron can retry
+        await getSupabaseAdmin()
+          .from('daily_idea_email_queue')
+          .update({ error: (result as any).error })
+          .eq('id', item.id);
+        // Calculate remaining count and return early
+        const { count: remaining } = await getSupabaseAdmin()
+          .from('daily_idea_email_queue')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        return {
+          processed: queueItems.indexOf(item) + 1,
+          succeeded,
+          failed,
+          remaining: remaining || 0,
+        };
+      }
+
+      // For test-mode errors (unverified sender), mark as failed and keep detailed error
+      if ((result as any).code === 'test_mode') {
+        await getSupabaseAdmin()
+          .from('daily_idea_email_queue')
+          .update({ status: 'failed', error: (result as any).error })
+          .eq('id', item.id);
+        failed++;
+        // Continue processing others - this is a permanent failure for the recipient until domain/plan is fixed
+        continue;
+      }
+
+      // Other errors: mark as failed for later inspection
       await getSupabaseAdmin()
         .from('daily_idea_email_queue')
         .update({ status: 'failed', error: result.error })
         .eq('id', item.id);
       failed++;
+
+      // Small spacing to be conservative
+      await new Promise((r) => setTimeout(r, 200));
     }
   }
   
