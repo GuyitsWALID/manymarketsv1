@@ -77,8 +77,8 @@ Provide a brief, first-person response (2-4 sentences max).`;
     for (const cand of candidates) {
       try {
         console.log(`Attempting generation with model: ${cand.name}`);
-        const res = await generateText({ model: cand.model, system: systemPrompt, prompt: userPrompt });
-        const text = res.text || (res?.output?.[0]?.content[0]?.text) || '';
+        const res = await generateText({ model: cand.model, system: systemPrompt, prompt: userPrompt }) as any;
+        const text = res?.text || res?.output?.[0]?.content?.[0]?.text || '';
         console.log(`Generation succeeded with model: ${cand.name}`);
         return NextResponse.json({ content: text });
       } catch (err: any) {
@@ -97,8 +97,6 @@ Provide a brief, first-person response (2-4 sentences max).`;
     // All candidates failed
     console.error('All model candidates failed for builder generation', lastError);
     return NextResponse.json({ error: 'Failed to generate content (all providers failed)' }, { status: 500 });
-
-    return NextResponse.json({ content: text });
   } catch (error) {
     console.error('Error generating content:', error);
     return NextResponse.json(

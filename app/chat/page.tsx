@@ -4,7 +4,7 @@ import { useChat, type UIMessage } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, Loader2, Bot, User, Rocket } from 'lucide-react';
 import Link from 'next/link';
@@ -71,11 +71,14 @@ export default function ChatPage() {
   const [sourceProductIndex, setSourceProductIndex] = useState<number | null>(null);
   const [sourceIdeaResearch, setSourceIdeaResearch] = useState<string | null>(null);
 
-  // Query params for deep-linking from Daily Ideas
-  const searchParams = useSearchParams();
-  const ideaParam = searchParams.get('idea');
-  const productIndexParam = searchParams.get('productIndex');
-  const productParam = searchParams.get('product');
+  // Query params for deep-linking from Daily Ideas (read on client to avoid SSR prerender issues)
+  const [searchParamsState, setSearchParamsState] = useState<URLSearchParams | null>(null);
+  useEffect(() => {
+    setSearchParamsState(new URLSearchParams(window.location.search));
+  }, []);
+  const ideaParam = searchParamsState?.get('idea') || null;
+  const productIndexParam = searchParamsState?.get('productIndex') || null;
+  const productParam = searchParamsState?.get('product') || null;
   const processedRef = useRef<{ idea?: string }>({});
   
   // Pro/Free tier state
