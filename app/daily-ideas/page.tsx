@@ -299,6 +299,9 @@ function DailyIdeasContent() {
     return colors[level] || 'bg-gray-500';
   };
 
+  // Utility clamp
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
   const getMainMargin = () => {
     if (!isDesktop) return 0;
     if (!isSidebarOpen) return 0;
@@ -1020,19 +1023,179 @@ function DailyIdeasContent() {
                             {gatedSections.includes('validation_signals') ? (
                               <GatedContent onUpgrade={() => setIsUpgradeModalOpen(true)} />
                             ) : (
-                              <div className="space-y-4">
+                              <div className="space-y-6">
+                                {/* Validation & Strategy Frameworks */}
+                                <h3 className="font-black text-lg flex items-center gap-2">
+                                  <Target className="w-5 h-5 text-uvz-orange" />
+                                  Idea Validation & Strategy Frameworks
+                                </h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Value Equation - Circular Gauge */}
+                                  <div className="bg-white border-2 p-5 rounded-xl flex items-center gap-4">
+                                    <div className="w-28 h-28 flex items-center justify-center">
+                                      {/* SVG circular gauge */}
+                                      {(() => {
+                                        const score = clamp(Math.round((selectedIdea.total_score ?? selectedIdea.opportunity_score ?? 5)), 0, 10);
+                                        const pct = score * 10; // 0-100
+                                        const radius = 44;
+                                        const circumference = 2 * Math.PI * radius;
+                                        const dash = (pct / 100) * circumference;
+                                        const offset = circumference - dash;
+
+                                        return (
+                                          <svg width="88" height="88" viewBox="0 0 100 100">
+                                            <defs>
+                                              <linearGradient id="valEqGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor="#F97316" />
+                                                <stop offset="100%" stopColor="#EC4899" />
+                                              </linearGradient>
+                                            </defs>
+                                            <g transform="translate(50,50)">
+                                              <circle r={radius} cx="0" cy="0" fill="none" stroke="#F3F4F6" strokeWidth="8" />
+                                              <circle r={radius} cx="0" cy="0" fill="none" stroke="url(#valEqGrad)" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${dash} ${circumference - dash}`} transform="rotate(-90)" />
+                                              <text x="0" y="6" textAnchor="middle" fontWeight={800} fontSize="20" fill="#111827">{score}</text>
+                                              <text x="0" y="24" textAnchor="middle" fontSize="10" fill="#6B7280">/10</text>
+                                            </g>
+                                          </svg>
+                                        );
+                                      })()}
+                                    </div>
+
+                                    <div className="flex-1">
+                                      <h4 className="font-black">Value Equation</h4>
+                                      <p className="text-sm text-gray-600 mb-2">Scores how much value this idea creates relative to effort, risk or cost.</p>
+                                      <p className="text-sm font-bold">Score: {clamp(Math.round((selectedIdea.total_score ?? selectedIdea.opportunity_score ?? 5)), 0, 10)}/10</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Market Matrix - 2x2 Quadrant */}
+                                  <div className="bg-white border-2 p-5 rounded-xl">
+                                    <h4 className="font-black mb-3">Market Matrix</h4>
+                                    {(() => {
+                                      const uniq = (() => {
+                                        const c = (selectedIdea.competition_level || 'medium').toLowerCase();
+                                        return c === 'low' ? 0.8 : c === 'medium' ? 0.5 : 0.2;
+                                      })();
+                                      const val = (() => {
+                                        const d = (selectedIdea.demand_level || 'medium').toLowerCase();
+                                        return d === 'high' ? 0.9 : d === 'medium' ? 0.6 : 0.3;
+                                      })();
+
+                                      const quadrant = uniq >= 0.6 && val >= 0.6 ? 'Category King' : uniq >= 0.6 && val < 0.6 ? 'Tech Novelty' : uniq < 0.6 && val >= 0.6 ? 'Commodity Play' : 'Low Impact';
+
+                                      return (
+                                        <>
+                                          <div className="grid grid-cols-2 gap-2 h-36 text-sm text-gray-700">
+                                            <div className={`p-3 rounded-lg flex items-center justify-center text-center ${quadrant === 'Tech Novelty' ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 border-2 border-indigo-300' : 'bg-gray-50 border border-gray-100'}`}>
+                                              <div>
+                                                <div className="font-bold">Tech Novelty</div>
+                                                <div className="text-xs text-gray-500">High uniqueness, lower value</div>
+                                              </div>
+                                            </div>
+                                            <div className={`p-3 rounded-lg flex items-center justify-center text-center ${quadrant === 'Category King' ? 'bg-gradient-to-br from-uvz-orange/20 to-pink-50 border-2 border-uvz-orange' : 'bg-gray-50 border border-gray-100'}`}>
+                                              <div>
+                                                <div className="font-bold">Category King</div>
+                                                <div className="text-xs text-gray-500">High uniqueness, high value</div>
+                                              </div>
+                                            </div>
+                                            <div className={`p-3 rounded-lg flex items-center justify-center text-center ${quadrant === 'Low Impact' ? 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300' : 'bg-gray-50 border border-gray-100'}`}>
+                                              <div>
+                                                <div className="font-bold">Low Impact</div>
+                                                <div className="text-xs text-gray-500">Low uniqueness, low value</div>
+                                              </div>
+                                            </div>
+                                            <div className={`p-3 rounded-lg flex items-center justify-center text-center ${quadrant === 'Commodity Play' ? 'bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300' : 'bg-gray-50 border border-gray-100'}`}>
+                                              <div>
+                                                <div className="font-bold">Commodity Play</div>
+                                                <div className="text-xs text-gray-500">Low uniqueness, high value</div>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <p className="text-xs text-gray-500 mt-2">Classified as <span className="font-bold">{quadrant}</span> (uniqueness: {Math.round(uniq*100)}%, value: {Math.round(val*100)}%)</p>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+
+                                  {/* A.C.P. Framework - 3 bars */}
+                                  <div className="bg-white border-2 p-5 rounded-xl">
+                                    <h4 className="font-black mb-3">A.C.P. Framework</h4>
+                                    {(() => {
+                                      const audience = clamp(Math.round((selectedIdea.opportunity_score ?? 5)), 0, 10);
+                                      const community = clamp(Math.round((selectedIdea.trending_score ?? 5)), 0, 10);
+                                      const product = clamp(Math.round((selectedIdea.feasibility_score ?? (selectedIdea.opportunity_score ?? 5))), 0, 10);
+
+                                      const bar = (label: string, score: number) => (
+                                        <div className="mb-3">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <div className="font-bold text-sm">{label}</div>
+                                            <div className="text-xs text-gray-600 font-bold">{score}/10</div>
+                                          </div>
+                                          <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                                            <div className="h-3 bg-uvz-orange" style={{ width: `${score * 10}%` }} />
+                                          </div>
+                                        </div>
+                                      );
+
+                                      return (
+                                        <div>
+                                          {bar('Audience', audience)}
+                                          {bar('Community', community)}
+                                          {bar('Product', product)}
+                                          <p className="text-xs text-gray-500 mt-2">Scores indicate how strong each pillar is around this idea.</p>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+
+                                  {/* Value Ladder - Bait -> Frontend -> Core -> Backend */}
+                                  <div className="bg-white border-2 p-5 rounded-xl">
+                                    <h4 className="font-black mb-3">Value Ladder</h4>
+                                    {(() => {
+                                      const hasBait = (selectedIdea.monetization_ideas && selectedIdea.monetization_ideas.length > 0) || false;
+                                      const hasFrontend = (selectedIdea.product_ideas && selectedIdea.product_ideas.length > 0) || false;
+                                      const hasCore = (selectedIdea.monetization_ideas && selectedIdea.monetization_ideas.some((m:any) => m.type === 'core' || m.role === 'core')) || hasFrontend;
+                                      const hasBackend = (selectedIdea.monetization_ideas && selectedIdea.monetization_ideas.some((m:any) => m.type === 'backend' || m.role === 'backend')) || false;
+
+                                      const step = (label: string, present: boolean, subtitle?: string) => (
+                                        <div className={`flex-1 p-3 rounded-lg ${present ? 'bg-uvz-orange text-white' : 'bg-gray-50 text-gray-600'} flex flex-col items-start` }>
+                                          <div className="font-bold">{label}</div>
+                                          {subtitle && <div className="text-xs mt-1">{subtitle}</div>}
+                                        </div>
+                                      );
+
+                                      return (
+                                        <div>
+                                          <div className="flex items-center gap-3">
+                                            {step('Bait', hasBait, 'Free/low-ticket entry')}
+                                            <div className="w-6 h-1 bg-gray-200 rounded" />
+                                            {step('Frontend', hasFrontend, 'Low-priced offer')}
+                                            <div className="w-6 h-1 bg-gray-200 rounded" />
+                                            {step('Core Offer', hasCore, 'Main paid product')}
+                                            <div className="w-6 h-1 bg-gray-200 rounded" />
+                                            {step('Backend', hasBackend, 'High-value backend')}
+                                          </div>
+                                          <p className="text-xs text-gray-500 mt-3">Map of potential offers from low-commitment to high-ticket backend.</p>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+
+                                {/* Existing validation signals list (kept below frameworks) */}
                                 {selectedIdea.validation_signals && selectedIdea.validation_signals.length > 0 ? (
-                                  <>
+                                  <div>
                                     <p className="text-gray-600 mb-4">Evidence supporting this opportunity:</p>
                                     {selectedIdea.validation_signals.map((signal: any, i: number) => {
-                                      // Handle both old format (signal/source) and new format (type/description/evidence)
                                       const signalType = signal.type || signal.signal || 'Validation Signal';
                                       const signalDesc = signal.description || signal.source || '';
                                       const signalEvidence = signal.evidence || '';
                                       const strength = signal.strength || 'Strong';
-                                      
+
                                       return (
-                                        <div key={i} className="bg-white border-2 border-green-200 p-5 rounded-xl hover:border-green-400 transition-colors">
+                                        <div key={i} className="bg-white border-2 border-green-200 p-5 rounded-xl hover:border-green-400 transition-colors mb-3">
                                           <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-center gap-3">
                                               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -1063,7 +1226,7 @@ function DailyIdeasContent() {
                                         </div>
                                       );
                                     })}
-                                  </>
+                                  </div>
                                 ) : (
                                   <div className="text-center py-12 bg-gray-50 rounded-xl">
                                     <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -1073,7 +1236,7 @@ function DailyIdeasContent() {
                                 )}
                               </div>
                             )}
-                          </div>
+*** End Patch                          </div>
                         )}
 
                         {activeTab === 'products' && (
