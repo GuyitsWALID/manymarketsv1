@@ -820,13 +820,6 @@ function DailyIdeasContent() {
                         <div className={`text-lg font-black px-2 py-1 rounded-lg ${getScoreColor(selectedIdea.total_score ?? selectedIdea.opportunity_score)}`}>
                           {(selectedIdea.total_score ?? selectedIdea.opportunity_score)}/10
                         </div>
-                        <div className="ml-4 hidden md:flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-700">(Breakdown:</span>
-                          <span className="text-xs px-2 py-1 rounded-full bg-green-50 border border-green-100">O: {selectedIdea.opportunity_score ?? '—'}</span>
-                          <span className="text-xs px-2 py-1 rounded-full bg-yellow-50 border border-yellow-100">P: {selectedIdea.problem_score ?? '—'}</span>
-                          <span className="text-xs px-2 py-1 rounded-full bg-blue-50 border border-blue-100">F: {selectedIdea.feasibility_score ?? '—'}</span>
-                          <span className="text-xs font-bold text-gray-700">)</span>
-                        </div>
                       </div>
                       <button
                         onClick={handleCloseDetail}
