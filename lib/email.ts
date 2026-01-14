@@ -182,25 +182,29 @@ function generateEmailHtml(idea: DailyIdea, user: EmailUser, unsubscribeToken: s
 export async function sendDailyIdeaEmail(
   idea: DailyIdea,
   user: EmailUser
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; messageId?: string; response?: any }> {
   try {
     const unsubscribeToken = generateUnsubscribeToken(user.id);
     const html = generateEmailHtml(idea, user, unsubscribeToken);
-    
-    const { error } = await getResend().emails.send({
+
+    // Send email and capture full response for debugging
+    const response = await getResend().emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: user.email,
       subject: `🔥 Today's Niche: ${idea.name} (${idea.opportunity_score}/10)`,
       html,
     });
-    
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+
+    // Log response for observability
+    console.log('Resend response for', user.email, response);
+
+    // The Resend SDK typically returns an object containing an id on success
+    const messageId = (response && (response as any).id) || undefined;
+
+    return { success: true, messageId, response };
+  } catch (err: any) {
+    console.error('Error sending daily idea email to', user.email, err?.message || err);
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -273,12 +277,18 @@ export async function processBatchEmails(batchSize: number = 100): Promise<{
     const result = await sendDailyIdeaEmail(idea, user);
     
     if (result.success) {
+      // Update queue entry with sent status and provider message id if available
+      const updatePayload: any = { status: 'sent', sent_at: new Date().toISOString() };
+      if ((result as any).messageId) updatePayload.provider_message_id = (result as any).messageId;
+      if ((result as any).response) updatePayload.provider_response = JSON.stringify((result as any).response);
+
       await getSupabaseAdmin()
         .from('daily_idea_email_queue')
-        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', item.id);
       succeeded++;
     } else {
+      // Store the error returned by the send operation for debugging
       await getSupabaseAdmin()
         .from('daily_idea_email_queue')
         .update({ status: 'failed', error: result.error })
