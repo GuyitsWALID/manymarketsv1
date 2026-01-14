@@ -48,7 +48,15 @@ export async function GET(
         description: idea.description,
         target_audience: idea.target_audience,
         core_problem: idea.core_problem,
+        // Present total_score to users (fallback to opportunity_score if not available)
+        total_score: idea.total_score ?? idea.opportunity_score,
         opportunity_score: idea.opportunity_score,
+        problem_score: idea.problem_score || null,
+        feasibility_score: idea.feasibility_score || null,
+        scores_explanation: idea.scores_explanation ? {
+          opportunity: idea.scores_explanation?.opportunity || null,
+          problem: idea.scores_explanation?.problem || null,
+        } : null,
         demand_level: idea.demand_level,
         competition_level: idea.competition_level,
         trending_score: idea.trending_score,
@@ -62,7 +70,7 @@ export async function GET(
         market_size: null, // Hidden
         growth_rate: null, // Hidden
         sources: null, // Hidden
-      },
+      }, 
       isPro: false,
       gated: true,
       gatedSections: ['monetization_ideas', 'product_ideas', 'validation_signals', 'full_research_report', 'market_size', 'growth_rate', 'sources', 'full_pain_points'],

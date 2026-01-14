@@ -37,6 +37,10 @@ interface DailyIdea {
   one_liner: string;
   description: string;
   opportunity_score: number;
+  problem_score?: number;
+  feasibility_score?: number;
+  total_score?: number;
+  scores_explanation?: any;
   demand_level: string;
   competition_level: string;
   featured_date: string;
@@ -580,7 +584,7 @@ export default function Home() {
                         {dailyIdea.industry}
                       </span>
                       <span className="bg-white text-uvz-orange px-3 py-1 rounded-full text-sm font-black">
-                        {dailyIdea.opportunity_score}/10 Score
+                        {(dailyIdea.total_score ?? dailyIdea.opportunity_score)}/10 Score
                       </span>
                       <span className="flex items-center gap-1 text-sm">
                         <Calendar className="w-4 h-4" />
@@ -615,7 +619,7 @@ export default function Home() {
                       </div>
                       <div className="p-4 rounded-xl text-center bg-orange-50 border-2 border-orange-200 col-span-2 sm:col-span-1">
                         <p className="text-xs text-gray-500 mb-1">Opportunity</p>
-                        <p className="font-black text-uvz-orange">{dailyIdea.opportunity_score}/10</p>
+                        <p className="font-black text-uvz-orange">{(dailyIdea.total_score ?? dailyIdea.opportunity_score)}/10</p>
                       </div>
                     </div>
 

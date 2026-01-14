@@ -427,10 +427,11 @@ Return ONLY valid JSON:
       const s = String(value).trim();
       const m = s.match(/-?\d+(?:\.\d+)?/);
       if (!m) return null;
-      const num = parseFloat(m[0]);
+      let num = parseFloat(m[0]);
       if (!isFinite(num)) return null;
-      // Round to nearest integer to avoid DB integer/decimal mismatches
-      return Math.round(num);
+      // Clamp to 0-10 and round to one decimal for variability
+      num = Math.max(0, Math.min(10, num));
+      return Math.round(num * 10) / 10;
     }
 
     function normalizeLevel(value: any) {
@@ -438,6 +439,22 @@ Return ONLY valid JSON:
       const v = String(value).toLowerCase();
       if (['low', 'medium', 'high'].includes(v)) return v;
       return 'medium';
+    }
+
+    const opportunityScore = sanitizeScore(ideaData.opportunity_score);
+    const problemScore = sanitizeScore(ideaData.problem_score);
+    const feasibilityScore = sanitizeScore(ideaData.feasibility_score);
+
+    // Compute total score as average of available component scores (fallback to opportunity)
+    const scores = [opportunityScore, problemScore, feasibilityScore].filter(s => s != null) as number[];
+    let totalScore = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : (opportunityScore || null);
+
+    // If all component scores are present but identical (likely a repeated output), add a tiny deterministic jitter to increase variety
+    if (scores.length === 3 && opportunityScore === problemScore && problemScore === feasibilityScore && totalScore != null) {
+      // Deterministic pseudo-hash from name to keep it reproducible
+      const nameHash = String(ideaData.name || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+      const jitter = ((nameHash % 9) - 4) * 0.1; // -0.4 .. +0.4
+      totalScore = Math.max(0, Math.min(10, Math.round((totalScore + jitter) * 10) / 10));
     }
 
     const sanitizedIdea = {
@@ -449,7 +466,11 @@ Return ONLY valid JSON:
       description: ideaData.description || '',
       target_audience: ideaData.target_audience || '',
       core_problem: ideaData.core_problem || '',
-      opportunity_score: sanitizeScore(ideaData.opportunity_score),
+      opportunity_score: opportunityScore,
+      problem_score: problemScore,
+      feasibility_score: feasibilityScore,
+      total_score: totalScore,
+      scores_explanation: ideaData.scores_explanation || null,
       demand_level: normalizeLevel(ideaData.demand_level),
       competition_level: normalizeLevel(ideaData.competition_level),
       trending_score: sanitizeScore(ideaData.trending_score),

@@ -39,6 +39,10 @@ interface DailyIdea {
   target_audience: string;
   core_problem: string;
   opportunity_score: number;
+  problem_score?: number;
+  feasibility_score?: number;
+  total_score?: number;
+  scores_explanation?: any;
   demand_level: string;
   competition_level: string;
   trending_score: number;
@@ -473,8 +477,8 @@ function DailyIdeasContent() {
                       </span>
                     </div>
                   </div>
-                  <div className={`text-3xl font-black px-4 py-2 rounded-lg ${getScoreColor(todaysIdea.opportunity_score)}`}>
-                    {todaysIdea.opportunity_score}/10
+                  <div className={`text-3xl font-black px-4 py-2 rounded-lg ${getScoreColor(todaysIdea.total_score ?? todaysIdea.opportunity_score)}`}>
+                    {(todaysIdea.total_score ?? todaysIdea.opportunity_score)}/10
                   </div>
                 </div>
               </motion.button>
@@ -654,8 +658,8 @@ function DailyIdeasContent() {
                               </span>
                             )}
                           </div>
-                          <div className={`text-xl font-black px-2 py-1 rounded-lg ${getScoreColor(idea.opportunity_score)}`}>
-                            {idea.opportunity_score}/10
+                          <div className={`text-xl font-black px-2 py-1 rounded-lg ${getScoreColor(idea.total_score ?? idea.opportunity_score)}`}>
+                            {(idea.total_score ?? idea.opportunity_score)}/10
                           </div>
                         </div>
 
@@ -813,8 +817,15 @@ function DailyIdeasContent() {
                         <span className="text-xs font-bold text-white bg-uvz-orange px-2 py-1 rounded-full">
                           {selectedIdea.industry}
                         </span>
-                        <div className={`text-lg font-black px-2 py-1 rounded-lg ${getScoreColor(selectedIdea.opportunity_score)}`}>
-                          {selectedIdea.opportunity_score}/10
+                        <div className={`text-lg font-black px-2 py-1 rounded-lg ${getScoreColor(selectedIdea.total_score ?? selectedIdea.opportunity_score)}`}>
+                          {(selectedIdea.total_score ?? selectedIdea.opportunity_score)}/10
+                        </div>
+                        <div className="ml-4 hidden md:flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-700">(Breakdown:</span>
+                          <span className="text-xs px-2 py-1 rounded-full bg-green-50 border border-green-100">O: {selectedIdea.opportunity_score ?? '—'}</span>
+                          <span className="text-xs px-2 py-1 rounded-full bg-yellow-50 border border-yellow-100">P: {selectedIdea.problem_score ?? '—'}</span>
+                          <span className="text-xs px-2 py-1 rounded-full bg-blue-50 border border-blue-100">F: {selectedIdea.feasibility_score ?? '—'}</span>
+                          <span className="text-xs font-bold text-gray-700">)</span>
                         </div>
                       </div>
                       <button
@@ -967,6 +978,25 @@ function DailyIdeasContent() {
                                  selectedIdea.trending_score >= 4 ? '⏳ Emerging - Early mover advantage' :
                                  '🌱 Nascent market - Long-term play'}
                               </p>
+                            </div>
+
+                            {/* Component Scores: Opportunity / Problem / Feasibility */}
+                            <div className="grid grid-cols-3 gap-4 mt-4">
+                              <div className="p-4 rounded-xl border-2 bg-green-50 border-green-200 text-center">
+                                <p className="text-xs font-bold text-gray-600 mb-1">Opportunity</p>
+                                <p className="font-black text-2xl text-green-900">{(selectedIdea.total_score !== undefined ? selectedIdea.opportunity_score : selectedIdea.opportunity_score) ?? 'N/A'}/10</p>
+                                <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.opportunity || ''}</p>
+                              </div>
+                              <div className="p-4 rounded-xl border-2 bg-red-50 border-red-200 text-center">
+                                <p className="text-xs font-bold text-gray-600 mb-1">Problem</p>
+                                <p className="font-black text-2xl text-red-900">{selectedIdea.problem_score ?? 'N/A'}/10</p>
+                                <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.problem || ''}</p>
+                              </div>
+                              <div className="p-4 rounded-xl border-2 bg-blue-50 border-blue-200 text-center">
+                                <p className="text-xs font-bold text-gray-600 mb-1">Feasibility</p>
+                                <p className="font-black text-2xl text-blue-900">{selectedIdea.feasibility_score ?? 'N/A'}/10</p>
+                                <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.feasibility || ''}</p>
+                              </div>
                             </div>
 
                             {/* Market Analysis from Full Report */}

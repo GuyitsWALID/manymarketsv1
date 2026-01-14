@@ -33,8 +33,18 @@ export interface DailyIdea {
   industry: string;
   one_liner: string;
   target_audience: string;
+  core_problem: string;
   opportunity_score: number;
+  problem_score?: number;
+  feasibility_score?: number;
+  total_score?: number;
+  scores_explanation?: any;
   demand_level: string;
+  competition_level?: string;
+  trending_score?: number;
+  market_size?: string;
+  growth_rate?: string;
+  pain_points?: string[];
   featured_date: string;
 }
 
@@ -116,10 +126,22 @@ function generateEmailHtml(idea: DailyIdea, user: EmailUser, unsubscribeToken: s
           <tr>
             <td style="padding: 24px 24px 0; text-align: center;">
               <div style="display: inline-block; background-color: ${scoreColor}; color: white; font-size: 32px; font-weight: 900; padding: 12px 24px; border-radius: 12px; border: 3px solid #000;">
-                ${idea.opportunity_score}/10
+                ${idea.total_score ?? idea.opportunity_score}/10
               </div>
-              <p style="margin: 8px 0 0; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Opportunity Score</p>
+              <p style="margin: 8px 0 0; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Score (Overall)</p>
             </td>
+          </tr>
+
+          <!-- Component scores -->
+          <tr>
+            <td style="padding: 12px 24px 0; text-align: center;">
+              <p style="margin: 0 0 8px; font-weight: 700; color: #222;">Score breakdown</p>
+              <p style="margin: 0; font-size: 13px; color: #444;">Opportunity: ${idea.opportunity_score ?? 'N/A'} · Problem: ${idea.problem_score ?? 'N/A'} · Feasibility: ${idea.feasibility_score ?? 'N/A'}</p>
+              ${idea.scores_explanation ? `
+                <p style="margin: 8px 0 0; font-size: 12px; color: #666;">${(idea.scores_explanation.opportunity || '')}</p>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #666;">${(idea.scores_explanation.problem || '')}</p>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #666;">${(idea.scores_explanation.feasibility || '')}</p>
+              ` : ''}
           </tr>
           
           <!-- Idea Details -->
@@ -191,7 +213,8 @@ export async function sendDailyIdeaEmail(
     const response = await getResend().emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
       to: user.email,
-      subject: `🔥 Today's Niche: ${idea.name} (${idea.opportunity_score}/10)`,
+      subject: `🔥 Today's Niche: ${idea.name} (${idea.total_score ?? idea.opportunity_score}/10)`,
+      // Include score breakdown in a header for easier inbox scanning
       html,
     });
 

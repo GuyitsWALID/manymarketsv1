@@ -24,6 +24,14 @@ export interface UVZ {
   current_solutions: string;
   unique_angle: string;
   opportunity_score: number;
+  problem_score?: number;
+  feasibility_score?: number;
+  total_score?: number;
+  scores_explanation?: {
+    opportunity?: string;
+    problem?: string;
+    feasibility?: string;
+  };
   validation: {
     demand_level: 'High' | 'Medium' | 'Low';
     market_signals: string[];
