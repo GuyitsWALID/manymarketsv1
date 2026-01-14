@@ -115,6 +115,7 @@ function DailyIdeasContent() {
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [productGenLoading, setProductGenLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [industries, setIndustries] = useState<string[]>([]);
   const [selectedIndustry, setSelectedIndustry] = useState<string>('');
@@ -275,6 +276,40 @@ function DailyIdeasContent() {
     router.push('/chat');
   }, [router]);
 
+  // Generate additional product ideas from server-side suggestions (no placeholders)
+  const generateMoreProducts = useCallback(async (count: number) => {
+    if (!selectedIdea) return;
+    setProductGenLoading(true);
+    try {
+      const res = await fetch('/api/research/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaId: selectedIdea.id, count }),
+      });
+      if (!res.ok) throw new Error('Failed to generate');
+      const data = await res.json();
+      const newProducts = data.products || [];
+      if (newProducts.length === 0) return;
+
+      // Merge unique by name/type
+      const existing = selectedIdea.product_ideas || [];
+      const merged = [...existing];
+      for (const np of newProducts) {
+        const exists = merged.some((p:any) => (p.id && np.id && p.id === np.id) || p.name === np.name);
+        if (!exists) merged.push(np);
+      }
+
+      const updatedIdea = { ...selectedIdea, product_ideas: merged };
+      setSelectedIdea(updatedIdea);
+      setIdeas(prev => prev.map(i => i.id === updatedIdea.id ? updatedIdea : i));
+    } catch (e) {
+      console.error(e);
+      // Silent UI notice
+    } finally {
+      setProductGenLoading(false);
+    }
+  }, [selectedIdea, setSelectedIdea, setIdeas]);
+
   const getScoreColor = (score: number) => {
     if (score >= 7) return 'text-green-500 bg-green-100';
     if (score >= 5) return 'text-yellow-500 bg-yellow-100';
@@ -311,6 +346,7 @@ function DailyIdeasContent() {
   const today = new Date().toISOString().split('T')[0];
 
   const productIndexForHref = selectedProductIdx !== null ? selectedProductIdx : (selectedIdea && selectedIdea.product_ideas && selectedIdea.product_ideas.length > 0 ? 0 : undefined);
+
 
   return (
     <div className="h-screen bg-uvz-cream overflow-hidden">
@@ -799,7 +835,7 @@ function DailyIdeasContent() {
             onClick={handleCloseDetail}
           >
             <div 
-              className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl flex flex-col"
+              className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-5xl flex flex-col"
               onClick={e => e.stopPropagation()}
             >
               <motion.div
@@ -1032,7 +1068,7 @@ function DailyIdeasContent() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {/* Value Equation - Circular Gauge */}
-                                  <div className="bg-white border-2 p-5 rounded-xl flex items-center gap-4">
+                                  <div className="bg-white border-2 p-5 rounded-xl flex items-center gap-4 min-w-0 overflow-hidden">
                                     <div className="w-28 h-28 flex items-center justify-center">
                                       {/* SVG circular gauge */}
                                       {(() => {
@@ -1070,7 +1106,7 @@ function DailyIdeasContent() {
                                   </div>
 
                                   {/* Market Matrix - 2x2 Quadrant */}
-                                  <div className="bg-white border-2 p-5 rounded-xl">
+                                  <div className="bg-white border-2 p-5 rounded-xl min-w-0 overflow-hidden">
                                     <h4 className="font-black mb-3">Market Matrix</h4>
                                     {(() => {
                                       const uniq = (() => {
@@ -1120,7 +1156,7 @@ function DailyIdeasContent() {
                                   </div>
 
                                   {/* A.C.P. Framework - 3 bars */}
-                                  <div className="bg-white border-2 p-5 rounded-xl">
+                                  <div className="bg-white border-2 p-5 rounded-xl min-w-0 overflow-hidden">
                                     <h4 className="font-black mb-3">A.C.P. Framework</h4>
                                     {(() => {
                                       const audience = clamp(Math.round((selectedIdea.opportunity_score ?? 5)), 0, 10);
@@ -1151,7 +1187,7 @@ function DailyIdeasContent() {
                                   </div>
 
                                   {/* Value Ladder - Bait -> Frontend -> Core -> Backend */}
-                                  <div className="bg-white border-2 p-5 rounded-xl">
+                                  <div className="bg-white border-2 p-5 rounded-xl min-w-0 overflow-hidden">
                                     <h4 className="font-black mb-3">Value Ladder</h4>
                                     {(() => {
                                       const hasBait = (selectedIdea.monetization_ideas && selectedIdea.monetization_ideas.length > 0) || false;
@@ -1160,9 +1196,9 @@ function DailyIdeasContent() {
                                       const hasBackend = (selectedIdea.monetization_ideas && selectedIdea.monetization_ideas.some((m:any) => m.type === 'backend' || m.role === 'backend')) || false;
 
                                       const step = (label: string, present: boolean, subtitle?: string) => (
-                                        <div className={`flex-1 p-3 rounded-lg ${present ? 'bg-uvz-orange text-white' : 'bg-gray-50 text-gray-600'} flex flex-col items-start` }>
+                                        <div className={`flex-1 min-w-0 p-3 rounded-lg ${present ? 'bg-uvz-orange text-white' : 'bg-gray-50 text-gray-600'} flex flex-col items-start` }>
                                           <div className="font-bold">{label}</div>
-                                          {subtitle && <div className="text-xs mt-1">{subtitle}</div>}
+                                          {subtitle && <div className="text-xs mt-1 break-words">{subtitle}</div>}
                                         </div>
                                       );
 
@@ -1236,7 +1272,7 @@ function DailyIdeasContent() {
                                 )}
                               </div>
                             )}
-*** End Patch                          </div>
+                          </div>
                         )}
 
                         {activeTab === 'products' && (
@@ -1256,10 +1292,34 @@ function DailyIdeasContent() {
                                       <p className="text-sm text-gray-500">← Scroll →</p>
                                       <p className="text-xs text-gray-500 mt-1">Select a product card to choose it, then use the <span className="font-bold">Research</span> or <span className="font-bold">Build</span> buttons below.</p>
                                     </div>
+
+                                    {/* Generate more button when fewer than 5 */}
+                                    {selectedIdea.product_ideas.length < 5 && (
+                                      <div className="mb-4 flex items-center gap-3">
+                                        <p className="text-sm text-gray-500 mr-2">We recommend having at least <span className="font-bold">5</span> product suggestions based on research.</p>
+                                        {isPro ? (
+                                          <button
+                                            onClick={() => {
+                                              const missing = Math.max(5 - (selectedIdea.product_ideas?.length || 0), 1);
+                                              generateMoreProducts(missing);
+                                            }}
+                                            disabled={productGenLoading}
+                                            className="px-4 py-2 bg-uvz-orange text-white font-bold rounded-lg border-2 border-black hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                                          >
+                                            {productGenLoading ? 'Generating…' : `Generate ${Math.max(5 - (selectedIdea.product_ideas?.length || 0), 1)} More`}
+                                          </button>
+                                        ) : (
+                                          <Link href="/upgrade" className="px-4 py-2 bg-white text-black font-bold rounded-lg border-2 border-black hover:bg-gray-100 transition-colors">
+                                            Upgrade to Generate
+                                          </Link>
+                                        )}
+                                      </div>
+                                    )}
+
                                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                                      {selectedIdea.product_ideas.map((product: any, i: number) => (
+                                      { (selectedIdea?.product_ideas || []).map((product: any, i: number) => (
                                         <div 
-                                          key={i} 
+                                          key={product.id ? product.id : `prod-${i}-${(product.type||'').toString().replace(/\s+/g,'').toLowerCase()}`}
                                           onClick={() => setSelectedProductIdx(i)}
                                           aria-selected={selectedProductIdx === i}
                                           className={`flex-shrink-0 w-[300px] bg-gradient-to-br from-white to-blue-50 p-5 rounded-xl snap-start transition-all hover:shadow-lg cursor-pointer relative ${selectedProductIdx === i ? 'ring-4 ring-uvz-orange' : 'border-2 border-blue-200 hover:border-blue-400'}`}
@@ -1374,20 +1434,34 @@ function DailyIdeasContent() {
                     <div className="sticky bottom-0 border-t-2 border-black p-4 bg-gray-50">
                       {isPro ? (
                         <div className="flex flex-col sm:flex-row gap-3">
-                          <Link
-                            href={`/chat?idea=${selectedIdea.id}${typeof productIndexForHref !== 'undefined' ? `&productIndex=${productIndexForHref}` : ''}`}
-                            className={`flex-1 flex items-center justify-center gap-2 bg-uvz-orange text-white font-bold px-4 py-3 border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all ${typeof productIndexForHref === 'undefined' ? 'opacity-80' : ''}`}
-                          >
-                            <Sparkles className="w-5 h-5" />
-                            Research in Chat
-                          </Link>
-                          <Link
-                            href={`/builder/create?idea=${selectedIdea.id}${typeof productIndexForHref !== 'undefined' ? `&productIndex=${productIndexForHref}` : ''}`}
-                            className={`flex-1 flex items-center justify-center gap-2 bg-white text-black font-bold px-4 py-3 border-2 border-black rounded-xl hover:bg-gray-100 transition-all ${typeof productIndexForHref === 'undefined' ? 'opacity-80' : ''}`}
-                          >
-                            <Rocket className="w-5 h-5" />
-                            Build Product
-                          </Link>
+                          {(() => {
+                            let param = '';
+                            const prods = (selectedIdea?.product_ideas || []);
+                            if (selectedProductIdx !== null && prods[selectedProductIdx]) {
+                              param = `&productIndex=${selectedProductIdx}`;
+                            } else if (prods && prods.length > 0) {
+                              param = `&productIndex=0`;
+                            }
+
+                            return (
+                              <>
+                                <Link
+                                  href={`/chat?idea=${selectedIdea.id}${param}`}
+                                  className={`flex-1 flex items-center justify-center gap-2 bg-uvz-orange text-white font-bold px-4 py-3 border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all ${!param ? 'opacity-80' : ''}`}
+                                >
+                                  <Sparkles className="w-5 h-5" />
+                                  Research in Chat
+                                </Link>
+                                <Link
+                                  href={`/builder/create?idea=${selectedIdea.id}${param}`}
+                                  className={`flex-1 flex items-center justify-center gap-2 bg-white text-black font-bold px-4 py-3 border-2 border-black rounded-xl hover:bg-gray-100 transition-all ${!param ? 'opacity-80' : ''}`}
+                                >
+                                  <Rocket className="w-5 h-5" />
+                                  Build Product
+                                </Link>
+                              </>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <div className="text-center">
