@@ -175,9 +175,12 @@ Find ONE highly specific, underserved niche opportunity (Unique Value Zone) in t
 
 Requirements:
 1. Must be SPECIFIC - not broad like "health apps" but specific like "Sleep tracking for night shift nurses"
-2. Must have REAL demand signals based on market trends
-3. Must have LOW to MEDIUM competition
-4. Must be actionable for a solo founder or small team
+2. Include REAL, evidence-backed demand signals and cite sources (e.g., Google Trends, published market reports, Reddit/Stack traces)
+3. Provide realistic numeric estimates for Market Size and Growth Rate and cite the source(s) used
+4. Provide LOW to MEDIUM competition assessment and examples of competitors (if any)
+5. Must be actionable for a solo founder or small team
+6. Include a "trending_score" (0-10) and a "validation_signals" array containing typed evidence entries (Market Trend|Search Demand|Social Proof|Competitor Activity|Statistic) with "description" and "evidence" (URL or citation)
+7. Provide three component scores (opportunity, problem, feasibility) with a short justification and confidence label (low/medium/high) in "scores_explanation"
 
 CRITICAL: Return ONLY valid, parseable JSON. Do NOT include literal newlines inside string values - use \\n if needed. Keep all text on single lines within quotes.
 
