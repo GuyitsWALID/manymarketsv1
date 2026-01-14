@@ -286,10 +286,25 @@ function DailyIdeasContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ideaId: selectedIdea.id, count }),
       });
-      if (!res.ok) throw new Error('Failed to generate');
+
       const data = await res.json();
-      const newProducts = data.products || [];
-      if (newProducts.length === 0) return;
+
+      if (!res.ok) {
+        const msg = data?.error || 'Failed to generate suggestions';
+        console.error('Generate products error:', msg);
+        // Show user-friendly alert (non-blocking)
+        alert(msg);
+        return;
+      }
+
+      // API returns `suggestions` (server) or `products` (older format)
+      const newProducts = data.suggestions || data.products || [];
+      if (!newProducts || newProducts.length === 0) {
+        // Notify user
+        console.warn('No products returned from generation');
+        alert('No product suggestions could be generated. Please try again later.');
+        return;
+      }
 
       // Merge unique by name/type
       const existing = selectedIdea.product_ideas || [];
@@ -1293,28 +1308,6 @@ function DailyIdeasContent() {
                                       <p className="text-xs text-gray-500 mt-1">Select a product card to choose it, then use the <span className="font-bold">Research</span> or <span className="font-bold">Build</span> buttons below.</p>
                                     </div>
 
-                                    {/* Generate more button when fewer than 5 */}
-                                    {selectedIdea.product_ideas.length < 5 && (
-                                      <div className="mb-4 flex items-center gap-3">
-                                        <p className="text-sm text-gray-500 mr-2">We recommend having at least <span className="font-bold">5</span> product suggestions based on research.</p>
-                                        {isPro ? (
-                                          <button
-                                            onClick={() => {
-                                              const missing = Math.max(5 - (selectedIdea.product_ideas?.length || 0), 1);
-                                              generateMoreProducts(missing);
-                                            }}
-                                            disabled={productGenLoading}
-                                            className="px-4 py-2 bg-uvz-orange text-white font-bold rounded-lg border-2 border-black hover:-translate-y-0.5 transition-all disabled:opacity-50"
-                                          >
-                                            {productGenLoading ? 'Generating…' : `Generate ${Math.max(5 - (selectedIdea.product_ideas?.length || 0), 1)} More`}
-                                          </button>
-                                        ) : (
-                                          <Link href="/upgrade" className="px-4 py-2 bg-white text-black font-bold rounded-lg border-2 border-black hover:bg-gray-100 transition-colors">
-                                            Upgrade to Generate
-                                          </Link>
-                                        )}
-                                      </div>
-                                    )}
 
                                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                       { (selectedIdea?.product_ideas || []).map((product: any, i: number) => (

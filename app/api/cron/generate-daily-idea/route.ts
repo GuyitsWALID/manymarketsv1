@@ -460,6 +460,34 @@ Return ONLY valid JSON:
       totalScore = Math.max(0, Math.min(10, Math.round((totalScore + jitter) * 10) / 10));
     }
 
+    // Ensure we have at least 5 product ideas - generate additional ones if AI output was short
+    async function generateProductSuggestionsFromIdea(idea: any, count: number) {
+      const prompt = `You are a product strategist. Given the following niche idea, generate exactly ${count} distinct digital product ideas (types: SaaS, Course, Ebook, Template, Community, Service, Newsletter, Workshop, Tool). Respond ONLY with a JSON array. Each item must have: type, name, tagline, description (1-2 sentences), core_features (array), price_point, build_time, build_difficulty (Easy|Medium|Hard), mvp_scope (short).\n\nIDEA:\nName: ${idea.name}\nIndustry: ${idea.industry}\nOne-liner: ${idea.one_liner}\nDescription: ${idea.description}\nTarget Audience: ${idea.target_audience}\nCore Problem: ${idea.core_problem}`;
+
+      try {
+        const { text } = await generateText({ model: getModel(), prompt, maxTokens: 800 } as any);
+        const match = text.match(/\[[\s\S]*\]/);
+        if (match) {
+          const arr = JSON.parse(match[0]);
+          // sanitize items
+          return arr.map((p: any) => ({
+            type: p.type || 'Template',
+            name: p.name || `${idea.name} Product`,
+            tagline: p.tagline || '',
+            description: p.description || '',
+            core_features: Array.isArray(p.core_features) ? p.core_features : [],
+            price_point: p.price_point || null,
+            build_time: p.build_time || null,
+            build_difficulty: p.build_difficulty || 'Medium',
+            mvp_scope: p.mvp_scope || null,
+          }));
+        }
+      } catch (e) {
+        console.error('Product suggestion generation failed:', (e as any)?.message || e);
+      }
+      return [];
+    }
+
     const sanitizedIdea = {
       featured_date: today,
       display_order: 0,
@@ -490,6 +518,37 @@ Return ONLY valid JSON:
       generated_by: 'ai-cron',
       generation_prompt: industry,
     };
+
+    // If we don't have at least 5 product ideas, try to generate the difference and append
+    if (!sanitizedIdea.product_ideas || sanitizedIdea.product_ideas.length < 5) {
+      const need = 5 - (sanitizedIdea.product_ideas?.length || 0);
+      console.log(`Idea had ${sanitizedIdea.product_ideas?.length || 0} products, generating ${need} more`);
+      const extras = await generateProductSuggestionsFromIdea(ideaData, need);
+      if (extras && extras.length) {
+        sanitizedIdea.product_ideas = (sanitizedIdea.product_ideas || []).concat(extras.slice(0, need));
+        console.log(`Added ${extras.length} generated product suggestions`);
+      }
+
+      // If still short, fill with minimal fallback structures so the UI always has 5
+      if (!sanitizedIdea.product_ideas || sanitizedIdea.product_ideas.length < 5) {
+        const fallbackTypes = ['Ebook','Template','Course','Community','Service'];
+        const need2 = 5 - (sanitizedIdea.product_ideas?.length || 0);
+        for (let i=0;i<need2;i++) {
+          sanitizedIdea.product_ideas.push({
+            type: fallbackTypes[i % fallbackTypes.length].toLowerCase(),
+            name: `${sanitizedIdea.name} ${fallbackTypes[i % fallbackTypes.length]}`,
+            tagline: `Suggested ${fallbackTypes[i % fallbackTypes.length]} based on research`,
+            description: 'Quick to build product suggestion.',
+            core_features: [],
+            price_point: null,
+            build_time: null,
+            build_difficulty: 'Medium',
+            mvp_scope: null,
+          });
+        }
+        console.warn('Fallback product suggestions used to reach 5 products');
+      }
+    }
 
     console.log('Sanitized idea before insert:', {
       opportunity_score: sanitizedIdea.opportunity_score,

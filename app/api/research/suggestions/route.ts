@@ -72,23 +72,47 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { sessionId, skills } = body;
+    const { sessionId, skills, ideaId } = body;
 
-    if (!sessionId || !skills) {
-      return NextResponse.json({ error: 'Missing sessionId or skills' }, { status: 400 });
+    let session: any = null;
+
+    // If sessionId provided, fetch session data
+    if (sessionId) {
+      const { data: sessionData } = await supabase
+        .from('research_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .eq('user_id', user.id)
+        .single();
+
+      session = sessionData || null;
+      if (!session) {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      }
     }
 
-    // Fetch session data
-    const { data: session } = await supabase
-      .from('research_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .eq('user_id', user.id)
-      .single();
+    // If ideaId is provided instead, try to use idea fields as context
+    if (!session && ideaId) {
+      const { data: idea } = await supabase
+        .from('daily_niche_ideas')
+        .select('*')
+        .eq('id', ideaId)
+        .single();
 
-    if (!session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      if (!idea) {
+        return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
+      }
+
+      // Build a lightweight session object from the idea
+      session = {
+        industry: idea.industry,
+        selected_niche: idea.name,
+        selected_uvz: '',
+      };
     }
+
+    // Ensure skills object exists (provide sensible defaults if missing)
+    const skillsSafe = skills || { skills: [], experienceLevel: 'Intermediate', timeCommitment: 'part-time', additionalNotes: '' };
 
     // Fetch session messages to get research context
     const { data: messages } = await supabase
