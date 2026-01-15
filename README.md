@@ -1,4 +1,6 @@
-# UVZ Platform
+#ManyMarkets
+# Market Reaserch Tool and Digital Product Builder Tool
+![screenshot-01_15, 01_45_05 PM](https://github.com/user-attachments/assets/316943f6-63fe-4807-93d6-12338fd6bf32)
 
 The **UVZ (Unique Value Zone) Platform** is a SaaS solution designed to democratize digital product creation.
 
