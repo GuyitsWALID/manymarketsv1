@@ -210,17 +210,37 @@ function CreateProductContent() {
   const handleBuilderComplete = async (prompt: string) => {
     setFinalPrompt(prompt);
     setIsSaving(true);
-    
+
     try {
-      // Save the product to database
+      // Ensure we have a research session to attach the product to. Reuse the most recent session if available,
+      // otherwise create a new one via /api/sessions.
+      let sessionIdToUse = sessions?.[0]?.id;
+
+      if (!sessionIdToUse) {
+        const sessionRes = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: productData['name'] || 'Builder Session' }),
+        });
+        const sessionJson = await sessionRes.json();
+        if (!sessionRes.ok || !sessionJson.session) {
+          throw new Error(sessionJson?.error || 'Failed to create a new session');
+        }
+        sessionIdToUse = sessionJson.session.id;
+        // Add to local sessions list so the UI can reflect it immediately
+        setSessions(prev => sessionJson.session ? [sessionJson.session, ...(prev || [])] : prev);
+      }
+
+      // Save the product to database and include sessionId and productType fields expected by the API
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          sessionId: sessionIdToUse,
           name: productData['name'] || productData['title'] || selectedProductType?.name || 'Untitled Product',
+          productType: selectedProductType?.id || productData['product_type'] || 'other',
           tagline: productData['tagline'] || productData['description']?.substring(0, 100) || '',
           description: productData['description'] || '',
-          product_type: selectedProductType?.id || 'other',
           status: 'building',
           notes: `Build Prompt:\n${prompt}`,
           raw_analysis: {
@@ -231,15 +251,19 @@ function CreateProductContent() {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save product');
+      const responseJson = await response.json();
+      if (!response.ok) {
+        throw new Error(responseJson?.error || 'Failed to save product');
+      }
 
-      const { product } = await response.json();
+      const { product } = responseJson;
       setSavedProductId(product.id);
       setStep('complete');
     } catch (error) {
       console.error('Error saving product:', error);
-      // Still show complete step but without save success
-      setStep('complete');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to save product: ${message}`);
+      // Keep the user on the build step so they can retry
     } finally {
       setIsSaving(false);
     }

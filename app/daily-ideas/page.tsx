@@ -331,6 +331,25 @@ function DailyIdeasContent() {
     return 'text-red-500 bg-red-100';
   };
 
+  // Format score for display (fallbacks to opportunity score or 0 if not provided)
+  const formatScore = (value?: number | null, fallback?: number | null) => {
+    const raw = value ?? fallback ?? (selectedIdea ? (selectedIdea.opportunity_score ?? 0) : 0);
+    if (raw === null || raw === undefined || Number.isNaN(Number(raw))) return '0';
+    const num = Math.round(Number(raw) * 10) / 10;
+    return num % 1 === 0 ? String(Math.round(num)) : num.toFixed(1);
+  };
+
+  const computeTotalScore = () => {
+    if (!selectedIdea) return 0;
+    if (selectedIdea.total_score !== null && selectedIdea.total_score !== undefined) return Math.round(Number(selectedIdea.total_score) * 10) / 10;
+    const parts = [selectedIdea.opportunity_score, selectedIdea.problem_score, selectedIdea.feasibility_score].filter(v => typeof v === 'number') as number[];
+    if (parts.length > 0) {
+      const avg = parts.reduce((a, b) => a + b, 0) / parts.length;
+      return Math.round(avg * 10) / 10;
+    }
+    return selectedIdea.opportunity_score ?? 0;
+  };
+
   const getDemandBadge = (level: string) => {
     const colors: Record<string, string> = {
       high: 'bg-green-500',
@@ -1010,19 +1029,19 @@ function DailyIdeasContent() {
                                   <span className="font-black text-lg">Trending Score</span>
                                 </div>
                                 <span className="font-black text-2xl text-uvz-orange">
-                                  {Math.min(selectedIdea.trending_score, 10).toFixed(1)}/10
+                                  {formatScore(selectedIdea.trending_score, computeTotalScore())}/10
                                 </span>
                               </div>
                               <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
                                 <div 
                                   className="h-full bg-gradient-to-r from-uvz-orange to-pink-500 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min((selectedIdea.trending_score / 10) * 100, 100)}%` }}
+                                  style={{ width: `${Math.min((Number(selectedIdea.trending_score ?? computeTotalScore()) / 10) * 100, 100)}%` }}
                                 />
                               </div>
                               <p className="text-sm text-gray-600 mt-2">
-                                {selectedIdea.trending_score >= 8 ? '🔥 Hot opportunity - Act fast!' :
-                                 selectedIdea.trending_score >= 6 ? '📈 Growing trend - Good timing' :
-                                 selectedIdea.trending_score >= 4 ? '⏳ Emerging - Early mover advantage' :
+                                {Number(selectedIdea.trending_score ?? computeTotalScore()) >= 8 ? '🔥 Hot opportunity - Act fast!' :
+                                 Number(selectedIdea.trending_score ?? computeTotalScore()) >= 6 ? '📈 Growing trend - Good timing' :
+                                 Number(selectedIdea.trending_score ?? computeTotalScore()) >= 4 ? '⏳ Emerging - Early mover advantage' :
                                  '🌱 Nascent market - Long-term play'}
                               </p>
                             </div>
@@ -1031,17 +1050,17 @@ function DailyIdeasContent() {
                             <div className="grid grid-cols-3 gap-4 mt-4">
                               <div className="p-4 rounded-xl border-2 bg-green-50 border-green-200 text-center">
                                 <p className="text-xs font-bold text-gray-600 mb-1">Opportunity</p>
-                                <p className="font-black text-2xl text-green-900">{(selectedIdea.total_score !== undefined ? selectedIdea.opportunity_score : selectedIdea.opportunity_score) ?? 'N/A'}/10</p>
+                                <p className="font-black text-2xl text-green-900">{formatScore(selectedIdea.opportunity_score)}/10</p>
                                 <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.opportunity || ''}</p>
                               </div>
                               <div className="p-4 rounded-xl border-2 bg-red-50 border-red-200 text-center">
                                 <p className="text-xs font-bold text-gray-600 mb-1">Problem</p>
-                                <p className="font-black text-2xl text-red-900">{selectedIdea.problem_score ?? 'N/A'}/10</p>
+                                <p className="font-black text-2xl text-red-900">{formatScore(selectedIdea.problem_score, selectedIdea.opportunity_score)}/10</p>
                                 <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.problem || ''}</p>
                               </div>
                               <div className="p-4 rounded-xl border-2 bg-blue-50 border-blue-200 text-center">
                                 <p className="text-xs font-bold text-gray-600 mb-1">Feasibility</p>
-                                <p className="font-black text-2xl text-blue-900">{selectedIdea.feasibility_score ?? 'N/A'}/10</p>
+                                <p className="font-black text-2xl text-blue-900">{formatScore(selectedIdea.feasibility_score, selectedIdea.opportunity_score)}/10</p>
                                 <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.feasibility || ''}</p>
                               </div>
                             </div>
