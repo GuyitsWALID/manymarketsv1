@@ -27,6 +27,7 @@ const LOBEHUB_ICON_SLUGS: Record<string, string> = {
   canva: 'canva-color',
   midjourney: 'midjourney-color',
   figma: 'figma-color',
+  rork: 'rork',
 };
 
 // Fallback emoji icons for when images fail to load
@@ -43,6 +44,7 @@ const TOOL_EMOJI: Record<string, string> = {
   canva: '🎨',
   midjourney: '🖼️',
   figma: '🎯',
+  rork: '🚀',
 };
 
 // Tool Logo Component using lobehub CDN icons

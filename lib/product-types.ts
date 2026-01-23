@@ -104,6 +104,15 @@ export const AI_TOOLS: AITool[] = [
     category: 'code',
   },
   {
+    id: 'rork',
+    name: 'Rork',
+    icon: '/tools/rork.svg',
+    description: 'AI-powered software builder for web & SaaS',
+    url: 'https://rork.com',
+    bestFor: ['Web Apps', 'SaaS', 'Rapid Prototyping'],
+    category: 'code',
+  },
+  {
     id: 'claude',
     name: 'Claude',
     icon: '/tools/claude.svg',
@@ -531,7 +540,7 @@ Generate the complete course curriculum and content outline.`,
     requiredSkills: ['coding', 'design', 'marketing'],
     deliverables: ['Working application', 'Documentation', 'Landing page'],
     monetization: ['Monthly subscription', 'Freemium', 'Usage-based', 'One-time license'],
-    aiTools: ['lovable', 'v0', 'bolt', 'cursor', 'replit', 'claude'],
+    aiTools: ['lovable', 'v0', 'bolt', 'rork', 'cursor', 'replit', 'claude'],
     steps: [
       {
         id: 'concept',
