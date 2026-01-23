@@ -444,20 +444,69 @@ Return ONLY valid JSON:
       return 'medium';
     }
 
-    const opportunityScore = sanitizeScore(ideaData.opportunity_score);
-    const problemScore = sanitizeScore(ideaData.problem_score);
-    const feasibilityScore = sanitizeScore(ideaData.feasibility_score);
+    // Allow adjustments after initial sanitization
+    let opportunityScore = sanitizeScore(ideaData.opportunity_score);
+    let problemScore = sanitizeScore(ideaData.problem_score);
+    let feasibilityScore = sanitizeScore(ideaData.feasibility_score);
 
     // Compute total score as average of available component scores (fallback to opportunity)
     const scores = [opportunityScore, problemScore, feasibilityScore].filter(s => s != null) as number[];
-    let totalScore = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : (opportunityScore || null);
 
-    // If all component scores are present but identical (likely a repeated output), add a tiny deterministic jitter to increase variety
-    if (scores.length === 3 && opportunityScore === problemScore && problemScore === feasibilityScore && totalScore != null) {
-      // Deterministic pseudo-hash from name to keep it reproducible
+    // Derive or adjust component scores when missing or when all three are identical to ensure realistic differences.
+    const clampScore = (v: number) => Math.max(0, Math.min(10, Math.round(v * 10) / 10));
+    const normCompetition = normalizeLevel(ideaData.competition_level);
+    const normDemand = normalizeLevel(ideaData.demand_level);
+
+    const signals = Array.isArray(ideaData.validation_signals) ? ideaData.validation_signals : [];
+    const hasSearchDemand = signals.some((s: any) => String(s.type || '').toLowerCase().includes('search'));
+    const hasSocialProof = signals.some((s: any) => String(s.type || '').toLowerCase().includes('social'));
+    const hasCompetitorActivity = signals.some((s: any) => String(s.type || '').toLowerCase().includes('competitor'));
+
+    let autoAdjustNote: string | null = null;
+
+    // Fill missing problem score using opportunity + evidence
+    if (problemScore == null && opportunityScore != null) {
+      let base = opportunityScore - (hasCompetitorActivity ? 1 : 0) + (hasSearchDemand ? 0.5 : 0);
+      // Keep it within a reasonable range relative to opportunity
+      base = Math.max(0, Math.min(10, base));
+      problemScore = clampScore(base);
+      autoAdjustNote = (autoAdjustNote || '') + 'Problem score inferred from opportunity and validation signals.';
+    }
+
+    // Fill missing feasibility score using competition/demand and product signal
+    if (feasibilityScore == null) {
+      let base = 7; // baseline
+      if (opportunityScore != null) base = opportunityScore - (normCompetition === 'high' ? 1.2 : normCompetition === 'medium' ? 0.6 : 0.3);
+      base += (hasSocialProof ? 0.4 : 0) + (hasSearchDemand ? 0.2 : 0) + ((ideaData.product_ideas && ideaData.product_ideas.length > 0) ? 0.15 : 0);
+      base = Math.max(0, Math.min(10, base));
+      feasibilityScore = clampScore(base);
+      autoAdjustNote = (autoAdjustNote || '') + ' Feasibility inferred from competition and evidence.';
+    }
+
+    // If all three component scores are present and identical, adjust problem and feasibility deterministically
+    if (opportunityScore != null && problemScore != null && feasibilityScore != null && opportunityScore === problemScore && problemScore === feasibilityScore) {
+      const nameHash = String(ideaData.name || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+      const sign = ((nameHash % 5) - 2) * 0.1; // -0.2 .. +0.2
+      problemScore = clampScore(opportunityScore - 0.6 + sign);
+      feasibilityScore = clampScore(opportunityScore - (normCompetition === 'high' ? 1.0 : 0.4) - sign);
+      autoAdjustNote = (autoAdjustNote || '') + ' Component scores were identical in LLM output and were adjusted for realism.';
+    }
+
+    const finalParts = [opportunityScore, problemScore, feasibilityScore].filter(v => typeof v === 'number') as number[];
+    let totalScore = finalParts.length > 0 ? Math.round((finalParts.reduce((a, b) => a + b, 0) / finalParts.length) * 10) / 10 : (opportunityScore || null);
+
+    // Small deterministic jitter on total score to avoid ties while preserving meaning
+    if (finalParts.length === 3 && opportunityScore === problemScore && problemScore === feasibilityScore && totalScore != null) {
       const nameHash = String(ideaData.name || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
       const jitter = ((nameHash % 9) - 4) * 0.1; // -0.4 .. +0.4
       totalScore = Math.max(0, Math.min(10, Math.round((totalScore + jitter) * 10) / 10));
+      autoAdjustNote = (autoAdjustNote || '') + ' Added minor total score jitter.';
+    }
+
+    // If we auto-adjusted, attach a short note to scores_explanation for transparency
+    if (autoAdjustNote) {
+      ideaData.scores_explanation = ideaData.scores_explanation || {};
+      ideaData.scores_explanation._auto_adjust_note = (ideaData.scores_explanation._auto_adjust_note || '') + autoAdjustNote.trim();
     }
 
     // Ensure we have at least 5 product ideas - generate additional ones if AI output was short
