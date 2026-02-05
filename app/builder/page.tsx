@@ -59,7 +59,9 @@ import {
   Wrench,
   Download,
   BookOpen,
-  Gift
+  Gift,
+  Settings,
+  Copy
 } from 'lucide-react';
 import { ENABLE_PRICING, FREE_BUILDER_PRODUCTS, FREE_WATERMARKED_EXPORTS, WATERMARK_TEXT } from '@/lib/config';
 import Link from 'next/link';
@@ -241,6 +243,16 @@ interface Product {
     uvzSummary?: string;
     niche?: string;
     competitorGaps?: string;
+    // Enhanced software builder fields
+    prd?: string;
+    techStack?: string;
+    architecture?: string;
+    security?: string;
+    designSystem?: string;
+    keyScreens?: string;
+    masterPrompt?: string;
+    cursorPrompt?: string;
+    lovablePrompt?: string;
   };
   created_at: string;
   updated_at: string;
@@ -255,13 +267,14 @@ const CONTENT_PRODUCT_STEPS = [
   { id: 'export', name: 'Export', icon: Rocket },
 ];
 
-// Steps for software/SaaS products (includes assets for cover images)
+// Enhanced steps for software/SaaS products - comprehensive PRD workflow
 const SOFTWARE_PRODUCT_STEPS = [
   { id: 'overview', name: 'Overview', icon: Target },
-  { id: 'features', name: 'Features', icon: Lightbulb },
-  { id: 'build', name: 'Build', icon: Wrench },
-  { id: 'assets', name: 'Assets', icon: Zap },
-  { id: 'export', name: 'Export', icon: Rocket },
+  { id: 'features', name: 'Features & PRD', icon: FileText },
+  { id: 'technical', name: 'Technical Spec', icon: Settings },
+  { id: 'design', name: 'Design System', icon: Sparkles },
+  { id: 'build', name: 'Build Prompts', icon: Wrench },
+  { id: 'export', name: 'Launch', icon: Rocket },
 ];
 
 // Steps for Notion templates (structure focused)
@@ -2818,22 +2831,52 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 1: Features (for software products) */}
+                    {/* Step 1: Features & PRD (for software products) */}
                     {currentStep === 1 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
                       <div>
-                        <h2 className="text-xl font-black mb-4">Features & Requirements</h2>
+                        <h2 className="text-xl font-black mb-4">Features & PRD</h2>
                         <p className="text-gray-600 mb-6">
-                          Define the core features and requirements for your {currentProduct.product_type?.replace('-', ' ') || 'software'}.
+                          Define MVP features and generate a Product Requirements Document for your {currentProduct.product_type?.replace('-', ' ') || 'software'}.
                         </p>
+                        
+                        {/* Research Context Section */}
+                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+                          <div className="flex items-center gap-2 text-blue-800 font-bold mb-3">
+                            <Target className="w-5 h-5" />
+                            Research Context
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-bold text-gray-700 block mb-1">UVZ Summary</label>
+                              <textarea
+                                value={formData.uvzSummary}
+                                onChange={(e) => setFormData(prev => ({ ...prev, uvzSummary: e.target.value }))}
+                                placeholder="What makes your idea unique? (from research)"
+                                rows={3}
+                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-bold text-gray-700 block mb-1">Competitor Gaps</label>
+                              <textarea
+                                value={formData.competitorGaps}
+                                onChange={(e) => setFormData(prev => ({ ...prev, competitorGaps: e.target.value }))}
+                                placeholder="What are competitors missing?"
+                                rows={3}
+                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
                         
                         {/* AI Features Generation */}
                         <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 mb-6">
                           <div className="flex items-center gap-2 text-purple-800 font-bold mb-2">
                             <Sparkles className="w-5 h-5" />
-                            AI Feature Planner
+                            AI MVP Features
                           </div>
                           <p className="text-sm text-purple-700 mb-3">
-                            Let AI help you plan features based on your product description and target audience.
+                            Generate focused MVP features (3-5 max) based on your research and target audience.
                           </p>
                           <button 
                             onClick={async () => {
@@ -2843,27 +2886,23 @@ function BuilderContent() {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
-                                    taskId: 'features',
-                                    prompt: 'Generate a list of 5-7 core MVP features for this software product. Format as a simple numbered list.',
+                                    taskId: 'core-features',
+                                    prompt: 'Generate 3-5 focused MVP features based on the problem and target audience.',
                                     context: {
                                       name: formData.name,
                                       tagline: formData.tagline,
                                       description: formData.description,
-                                      targetAudience: formData.targetAudience,
-                                      problemSolved: formData.problemSolved,
-                                      // Include research context for enhanced prompts
-                                      'uvz-summary': formData.uvzSummary || currentProduct?.raw_analysis?.uvzSummary || '',
-                                      'target-audience': formData.targetAudience || currentProduct?.raw_analysis?.targetAudience || '',
-                                      'competitor-gaps': formData.competitorGaps || currentProduct?.raw_analysis?.competitorGaps || '',
+                                      problem: formData.problemSolved,
+                                      'target-audience': formData.targetAudience,
+                                      'uvz-summary': formData.uvzSummary,
+                                      'competitor-gaps': formData.competitorGaps,
                                     },
                                     productType: currentProduct?.product_type || 'saas',
                                   }),
                                 });
                                 if (response.ok) {
                                   const { content } = await response.json();
-                                  // Parse features from the response
-                                  const features = content.split('\n').filter((line: string) => line.trim()).slice(0, 7);
-                                  // Update raw_analysis with features
+                                  const features = content.split('\n').filter((line: string) => line.trim()).slice(0, 5);
                                   const updatedAnalysis = {
                                     ...currentProduct.raw_analysis,
                                     generatedFeatures: features,
@@ -2874,7 +2913,10 @@ function BuilderContent() {
                                     body: JSON.stringify({ raw_analysis: updatedAnalysis }),
                                   });
                                   setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'Features Generated', 'MVP features have been generated.');
                                 }
+                              } catch (err) {
+                                showNotification('error', 'Generation Failed', 'Failed to generate features.');
                               } finally {
                                 setIsGeneratingOutline(false);
                               }
@@ -2882,24 +2924,14 @@ function BuilderContent() {
                             disabled={isGeneratingOutline}
                             className="px-4 py-2 bg-purple-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2 disabled:opacity-50"
                           >
-                            {isGeneratingOutline ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="w-4 h-4" />
-                                Generate Features
-                              </>
-                            )}
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Sparkles className="w-4 h-4" />Generate MVP Features</>}
                           </button>
                         </div>
 
                         {/* Display Generated Features */}
-                        {currentProduct.raw_analysis?.generatedFeatures && (
+                        {currentProduct.raw_analysis?.generatedFeatures && currentProduct.raw_analysis.generatedFeatures.length > 0 && (
                           <div className="space-y-3 mb-6">
-                            <h3 className="font-bold">Generated Features</h3>
+                            <h3 className="font-bold">MVP Features</h3>
                             <ul className="space-y-2">
                               {currentProduct.raw_analysis.generatedFeatures.map((feature: string, i: number) => (
                                 <li key={i} className="flex items-start gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
@@ -2910,31 +2942,386 @@ function BuilderContent() {
                             </ul>
                           </div>
                         )}
-
-                        {/* Existing MVP Features */}
-                        {currentProduct.core_features && currentProduct.core_features.length > 0 && (
-                          <div>
-                            <h3 className="font-bold mb-3">Core Features (from research)</h3>
-                            <ul className="space-y-2">
-                              {currentProduct.core_features.map((feature: string, i: number) => (
-                                <li key={i} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
+                        
+                        {/* PRD Generation */}
+                        <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-6">
+                          <div className="flex items-center gap-2 text-green-800 font-bold mb-2">
+                            <FileText className="w-5 h-5" />
+                            Generate PRD
+                          </div>
+                          <p className="text-sm text-green-700 mb-3">
+                            Generate a comprehensive Product Requirements Document including user stories and acceptance criteria.
+                          </p>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'prd-full',
+                                    prompt: 'Generate a comprehensive PRD.',
+                                    context: {
+                                      name: formData.name,
+                                      tagline: formData.tagline,
+                                      description: formData.description,
+                                      problem: formData.problemSolved,
+                                      'target-audience': formData.targetAudience,
+                                      'uvz-summary': formData.uvzSummary,
+                                      'competitor-gaps': formData.competitorGaps,
+                                      'core-features': currentProduct.raw_analysis?.generatedFeatures?.join('\n') || '',
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  const updatedAnalysis = {
+                                    ...currentProduct.raw_analysis,
+                                    prd: content,
+                                  };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'PRD Generated', 'Product Requirements Document has been generated.');
+                                }
+                              } catch (err) {
+                                showNotification('error', 'Generation Failed', 'Failed to generate PRD.');
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-green-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><FileText className="w-4 h-4" />Generate PRD</>}
+                          </button>
+                        </div>
+                        
+                        {/* Display PRD */}
+                        {currentProduct.raw_analysis?.prd && (
+                          <div className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-bold">Product Requirements Document</h3>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(currentProduct.raw_analysis?.prd || '')}
+                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-1"
+                              >
+                                <Copy className="w-4 h-4" /> Copy
+                              </button>
+                            </div>
+                            <div className="prose prose-sm max-w-none max-h-96 overflow-y-auto">
+                              <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg">{currentProduct.raw_analysis.prd}</pre>
+                            </div>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Step 2: Build (for software products) */}
+                    {/* Step 2: Technical Spec (for software products) */}
                     {currentStep === 2 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
                       <div>
-                        <h2 className="text-xl font-black mb-4">Build Your Product</h2>
+                        <h2 className="text-xl font-black mb-4">Technical Specification</h2>
                         <p className="text-gray-600 mb-6">
-                          Use AI-powered tools to build your {currentProduct.product_type?.replace('-', ' ') || 'software'}. 
-                          Select a prompt mode and we&apos;ll generate a comprehensive build prompt.
+                          Define the tech stack, architecture, and security requirements for your product.
+                        </p>
+                        
+                        {/* Tech Stack Generation */}
+                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+                          <div className="flex items-center gap-2 text-blue-800 font-bold mb-2">
+                            <Code className="w-5 h-5" />
+                            Tech Stack Recommendation
+                          </div>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'tech-stack',
+                                    prompt: 'Recommend a modern tech stack.',
+                                    context: {
+                                      name: formData.name,
+                                      type: currentProduct.product_type,
+                                      problem: formData.problemSolved,
+                                      'core-features': currentProduct.raw_analysis?.generatedFeatures?.join('\n') || '',
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  const updatedAnalysis = { ...currentProduct.raw_analysis, techStack: content };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'Tech Stack Generated', 'Technology recommendations have been generated.');
+                                }
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-blue-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Code className="w-4 h-4" />Generate Tech Stack</>}
+                          </button>
+                        </div>
+                        
+                        {currentProduct.raw_analysis?.techStack && (
+                          <div className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-6">
+                            <h3 className="font-bold mb-2">Recommended Tech Stack</h3>
+                            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">{currentProduct.raw_analysis.techStack}</pre>
+                          </div>
+                        )}
+                        
+                        {/* Architecture Generation */}
+                        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-4 mb-6">
+                          <div className="flex items-center gap-2 text-indigo-800 font-bold mb-2">
+                            <Settings className="w-5 h-5" />
+                            System Architecture
+                          </div>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'architecture',
+                                    prompt: 'Design the system architecture.',
+                                    context: {
+                                      name: formData.name,
+                                      type: currentProduct.product_type,
+                                      'tech-stack': currentProduct.raw_analysis?.techStack || '',
+                                      'core-features': currentProduct.raw_analysis?.generatedFeatures?.join('\n') || '',
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  const updatedAnalysis = { ...currentProduct.raw_analysis, architecture: content };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'Architecture Generated', 'System architecture has been generated.');
+                                }
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-indigo-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-indigo-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Settings className="w-4 h-4" />Generate Architecture</>}
+                          </button>
+                        </div>
+                        
+                        {currentProduct.raw_analysis?.architecture && (
+                          <div className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-6">
+                            <h3 className="font-bold mb-2">System Architecture</h3>
+                            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">{currentProduct.raw_analysis.architecture}</pre>
+                          </div>
+                        )}
+                        
+                        {/* Security Checklist */}
+                        <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                          <div className="flex items-center gap-2 text-red-800 font-bold mb-2">
+                            <Lock className="w-5 h-5" />
+                            Security Requirements
+                          </div>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'security',
+                                    prompt: 'Generate security requirements checklist.',
+                                    context: {
+                                      name: formData.name,
+                                      type: currentProduct.product_type,
+                                      'tech-stack': currentProduct.raw_analysis?.techStack || '',
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  const updatedAnalysis = { ...currentProduct.raw_analysis, security: content };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'Security Generated', 'Security requirements have been generated.');
+                                }
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-red-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Lock className="w-4 h-4" />Generate Security Checklist</>}
+                          </button>
+                          {currentProduct.raw_analysis?.security && (
+                            <div className="mt-4">
+                              <pre className="whitespace-pre-wrap text-sm bg-white p-4 rounded-lg max-h-64 overflow-y-auto">{currentProduct.raw_analysis.security}</pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 3: Design System (for software products) */}
+                    {currentStep === 3 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">Design System</h2>
+                        <p className="text-gray-600 mb-6">
+                          Create a professional, non-gimmicky design system for your product.
+                        </p>
+                        
+                        {/* Design System Generation */}
+                        <div className="bg-pink-50 border-2 border-pink-200 rounded-xl p-4 mb-6">
+                          <div className="flex items-center gap-2 text-pink-800 font-bold mb-2">
+                            <Sparkles className="w-5 h-5" />
+                            Design System Specification
+                          </div>
+                          <p className="text-sm text-pink-700 mb-3">
+                            Generate professional color palette, typography, and component patterns.
+                          </p>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'design-system',
+                                    prompt: 'Create a professional design system.',
+                                    context: {
+                                      name: formData.name,
+                                      type: currentProduct.product_type,
+                                      'target-audience': formData.targetAudience,
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  const updatedAnalysis = { ...currentProduct.raw_analysis, designSystem: content };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'Design System Generated', 'Design specifications have been generated.');
+                                }
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-pink-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-pink-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Sparkles className="w-4 h-4" />Generate Design System</>}
+                          </button>
+                        </div>
+                        
+                        {currentProduct.raw_analysis?.designSystem && (
+                          <div className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-6">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-bold">Design System</h3>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(currentProduct.raw_analysis?.designSystem || '')}
+                                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-1"
+                              >
+                                <Copy className="w-4 h-4" /> Copy
+                              </button>
+                            </div>
+                            <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">{currentProduct.raw_analysis.designSystem}</pre>
+                          </div>
+                        )}
+                        
+                        {/* Key Screens */}
+                        <div className="bg-violet-50 border-2 border-violet-200 rounded-xl p-4">
+                          <div className="flex items-center gap-2 text-violet-800 font-bold mb-2">
+                            <ImageIcon className="w-5 h-5" />
+                            Key Screens
+                          </div>
+                          <button 
+                            onClick={async () => {
+                              setIsGeneratingOutline(true);
+                              try {
+                                const response = await fetch('/api/builder/generate', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    taskId: 'key-screens',
+                                    prompt: 'Define key screens for the MVP.',
+                                    context: {
+                                      name: formData.name,
+                                      type: currentProduct.product_type,
+                                      'core-features': currentProduct.raw_analysis?.generatedFeatures?.join('\n') || '',
+                                    },
+                                    productType: currentProduct?.product_type || 'saas',
+                                  }),
+                                });
+                                if (response.ok) {
+                                  const { content } = await response.json();
+                                  const updatedAnalysis = { ...currentProduct.raw_analysis, keyScreens: content };
+                                  await fetch(`/api/products/${currentProduct.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ raw_analysis: updatedAnalysis }),
+                                  });
+                                  setCurrentProduct(prev => prev ? { ...prev, raw_analysis: updatedAnalysis } : null);
+                                  showNotification('success', 'Screens Generated', 'Key screen definitions have been generated.');
+                                }
+                              } finally {
+                                setIsGeneratingOutline(false);
+                              }
+                            }}
+                            disabled={isGeneratingOutline}
+                            className="px-4 py-2 bg-violet-500 text-white font-bold text-sm border-2 border-black rounded-lg hover:bg-violet-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isGeneratingOutline ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><ImageIcon className="w-4 h-4" />Generate Key Screens</>}
+                          </button>
+                          {currentProduct.raw_analysis?.keyScreens && (
+                            <div className="mt-4">
+                              <pre className="whitespace-pre-wrap text-sm bg-white p-4 rounded-lg max-h-64 overflow-y-auto">{currentProduct.raw_analysis.keyScreens}</pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: Build Prompts (for software products) */}
+                    {currentStep === 4 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                      <div>
+                        <h2 className="text-xl font-black mb-4">AI Build Prompts</h2>
+                        <p className="text-gray-600 mb-6">
+                          Generate copy-paste-ready prompts for AI coding tools like Cursor, Lovable, and Bolt.
                         </p>
                         
                         {/* Prompt Mode Selector */}
@@ -3999,10 +4386,10 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 4: Deploy (for software products) */}
-                    {currentStep === 4 && isSoftwareProduct && (
+                    {/* Step 5: Launch (for software products) */}
+                    {currentStep === 5 && isSoftwareProduct && (
                       <div>
-                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Deploy Your App</h2>
+                        <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4">Launch Your App</h2>
                         <p className="text-gray-600 mb-6">
                           Connect your deployed application and finalize your product.
                         </p>
