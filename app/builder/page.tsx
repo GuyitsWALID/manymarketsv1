@@ -329,6 +329,9 @@ function BuilderContent() {
     targetAudience: string;
     problemSolved: string;
     notes: string;
+    uvzSummary: string;
+    niche: string;
+    competitorGaps: string;
   } | null>(null);
   const [originalPrice, setOriginalPrice] = useState<string>('');
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
@@ -414,6 +417,10 @@ function BuilderContent() {
     targetAudience: '',
     problemSolved: '',
     notes: '',
+    // Research context fields for enhanced software builder
+    uvzSummary: '',
+    niche: '',
+    competitorGaps: '',
   });
   
   // Sidebar state
@@ -497,6 +504,10 @@ function BuilderContent() {
             targetAudience: product.raw_analysis?.targetAudience || '',
             problemSolved: product.raw_analysis?.problemSolved || '',
             notes: product.notes || '',
+            // Load research context for software builder
+            uvzSummary: product.raw_analysis?.uvzSummary || '',
+            niche: product.raw_analysis?.niche || '',
+            competitorGaps: product.raw_analysis?.competitorGaps || '',
           };
           setFormData(loadedFormData);
           setOriginalFormData(loadedFormData);

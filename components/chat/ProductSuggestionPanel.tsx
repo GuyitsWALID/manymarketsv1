@@ -116,6 +116,12 @@ export default function ProductSuggestionPanel({
           estimatedEarnings: suggestion.estimatedEarnings,
           skillsMatch: suggestion.skillsMatch,
           matchScore: suggestion.matchScore,
+          // Include research context for the builder
+          researchContext: {
+            niche: researchSummary.niche,
+            uvz: researchSummary.uvz,
+            targetAudience: researchSummary.targetAudience,
+          },
         }),
       });
 

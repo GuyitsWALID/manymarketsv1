@@ -536,95 +536,150 @@ Generate the complete course curriculum and content outline.`,
     icon: '💻',
     description: 'Software as a Service products and web applications',
     difficulty: 'advanced',
-    estimatedTime: '2-6 months',
-    requiredSkills: ['coding', 'design', 'marketing'],
-    deliverables: ['Working application', 'Documentation', 'Landing page'],
+    estimatedTime: '1-4 weeks',
+    requiredSkills: ['coding'],
+    deliverables: ['Working MVP', 'PRD Document', 'AI Build Prompts', 'Documentation'],
     monetization: ['Monthly subscription', 'Freemium', 'Usage-based', 'One-time license'],
-    aiTools: ['lovable', 'v0', 'bolt', 'rork', 'cursor', 'replit', 'claude'],
+    aiTools: ['cursor', 'claude', 'lovable', 'bolt', 'v0', 'replit'],
     steps: [
+      {
+        id: 'research-context',
+        name: 'Research Context',
+        description: 'Import your UVZ research to inform the product',
+        aiAssisted: true,
+        estimatedMinutes: 15,
+        tasks: [
+          { id: 'uvz-summary', title: 'Your UVZ', description: 'What makes your idea unique?', type: 'textarea', required: false, placeholder: 'Paste your UVZ research summary here (optional but recommended)...' },
+          { id: 'target-audience', title: 'Target Audience', description: 'Who will use this SaaS?', type: 'textarea', required: true, placeholder: 'Be specific: "Small marketing agencies (5-20 employees) who struggle with client reporting and need automated dashboard generation"' },
+          { id: 'competitor-gaps', title: 'Competitor Weaknesses', description: 'What are competitors missing?', type: 'textarea', required: false, placeholder: 'Existing solutions are too expensive, complex, or missing key integrations...' },
+        ],
+      },
       {
         id: 'concept',
         name: 'Product Definition',
-        description: 'Define your SaaS concept and MVP scope',
+        description: 'Define your SaaS product clearly',
         aiAssisted: true,
-        estimatedMinutes: 60,
+        estimatedMinutes: 30,
         tasks: [
-          { id: 'name', title: 'Product Name', description: 'Memorable, brandable name', type: 'input', required: true, placeholder: 'e.g., "TaskFlow", "ContentPilot"' },
-          { id: 'problem', title: 'Problem Statement', description: 'What problem are you solving?', type: 'textarea', required: true, placeholder: 'Describe the specific pain point...' },
-          { id: 'solution', title: 'Solution Overview', description: 'How does your product solve it?', type: 'textarea', required: true, placeholder: 'Your unique approach to solving this...' },
-          { id: 'audience', title: 'Target Users', description: 'Who will use this product?', type: 'textarea', required: true, placeholder: 'Define your ideal customer...' },
-          { id: 'features', title: 'Core Features', description: 'MVP feature list', type: 'ai-generate', required: true, aiPrompt: 'Generate MVP feature list for this SaaS' },
+          { id: 'name', title: 'Product Name', description: 'Clear, memorable name', type: 'input', required: true, placeholder: 'e.g., "ReportFlow", "ClientPulse", "MetricsDash"' },
+          { id: 'tagline', title: 'One-Line Pitch', description: 'Explain it in one sentence', type: 'input', required: true, placeholder: 'e.g., "Automated client reporting for marketing agencies"' },
+          { id: 'type', title: 'SaaS Type', description: 'What kind of SaaS?', type: 'select', required: true, options: ['B2B SaaS', 'B2C SaaS', 'Internal Tool', 'Marketplace/Platform', 'API Service', 'Developer Tool', 'Analytics Dashboard', 'Automation Tool', 'Communication Tool', 'Project Management', 'CRM/Sales Tool', 'Content Platform'] },
+          { id: 'problem', title: 'Core Problem', description: 'The specific problem you solve', type: 'textarea', required: true, placeholder: 'Describe the exact pain point. Be specific about who has it, when it occurs, and why current solutions fail.' },
+        ],
+      },
+      {
+        id: 'features',
+        name: 'Feature Planning',
+        description: 'Define MVP features (keep it focused!)',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'core-features', title: 'MVP Features (Max 5)', description: 'What\'s essential for v1?', type: 'ai-generate', required: true, aiPrompt: 'Generate 3-5 focused MVP features based on the problem and target audience. Keep it minimal - only what\'s needed to deliver core value.' },
+          { id: 'differentiators', title: 'Key Differentiators', description: 'What makes you different?', type: 'ai-generate', required: true, aiPrompt: 'Based on competitor gaps and UVZ, list 2-3 specific ways this SaaS will be different/better than alternatives.' },
+          { id: 'out-of-scope', title: 'NOT in MVP', description: 'What are you NOT building initially?', type: 'ai-generate', required: false, aiPrompt: 'List features that should be explicitly excluded from MVP to maintain focus. These are "Phase 2" features.' },
+        ],
+      },
+      {
+        id: 'prd',
+        name: 'PRD Generation',
+        description: 'Generate your Product Requirements Document',
+        aiAssisted: true,
+        estimatedMinutes: 30,
+        tasks: [
+          { id: 'prd-full', title: 'Full PRD', description: 'Complete product requirements document', type: 'ai-generate', required: true, aiPrompt: 'Generate a comprehensive PRD including: executive summary, problem statement, solution overview, user personas, functional requirements, non-functional requirements, technical architecture, security requirements, UI/UX requirements, MVP scope, success metrics, and risks.' },
+          { id: 'user-stories', title: 'User Stories', description: 'Key user stories for development', type: 'ai-generate', required: true, aiPrompt: 'Generate 5-8 user stories in the format: "As a [user type], I want to [action] so that [benefit]". Include acceptance criteria for each.' },
+        ],
+      },
+      {
+        id: 'technical',
+        name: 'Technical Specification',
+        description: 'Architecture, tech stack, and security',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'tech-stack', title: 'Tech Stack Recommendation', description: 'Best technologies for this project', type: 'ai-generate', required: true, aiPrompt: 'Recommend a modern, production-ready tech stack for this SaaS. Include: frontend framework, backend/API, database, auth solution, hosting recommendation. Prioritize developer experience and scalability.' },
+          { id: 'architecture', title: 'System Architecture', description: 'High-level system design', type: 'ai-generate', required: true, aiPrompt: 'Design the system architecture with: component diagram (text-based), data flow, API structure, and database schema outline. Keep it practical and MVP-focused.' },
+          { id: 'security', title: 'Security Checklist', description: 'Security requirements', type: 'ai-generate', required: true, aiPrompt: 'Generate a security checklist including: authentication method, data encryption, input validation, API security, and common vulnerability prevention (XSS, CSRF, SQL injection).' },
         ],
       },
       {
         id: 'design',
-        name: 'Product Design',
-        description: 'Design the user experience and interface',
+        name: 'UI/UX Specification',
+        description: 'Professional, non-gimmicky design guidelines',
         aiAssisted: true,
-        estimatedMinutes: 120,
+        estimatedMinutes: 30,
         tasks: [
-          { id: 'user-flows', title: 'User Flows', description: 'Map out key user journeys', type: 'ai-generate', required: true, aiPrompt: 'Create user flow diagrams for key features' },
-          { id: 'wireframes', title: 'Wireframe Descriptions', description: 'Describe key screens', type: 'ai-generate', required: true, aiPrompt: 'Describe wireframes for main screens' },
-          { id: 'ui-style', title: 'UI Style Guide', description: 'Visual design direction', type: 'ai-generate', required: true, aiPrompt: 'Create UI style guide recommendations' },
-          { id: 'data-model', title: 'Data Model', description: 'Database structure', type: 'ai-generate', required: true, aiPrompt: 'Design the database schema' },
+          { id: 'design-system', title: 'Design System', description: 'Colors, typography, components', type: 'ai-generate', required: true, aiPrompt: 'Create a professional design system specification including: color palette (professional, not flashy), typography scale, spacing system, and key component patterns. Focus on clean, trustworthy SaaS design - NOT gimmicky or trendy.' },
+          { id: 'key-screens', title: 'Key Screens', description: 'Main screens to build', type: 'ai-generate', required: true, aiPrompt: 'List and describe the key screens/views needed for the SaaS MVP. Include: dashboard, settings, main feature screens. For each: purpose, main elements, user actions, and states (loading, empty, error).' },
+          { id: 'ux-patterns', title: 'UX Patterns', description: 'Interaction patterns', type: 'ai-generate', required: true, aiPrompt: 'Define UX patterns for: onboarding flow, error handling, loading states, empty states, and success confirmations. Focus on clarity and professionalism.' },
         ],
       },
       {
-        id: 'tech',
-        name: 'Technical Planning',
-        description: 'Choose tech stack and architecture',
+        id: 'build-prompts',
+        name: 'AI Build Prompts',
+        description: 'Generate prompts for AI coding tools',
         aiAssisted: true,
-        estimatedMinutes: 60,
+        estimatedMinutes: 30,
         tasks: [
-          { id: 'stack', title: 'Tech Stack', description: 'Choose your technologies', type: 'ai-generate', required: true, aiPrompt: 'Recommend tech stack for this SaaS' },
-          { id: 'architecture', title: 'Architecture', description: 'System architecture plan', type: 'ai-generate', required: true, aiPrompt: 'Design system architecture' },
-          { id: 'integrations', title: 'Integrations', description: 'Third-party services needed', type: 'ai-generate', required: true, aiPrompt: 'List required integrations and APIs' },
-          { id: 'hosting', title: 'Hosting Plan', description: 'Where to deploy', type: 'select', required: true, options: ['Vercel', 'Railway', 'AWS', 'Google Cloud', 'Supabase + Vercel', 'Render'] },
+          { id: 'master-prompt', title: 'Master Build Prompt', description: 'Complete prompt for AI tools', type: 'ai-generate', required: true, aiPrompt: 'Generate a comprehensive, copy-paste-ready prompt for AI coding tools (Cursor, Lovable, Bolt, etc.) that includes all product specs, features, technical requirements, and design guidelines. This should be a complete prompt that builds a working SaaS MVP.' },
+          { id: 'cursor-prompt', title: 'Cursor/Claude Prompt', description: 'Optimized for Cursor AI', type: 'ai-generate', required: true, aiPrompt: 'Adapt the master prompt specifically for Cursor AI, including file structure, step-by-step implementation order, and Cursor-specific instructions (@codebase, @docs, etc.).' },
+          { id: 'lovable-prompt', title: 'Lovable/Bolt Prompt', description: 'Optimized for visual builders', type: 'ai-generate', required: true, aiPrompt: 'Adapt the master prompt for Lovable or Bolt.new, focusing on clear descriptions and iterative building approach. Include what to build first and how to iterate.' },
         ],
       },
       {
-        id: 'build',
-        name: 'Build with AI',
-        description: 'Generate code and build your product',
+        id: 'launch-prep',
+        name: 'Launch Preparation',
+        description: 'Documentation and go-to-market',
         aiAssisted: true,
-        estimatedMinutes: 480,
+        estimatedMinutes: 45,
         tasks: [
-          { id: 'prompt', title: 'Master Build Prompt', description: 'Complete prompt for AI builders', type: 'ai-generate', required: true, aiPrompt: 'Generate comprehensive build prompt for AI coding tools' },
-          { id: 'tool', title: 'Choose AI Tool', description: 'Select your building tool', type: 'select', required: true, options: ['Lovable', 'Bolt.new', 'v0', 'Cursor', 'Replit', 'Claude'] },
-          { id: 'milestones', title: 'Build Milestones', description: 'Track your progress', type: 'checklist', required: true },
-        ],
-      },
-      {
-        id: 'launch',
-        name: 'Launch Prep',
-        description: 'Prepare for your product launch',
-        aiAssisted: true,
-        estimatedMinutes: 180,
-        tasks: [
-          { id: 'landing', title: 'Landing Page', description: 'Create compelling landing page', type: 'ai-generate', required: true, aiPrompt: 'Write landing page copy and structure' },
-          { id: 'pricing', title: 'Pricing Model', description: 'Define pricing tiers', type: 'ai-generate', required: true, aiPrompt: 'Design pricing strategy and tiers' },
-          { id: 'docs', title: 'Documentation', description: 'User guides and docs', type: 'ai-generate', required: true, aiPrompt: 'Create documentation outline' },
-          { id: 'launch-plan', title: 'Launch Strategy', description: 'Go-to-market plan', type: 'ai-generate', required: true, aiPrompt: 'Create launch strategy and checklist' },
+          { id: 'readme', title: 'README / Landing Copy', description: 'Project documentation', type: 'ai-generate', required: true, aiPrompt: 'Write a professional README.md that includes: product description, features, getting started guide, and tech stack. Also include landing page copy with headline, subheadline, feature descriptions, and CTA.' },
+          { id: 'docs', title: 'User Documentation', description: 'How to use the tool', type: 'ai-generate', required: true, aiPrompt: 'Create user documentation covering: quick start guide, feature explanations, FAQ, and troubleshooting tips. Keep it concise and scannable.' },
+          { id: 'pricing', title: 'Pricing Strategy', description: 'How to monetize', type: 'ai-generate', required: true, aiPrompt: 'Design a SaaS pricing strategy with: pricing model recommendation (freemium, tiered subscription), specific price points, feature comparison between tiers, and justification for the pricing.' },
         ],
       },
     ],
-    promptTemplate: `Build a complete SaaS application: {{name}}
+    promptTemplate: `# {{name}} - Complete SaaS MVP Build Specification
 
 ## PRODUCT OVERVIEW
+**Name:** {{name}}
+**Tagline:** {{tagline}}
+**Type:** {{type}}
 **Problem:** {{problem}}
-**Solution:** {{solution}}
-**Target Users:** {{audience}}
 
-## CORE FEATURES (MVP)
-{{features}}
+## RESEARCH CONTEXT
+**Target Audience:** {{target-audience}}
+**UVZ (Unique Value Zone):** {{uvz-summary}}
+**Competitor Weaknesses:** {{competitor-gaps}}
 
-## TECHNICAL REQUIREMENTS
-- Modern, responsive web application
-- User authentication (email, OAuth)
-  - Subscription billing (Paddle)
-- Dashboard with key metrics
-- Admin panel
-- API for integrations
+## MVP FEATURES
+{{core-features}}
+
+## DIFFERENTIATORS
+{{differentiators}}
+
+## TECHNICAL SPECIFICATION
+### Tech Stack
+{{tech-stack}}
+
+### Architecture
+{{architecture}}
+
+### Security Requirements
+{{security}}
+
+## DESIGN SPECIFICATION
+### Design System
+{{design-system}}
+
+### Key Screens
+{{key-screens}}
+
+### UX Patterns
+{{ux-patterns}}
+
+## BUILD INSTRUCTIONS
+Build this complete SaaS MVP with all features working. Follow the technical and design specifications exactly.
 
 ## TECH STACK
 - Frontend: Next.js 14+ with App Router
@@ -835,81 +890,153 @@ Generate design specifications and content for each page.`,
     id: 'software-tool',
     name: 'Software Tool / Extension',
     icon: '🔧',
-    description: 'Browser extensions, desktop apps, or specialized tools',
+    description: 'Browser extensions, desktop apps, APIs, or specialized developer tools',
     difficulty: 'advanced',
-    estimatedTime: '2-8 weeks',
+    estimatedTime: '1-4 weeks',
     requiredSkills: ['coding'],
-    deliverables: ['Working software', 'Documentation', 'Support system'],
-    monetization: ['One-time license', 'Subscription', 'Freemium'],
-    aiTools: ['cursor', 'claude', 'replit', 'bolt', 'v0'],
+    deliverables: ['Working MVP', 'PRD Document', 'AI Build Prompts', 'Documentation'],
+    monetization: ['One-time license', 'Subscription', 'Freemium', 'Open source + paid features'],
+    aiTools: ['cursor', 'claude', 'lovable', 'bolt', 'v0', 'replit'],
     steps: [
       {
+        id: 'research-context',
+        name: 'Research Context',
+        description: 'Import your UVZ research to inform the product',
+        aiAssisted: true,
+        estimatedMinutes: 15,
+        tasks: [
+          { id: 'uvz-summary', title: 'Your UVZ', description: 'What makes your idea unique?', type: 'textarea', required: false, placeholder: 'Paste your UVZ research summary here (optional but recommended)...' },
+          { id: 'target-audience', title: 'Target Audience', description: 'Who will use this tool?', type: 'textarea', required: true, placeholder: 'Be specific: "Freelance developers who struggle with client communication and need a simple way to share project updates"' },
+          { id: 'competitor-gaps', title: 'Competitor Weaknesses', description: 'What are competitors missing?', type: 'textarea', required: false, placeholder: 'Current solutions are too complex, expensive, or missing key features...' },
+        ],
+      },
+      {
         id: 'concept',
-        name: 'Tool Definition',
-        description: 'Define your software tool',
+        name: 'Product Definition',
+        description: 'Define your software tool clearly',
+        aiAssisted: true,
+        estimatedMinutes: 30,
+        tasks: [
+          { id: 'name', title: 'Product Name', description: 'Clear, memorable name', type: 'input', required: true, placeholder: 'e.g., "DevUpdate", "QuickAPI", "FormFlow"' },
+          { id: 'tagline', title: 'One-Line Pitch', description: 'Explain it in one sentence', type: 'input', required: true, placeholder: 'e.g., "The fastest way to share project updates with clients"' },
+          { id: 'type', title: 'Tool Type', description: 'What kind of software?', type: 'select', required: true, options: ['Web App (SaaS)', 'Chrome Extension', 'VS Code Extension', 'Desktop App (Electron)', 'CLI Tool', 'API/Backend Service', 'Mobile App (React Native)', 'Figma Plugin', 'Slack/Discord App', 'Browser Extension (Firefox)', 'Notion Integration', 'Zapier Integration'] },
+          { id: 'problem', title: 'Core Problem', description: 'The specific problem you solve', type: 'textarea', required: true, placeholder: 'Describe the exact pain point. Be specific about who has it, when it occurs, and why current solutions fail.' },
+        ],
+      },
+      {
+        id: 'features',
+        name: 'Feature Planning',
+        description: 'Define MVP features (keep it focused!)',
         aiAssisted: true,
         estimatedMinutes: 45,
         tasks: [
-          { id: 'name', title: 'Tool Name', description: 'Memorable product name', type: 'input', required: true, placeholder: 'e.g., "TabSaver Pro", "CodeSnippet Hub"' },
-          { id: 'type', title: 'Tool Type', description: 'What kind of software?', type: 'select', required: true, options: ['Chrome Extension', 'Firefox Extension', 'VS Code Extension', 'Desktop App (Electron)', 'CLI Tool', 'API/Service', 'Figma Plugin', 'Slack App', 'Other'] },
-          { id: 'problem', title: 'Problem Solved', description: 'What does it do?', type: 'textarea', required: true, placeholder: 'The specific problem this tool solves...' },
-          { id: 'features', title: 'Key Features', description: 'Main functionality', type: 'ai-generate', required: true, aiPrompt: 'Generate feature list for this tool' },
+          { id: 'core-features', title: 'MVP Features (Max 5)', description: 'What\'s essential for v1?', type: 'ai-generate', required: true, aiPrompt: 'Generate 3-5 focused MVP features based on the problem and target audience. Keep it minimal - only what\'s needed to deliver core value.' },
+          { id: 'differentiators', title: 'Key Differentiators', description: 'What makes you different?', type: 'ai-generate', required: true, aiPrompt: 'Based on competitor gaps and UVZ, list 2-3 specific ways this tool will be different/better than alternatives.' },
+          { id: 'out-of-scope', title: 'NOT in MVP', description: 'What are you NOT building initially?', type: 'ai-generate', required: false, aiPrompt: 'List features that should be explicitly excluded from MVP to maintain focus. These are "Phase 2" features.' },
+        ],
+      },
+      {
+        id: 'prd',
+        name: 'PRD Generation',
+        description: 'Generate your Product Requirements Document',
+        aiAssisted: true,
+        estimatedMinutes: 30,
+        tasks: [
+          { id: 'prd-full', title: 'Full PRD', description: 'Complete product requirements document', type: 'ai-generate', required: true, aiPrompt: 'Generate a comprehensive PRD including: executive summary, problem statement, solution overview, user personas, functional requirements, non-functional requirements, technical architecture, security requirements, UI/UX requirements, MVP scope, success metrics, and risks.' },
+          { id: 'user-stories', title: 'User Stories', description: 'Key user stories for development', type: 'ai-generate', required: true, aiPrompt: 'Generate 5-8 user stories in the format: "As a [user type], I want to [action] so that [benefit]". Include acceptance criteria for each.' },
+        ],
+      },
+      {
+        id: 'technical',
+        name: 'Technical Specification',
+        description: 'Architecture, tech stack, and security',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'tech-stack', title: 'Tech Stack Recommendation', description: 'Best technologies for this project', type: 'ai-generate', required: true, aiPrompt: 'Recommend a modern, production-ready tech stack based on the tool type. Include: frontend framework, backend/API, database, auth solution, hosting recommendation. Prioritize developer experience and scalability.' },
+          { id: 'architecture', title: 'System Architecture', description: 'High-level system design', type: 'ai-generate', required: true, aiPrompt: 'Design the system architecture with: component diagram (text-based), data flow, API structure, and database schema outline. Keep it practical and MVP-focused.' },
+          { id: 'security', title: 'Security Checklist', description: 'Security requirements', type: 'ai-generate', required: true, aiPrompt: 'Generate a security checklist including: authentication method, data encryption, input validation, API security, and common vulnerability prevention (XSS, CSRF, SQL injection).' },
         ],
       },
       {
         id: 'design',
-        name: 'Technical Design',
-        description: 'Plan the technical implementation',
+        name: 'UI/UX Specification',
+        description: 'Professional, non-gimmicky design guidelines',
         aiAssisted: true,
-        estimatedMinutes: 60,
+        estimatedMinutes: 30,
         tasks: [
-          { id: 'architecture', title: 'Architecture', description: 'System design', type: 'ai-generate', required: true, aiPrompt: 'Design technical architecture' },
-          { id: 'tech-stack', title: 'Tech Stack', description: 'Technologies to use', type: 'ai-generate', required: true, aiPrompt: 'Recommend tech stack' },
-          { id: 'ui', title: 'UI/UX Design', description: 'Interface design', type: 'ai-generate', required: true, aiPrompt: 'Describe UI/UX requirements' },
+          { id: 'design-system', title: 'Design System', description: 'Colors, typography, components', type: 'ai-generate', required: true, aiPrompt: 'Create a professional design system specification including: color palette (professional, not flashy), typography scale, spacing system, and key component patterns. Focus on clean, trustworthy design - NOT gimmicky or trendy.' },
+          { id: 'key-screens', title: 'Key Screens', description: 'Main screens to build', type: 'ai-generate', required: true, aiPrompt: 'List and describe the key screens/views needed for the MVP. Include: purpose, main elements, user actions, and states (loading, empty, error). Keep it minimal.' },
+          { id: 'ux-patterns', title: 'UX Patterns', description: 'Interaction patterns', type: 'ai-generate', required: true, aiPrompt: 'Define UX patterns for: onboarding flow, error handling, loading states, empty states, and success confirmations. Focus on clarity and professionalism.' },
         ],
       },
       {
-        id: 'build',
-        name: 'Build',
-        description: 'Develop the tool',
+        id: 'build-prompts',
+        name: 'AI Build Prompts',
+        description: 'Generate prompts for AI coding tools',
         aiAssisted: true,
-        estimatedMinutes: 480,
+        estimatedMinutes: 30,
         tasks: [
-          { id: 'prompt', title: 'Build Prompt', description: 'AI coding prompt', type: 'ai-generate', required: true, aiPrompt: 'Generate comprehensive build prompt' },
-          { id: 'tool', title: 'AI Tool', description: 'Choose building tool', type: 'select', required: true, options: ['Cursor', 'Claude', 'Replit', 'Bolt.new', 'v0', 'Manual coding'] },
-          { id: 'milestones', title: 'Build Progress', description: 'Track development', type: 'checklist', required: true },
+          { id: 'master-prompt', title: 'Master Build Prompt', description: 'Complete prompt for AI tools', type: 'ai-generate', required: true, aiPrompt: 'Generate a comprehensive, copy-paste-ready prompt for AI coding tools (Cursor, Lovable, Bolt, etc.) that includes all product specs, features, technical requirements, and design guidelines. This should be a complete prompt that builds a working MVP.' },
+          { id: 'cursor-prompt', title: 'Cursor/Claude Prompt', description: 'Optimized for Cursor AI', type: 'ai-generate', required: true, aiPrompt: 'Adapt the master prompt specifically for Cursor AI, including file structure, step-by-step implementation order, and Cursor-specific instructions (@codebase, @docs, etc.).' },
+          { id: 'lovable-prompt', title: 'Lovable/Bolt Prompt', description: 'Optimized for visual builders', type: 'ai-generate', required: true, aiPrompt: 'Adapt the master prompt for Lovable or Bolt.new, focusing on clear descriptions and iterative building approach. Include what to build first and how to iterate.' },
         ],
       },
       {
-        id: 'launch',
-        name: 'Launch',
-        description: 'Publish and launch',
+        id: 'launch-prep',
+        name: 'Launch Preparation',
+        description: 'Documentation and go-to-market',
         aiAssisted: true,
-        estimatedMinutes: 120,
+        estimatedMinutes: 45,
         tasks: [
-          { id: 'store-listing', title: 'Store Listing', description: 'Marketplace description', type: 'ai-generate', required: true, aiPrompt: 'Write store/marketplace listing' },
-          { id: 'docs', title: 'Documentation', description: 'User documentation', type: 'ai-generate', required: true, aiPrompt: 'Create user documentation' },
-          { id: 'pricing', title: 'Pricing', description: 'Monetization strategy', type: 'ai-generate', required: true, aiPrompt: 'Design pricing strategy' },
+          { id: 'readme', title: 'README / Landing Copy', description: 'Project documentation', type: 'ai-generate', required: true, aiPrompt: 'Write a professional README.md that includes: product description, features, getting started guide, and tech stack. Also include landing page copy with headline, subheadline, feature descriptions, and CTA.' },
+          { id: 'docs', title: 'User Documentation', description: 'How to use the tool', type: 'ai-generate', required: true, aiPrompt: 'Create user documentation covering: quick start guide, feature explanations, FAQ, and troubleshooting tips. Keep it concise and scannable.' },
+          { id: 'pricing', title: 'Pricing Strategy', description: 'How to monetize', type: 'ai-generate', required: true, aiPrompt: 'Design a pricing strategy with: pricing model recommendation (freemium, subscription, one-time), specific price points, feature comparison between tiers, and justification for the pricing.' },
         ],
       },
     ],
-    promptTemplate: `Build a software tool: {{name}}
+    promptTemplate: `# {{name}} - Complete MVP Build Specification
 
-## TOOL SPECIFICATIONS
-Type: {{type}}
-Problem Solved: {{problem}}
+## PRODUCT OVERVIEW
+**Name:** {{name}}
+**Tagline:** {{tagline}}
+**Type:** {{type}}
+**Problem:** {{problem}}
 
-## FEATURES
-{{features}}
+## RESEARCH CONTEXT
+**Target Audience:** {{target-audience}}
+**UVZ (Unique Value Zone):** {{uvz-summary}}
+**Competitor Weaknesses:** {{competitor-gaps}}
 
-## TECHNICAL REQUIREMENTS
-{{architecture}}
+## MVP FEATURES
+{{core-features}}
+
+## DIFFERENTIATORS
+{{differentiators}}
+
+## TECHNICAL SPECIFICATION
+### Tech Stack
 {{tech-stack}}
 
-## UI REQUIREMENTS
-{{ui}}
+### Architecture
+{{architecture}}
 
-Build this complete tool with all features working.`,
+### Security Requirements
+{{security}}
+
+## DESIGN SPECIFICATION
+### Design System
+{{design-system}}
+
+### Key Screens
+{{key-screens}}
+
+### UX Patterns
+{{ux-patterns}}
+
+## BUILD INSTRUCTIONS
+Build this complete MVP with all features working. Follow the technical and design specifications exactly.
+`,
   },
   {
     id: 'mobile-app',

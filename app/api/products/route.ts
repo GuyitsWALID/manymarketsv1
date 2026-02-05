@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       estimatedEarnings,
       skillsMatch,
       matchScore,
+      researchContext,
     } = body;
 
     if (!name) {
@@ -145,8 +146,16 @@ export async function POST(request: NextRequest) {
       }
     }
     if (estimatedEarnings) insertData.revenue_potential = estimatedEarnings;
-    if (skillsMatch || matchScore) {
-      insertData.raw_analysis = { skillsMatch, matchScore };
+    if (skillsMatch || matchScore || researchContext) {
+      insertData.raw_analysis = { 
+        skillsMatch, 
+        matchScore,
+        // Store research context for the builder to use
+        uvzSummary: researchContext?.uvz || '',
+        niche: researchContext?.niche || '',
+        targetAudience: researchContext?.targetAudience || '',
+        competitorGaps: '', // Can be populated from session later
+      };
     }
 
     console.log('Inserting product:', insertData);
