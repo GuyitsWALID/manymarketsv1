@@ -237,6 +237,10 @@ interface Product {
     structure?: ProductStructure;
     assets?: Asset[];
     generatedFeatures?: string[];
+    // Research context fields for software builder
+    uvzSummary?: string;
+    niche?: string;
+    competitorGaps?: string;
   };
   created_at: string;
   updated_at: string;
@@ -604,6 +608,9 @@ function BuilderContent() {
       targetAudience: '',
       problemSolved: '',
       notes: '',
+      uvzSummary: '',
+      niche: '',
+      competitorGaps: '',
     });
     setProductPrice('');
     setAssets([]);
@@ -2844,6 +2851,10 @@ function BuilderContent() {
                                       description: formData.description,
                                       targetAudience: formData.targetAudience,
                                       problemSolved: formData.problemSolved,
+                                      // Include research context for enhanced prompts
+                                      'uvz-summary': formData.uvzSummary || currentProduct?.raw_analysis?.uvzSummary || '',
+                                      'target-audience': formData.targetAudience || currentProduct?.raw_analysis?.targetAudience || '',
+                                      'competitor-gaps': formData.competitorGaps || currentProduct?.raw_analysis?.competitorGaps || '',
                                     },
                                     productType: currentProduct?.product_type || 'saas',
                                   }),
