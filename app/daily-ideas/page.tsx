@@ -128,6 +128,7 @@ function DailyIdeasContent() {
   const [industries, setIndustries] = useState<string[]>([]);
   const [selectedIndustry, setSelectedIndustry] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'market' | 'validation' | 'products'>('overview');
 
   // Handle responsive - only run after hydration to prevent mismatch
@@ -295,14 +296,24 @@ function DailyIdeasContent() {
         const res = await fetch(`/api/daily-ideas?${params}`);
         const data: ApiResponse = await res.json();
         
+        // Handle error responses
+        if (!res.ok || !data.ideas) {
+          console.error('API returned error:', data);
+          setLoading(false);
+          return;
+        }
+        
         setIdeas(data.ideas);
         setIsGenerating(data.isGenerating || false);
         setPagination(prev => ({
           ...prev,
-          totalPages: data.pagination.totalPages,
-          total: data.pagination.total,
+          totalPages: data.pagination?.totalPages || 1,
+          total: data.pagination?.total || 0,
         }));
-        setIndustries(data.filters.industries);
+        // Safely access industries
+        if (data.filters?.industries) {
+          setIndustries(data.filters.industries);
+        }
         
         // Find today's idea
         const today = new Date().toISOString().split('T')[0];
@@ -680,9 +691,50 @@ function DailyIdeasContent() {
 
           {/* Archive Section */}
           <div className="mb-6">
+            {/* View Tabs */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <button
+                onClick={() => setShowSavedOnly(false)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                  !showSavedOnly 
+                    ? 'bg-uvz-orange text-white shadow-brutal border-2 border-black' 
+                    : 'bg-white border-2 border-black hover:bg-gray-100'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                All Ideas
+              </button>
+              <button
+                onClick={() => setShowSavedOnly(true)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                  showSavedOnly 
+                    ? 'bg-uvz-orange text-white shadow-brutal border-2 border-black' 
+                    : 'bg-white border-2 border-black hover:bg-gray-100'
+                }`}
+              >
+                <BookmarkCheck className="w-4 h-4" />
+                Saved Ideas
+                {savedIdeaIds.size > 0 && (
+                  <span className={`ml-1 px-2 py-0.5 text-xs rounded-full ${
+                    showSavedOnly ? 'bg-white/20' : 'bg-uvz-orange text-white'
+                  }`}>
+                    {savedIdeaIds.size}
+                  </span>
+                )}
+              </button>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h2 className="text-xl md:text-2xl font-black flex items-center gap-2">
-                {isPro ? (
+                {showSavedOnly ? (
+                  <>
+                    <BookmarkCheck className="w-6 h-6 text-uvz-orange" />
+                    Your Saved Ideas
+                    {!isPro && savedIdeaIds.size > 0 && (
+                      <span className="text-sm font-normal text-gray-500">({savedIdeaIds.size}/{FREE_SAVED_IDEAS_LIMIT})</span>
+                    )}
+                  </>
+                ) : isPro ? (
                   <>
                     <Sparkles className="w-6 h-6 text-uvz-orange" />
                     All Ideas
@@ -691,7 +743,7 @@ function DailyIdeasContent() {
                   <>
                     <Lock className="w-6 h-6 text-gray-400" />
                     Previous Ideas
-                    <span className="text-sm font-normal text-gray-500">(Pro Only)</span>
+                    <span className="text-sm font-normal text-gray-500">(7 days free access)</span>
                   </>
                 )}
               </h2>
@@ -830,11 +882,41 @@ function DailyIdeasContent() {
             ) : (
               <>
                 {/* Ideas Grid - Pro users see all, Free users see 7 days */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                  {ideas.map((idea) => {
-                    const isAccessible = isPro || isIdeaAccessibleForFree(idea);
-                    const isSaved = savedIdeaIds.has(idea.id);
-                    const isSaving = savingIdeaId === idea.id;
+                {(() => {
+                  // Filter ideas based on showSavedOnly
+                  const displayedIdeas = showSavedOnly 
+                    ? ideas.filter(idea => savedIdeaIds.has(idea.id))
+                    : ideas;
+
+                  if (showSavedOnly && displayedIdeas.length === 0) {
+                    // Empty saved ideas state
+                    return (
+                      <div className="text-center py-12">
+                        <div className="w-20 h-20 bg-gradient-to-br from-uvz-orange/20 to-pink-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                          <Bookmark className="w-10 h-10 text-uvz-orange" />
+                        </div>
+                        <h3 className="text-2xl font-black mb-3">No Saved Ideas Yet</h3>
+                        <p className="text-gray-600 max-w-md mx-auto mb-6">
+                          Click the bookmark icon on any idea to save it for later. 
+                          {!isPro && ` Free users can save up to ${FREE_SAVED_IDEAS_LIMIT} ideas.`}
+                        </p>
+                        <button
+                          onClick={() => setShowSavedOnly(false)}
+                          className="inline-flex items-center gap-2 bg-uvz-orange text-white font-bold px-6 py-3 border-2 border-black rounded-xl shadow-brutal hover:-translate-y-1 transition-all"
+                        >
+                          <Sparkles className="w-5 h-5" />
+                          Browse All Ideas
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      {displayedIdeas.map((idea) => {
+                        const isAccessible = isPro || isIdeaAccessibleForFree(idea);
+                        const isSaved = savedIdeaIds.has(idea.id);
+                        const isSaving = savingIdeaId === idea.id;
                     
                     if (!isAccessible) {
                       // Locked idea (older than 7 days for free users)
@@ -960,10 +1042,12 @@ function DailyIdeasContent() {
                       </motion.div>
                     );
                   })}
-                </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Saved Ideas Counter for Free users */}
-                {!isPro && savedIdeaIds.size > 0 && (
+                {!isPro && savedIdeaIds.size > 0 && !showSavedOnly && (
                   <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-600">
                     <BookmarkCheck className="w-4 h-4 text-uvz-orange" />
                     <span>{savedIdeaIds.size}/{FREE_SAVED_IDEAS_LIMIT} ideas saved</span>
