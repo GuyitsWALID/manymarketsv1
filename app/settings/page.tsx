@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { User, CreditCard, Trash2, Check, Crown, Zap, AlertTriangle, Settings, ChevronDown, Loader2, Camera, Gift, Star, Infinity, MessageCircle } from 'lucide-react';
+import { User, CreditCard, Trash2, Check, Crown, Zap, AlertTriangle, Settings, ChevronDown, Loader2, Camera, Gift, Star, Infinity, MessageCircle, Copy, Share2, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -26,10 +26,25 @@ const PRO_FEATURES = [
 
 import { ENABLE_PRICING } from '@/lib/config';
 
+interface ReferralInfo {
+  referralCode: string;
+  referralCount: number;
+  bonusSessions: number;
+  maxBonusSessions: number;
+  bonusPerReferral: number;
+  wasReferred: boolean;
+  referrals: Array<{
+    id: string;
+    email: string;
+    date: string;
+    bonusAwarded: boolean;
+  }>;
+}
+
 function SettingsContent() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [openSection, setOpenSection] = useState<'profile' | 'subscription' | 'danger' | null>('profile');
+  const [openSection, setOpenSection] = useState<'profile' | 'subscription' | 'referrals' | 'danger' | null>('profile');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -39,6 +54,12 @@ function SettingsContent() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  
+  // Referral state
+  const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null);
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [applyingCode, setApplyingCode] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   
   // Sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -51,7 +72,7 @@ function SettingsContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const toggleSection = (section: 'profile' | 'subscription' | 'danger') => {
+  const toggleSection = (section: 'profile' | 'subscription' | 'referrals' | 'danger') => {
     setOpenSection(openSection === section ? null : section);
   };
 
@@ -95,6 +116,61 @@ function SettingsContent() {
       });
     }
   }, [router, supabase.auth, searchParams]);
+
+  // Fetch referral info
+  useEffect(() => {
+    async function fetchReferralInfo() {
+      try {
+        const response = await fetch('/api/referrals');
+        if (response.ok) {
+          const data = await response.json();
+          setReferralInfo(data);
+        }
+      } catch (e) {
+        console.error('Failed to load referral info:', e);
+      }
+    }
+    fetchReferralInfo();
+  }, []);
+
+  const handleCopyReferralCode = () => {
+    if (!referralInfo?.referralCode) return;
+    navigator.clipboard.writeText(`https://manymarkets.co?ref=${referralInfo.referralCode}`);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
+
+  const handleApplyReferralCode = async () => {
+    if (!referralCodeInput.trim()) return;
+    
+    setApplyingCode(true);
+    try {
+      const response = await fetch('/api/referrals/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referralCode: referralCodeInput.trim() }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert(data.message || 'Referral code applied successfully!');
+        setReferralCodeInput('');
+        // Refresh referral info
+        const refreshResponse = await fetch('/api/referrals');
+        if (refreshResponse.ok) {
+          setReferralInfo(await refreshResponse.json());
+        }
+      } else {
+        alert(data.error || 'Failed to apply referral code');
+      }
+    } catch (error) {
+      console.error('Error applying referral code:', error);
+      alert('Failed to apply referral code. Please try again.');
+    } finally {
+      setApplyingCode(false);
+    }
+  };
 
   const handleUpgrade = async (planId: string) => {
     if (!ENABLE_PRICING) {
@@ -491,6 +567,142 @@ function SettingsContent() {
                           </div>
                         </div>
                       </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Referral Program Section */}
+            <div className="bg-white border-2 border-black rounded-lg shadow-brutal overflow-hidden">
+              <button
+                onClick={() => toggleSection('referrals')}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-uvz-orange to-pink-500 rounded-full flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-lg font-black">Referral Program</h2>
+                    <p className="text-sm text-gray-500">Earn free sessions by inviting friends</p>
+                  </div>
+                </div>
+                <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${openSection === 'referrals' ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {openSection === 'referrals' && (
+                <div className="px-6 pb-6 border-t-2 border-gray-100">
+                  <div className="pt-6">
+                    {/* Referral Stats */}
+                    {referralInfo && (
+                      <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="bg-gradient-to-br from-orange-50 to-pink-50 border-2 border-orange-200 rounded-xl p-4 text-center">
+                          <Users className="w-6 h-6 text-uvz-orange mx-auto mb-2" />
+                          <p className="text-2xl font-black">{referralInfo.referralCount}</p>
+                          <p className="text-xs text-gray-600 font-bold">Referrals</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 text-center">
+                          <Zap className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                          <p className="text-2xl font-black">{referralInfo.bonusSessions}</p>
+                          <p className="text-xs text-gray-600 font-bold">Bonus Sessions</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 text-center">
+                          <Gift className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                          <p className="text-2xl font-black">+{referralInfo.bonusPerReferral}</p>
+                          <p className="text-xs text-gray-600 font-bold">Per Referral</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Your Referral Code */}
+                    <div className="bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-200 rounded-xl p-5 mb-6">
+                      <h4 className="font-black mb-2 flex items-center gap-2">
+                        <Share2 className="w-5 h-5 text-uvz-orange" />
+                        Your Referral Link
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Share this link and earn <strong>{referralInfo?.bonusPerReferral || 1} free session</strong> for each friend who signs up!
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={referralInfo?.referralCode ? `manymarkets.co?ref=${referralInfo.referralCode}` : 'Loading...'}
+                          readOnly
+                          className="flex-1 px-4 py-2 border-2 border-black rounded bg-white font-mono text-sm"
+                        />
+                        <button
+                          onClick={handleCopyReferralCode}
+                          className="px-4 py-2 bg-uvz-orange text-white font-bold border-2 border-black rounded hover:bg-orange-600 transition-colors flex items-center gap-2"
+                        >
+                          {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          {codeCopied ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Apply Referral Code (if not already referred) */}
+                    {referralInfo && !referralInfo.wasReferred && (
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mb-6">
+                        <h4 className="font-black mb-2">Have a Referral Code?</h4>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Enter a friend's referral code to help them earn bonus sessions.
+                        </p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={referralCodeInput}
+                            onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                            placeholder="Enter code (e.g., ABC123)"
+                            className="flex-1 px-4 py-2 border-2 border-black rounded font-mono uppercase"
+                          />
+                          <button
+                            onClick={handleApplyReferralCode}
+                            disabled={applyingCode || !referralCodeInput.trim()}
+                            className="px-4 py-2 bg-green-500 text-white font-bold border-2 border-black rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {applyingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Referral History */}
+                    {referralInfo && referralInfo.referrals.length > 0 && (
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-5">
+                        <h4 className="font-black mb-3">Your Referrals</h4>
+                        <div className="space-y-2">
+                          {referralInfo.referrals.map((referral) => (
+                            <div key={referral.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <Check className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-sm">{referral.email}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(referral.date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              {referral.bonusAwarded && (
+                                <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">
+                                  +1 Session
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Max Bonus Info */}
+                    {referralInfo && (
+                      <p className="text-xs text-gray-500 mt-4 text-center">
+                        You can earn up to {referralInfo.maxBonusSessions} bonus sessions through referrals.
+                        Currently: {referralInfo.bonusSessions}/{referralInfo.maxBonusSessions}
+                      </p>
                     )}
                   </div>
                 </div>

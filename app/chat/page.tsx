@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Loader2, Bot, User, Rocket } from 'lucide-react';
+import { Sparkles, Send, Loader2, Bot, User, Rocket, Download, FileText, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -66,6 +66,11 @@ export default function ChatPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([]);
   const [researchSummary, setResearchSummary] = useState({ niche: '', uvz: '', targetAudience: '' });
+
+  // Download summary state
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const [isDownloadingSummary, setIsDownloadingSummary] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   // Source idea context when the session was started from a Daily Idea deep-link
   const [sourceIdeaId, setSourceIdeaId] = useState<string | null>(null);
@@ -745,6 +750,63 @@ export default function ChatPage() {
     }
   };
 
+  // Download session summary
+  const handleDownloadSummary = async (format: 'html' | 'md') => {
+    if (!dbSessionId) return;
+    
+    setIsDownloadingSummary(true);
+    setIsDownloadMenuOpen(false);
+    
+    try {
+      const response = await fetch(`/api/sessions/${dbSessionId}/summary?format=${format}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+      
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `research-summary.${format}`;
+      
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="([^"]+)"/);
+        if (match) filename = match[1];
+      }
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading summary:', error);
+      alert('Failed to download summary. Please try again.');
+    } finally {
+      setIsDownloadingSummary(false);
+    }
+  };
+
+  // Close download menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
+        setIsDownloadMenuOpen(false);
+      }
+    }
+
+    if (isDownloadMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDownloadMenuOpen]);
+
   // Calculate main content margin based on sidebar (only on desktop)
   const getMainMargin = () => {
     if (!isDesktop) return 0; // Mobile: no margin, sidebar is overlay
@@ -853,6 +915,69 @@ export default function ChatPage() {
         {/* Messages Container */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-4 py-6">
+            {/* Session Actions - Download Summary */}
+            {dbSessionId && messages.length > 0 && (
+              <div className="flex justify-end mb-4">
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                    disabled={isDownloadingSummary}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-black rounded-lg text-sm font-bold hover:shadow-brutal hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                  >
+                    {isDownloadingSummary ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">Download Summary</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isDownloadMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {isDownloadMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border-2 border-black rounded-lg shadow-brutal z-10 overflow-hidden">
+                      <button
+                        onClick={() => handleDownloadSummary('html')}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors text-left"
+                      >
+                        <FileText className="w-4 h-4 text-uvz-orange" />
+                        <div>
+                          <span className="font-bold text-sm">HTML Document</span>
+                          <span className="text-xs text-gray-500 block">Opens in browser</span>
+                        </div>
+                      </button>
+                      <div className="border-t border-gray-200" />
+                      <button
+                        onClick={() => handleDownloadSummary('md')}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 transition-colors text-left"
+                      >
+                        <FileText className="w-4 h-4 text-purple-600" />
+                        <div>
+                          <span className="font-bold text-sm">Markdown</span>
+                          <span className="text-xs text-gray-500 block">For Notion, Obsidian</span>
+                        </div>
+                      </button>
+                      {!isPro && (
+                        <>
+                          <div className="border-t border-gray-200" />
+                          <div className="px-4 py-2 bg-gradient-to-r from-uvz-orange/10 to-pink-500/10">
+                            <p className="text-xs text-gray-600">
+                              <span className="font-bold">Free:</span> 1-page summary
+                            </p>
+                            <Link
+                              href="/upgrade"
+                              className="text-xs text-uvz-orange font-bold hover:underline"
+                            >
+                              Upgrade for full report →
+                            </Link>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Empty state */}
             {messages.length === 0 && (
               <motion.div

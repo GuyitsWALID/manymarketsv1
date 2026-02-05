@@ -8,7 +8,7 @@ export async function GET() {
   try {
     // If pricing is disabled, return fallback free plan
     if (!ENABLE_PRICING) {
-      return NextResponse.json({ currentPlan: 'free', subscriptions: [], customer: null });
+      return NextResponse.json({ currentPlan: 'free', subscriptions: [], customer: null, freeExportsUsed: 0 });
     }
 
     const supabase = await createClient();
@@ -21,7 +21,7 @@ export async function GET() {
     // First check the database for subscription status
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_tier, paddle_customer_id, paddle_subscription_id')
+      .select('subscription_tier, paddle_customer_id, paddle_subscription_id, free_exports_used, referral_code, bonus_sessions')
       .eq('id', user.id)
       .single();
 
@@ -62,6 +62,9 @@ export async function GET() {
       currentPlan,
       subscriptions,
       customer: profile,
+      freeExportsUsed: profile?.free_exports_used || 0,
+      referralCode: profile?.referral_code || null,
+      bonusSessions: profile?.bonus_sessions || 0,
     });
   } catch (error) {
     console.error('Error fetching billing state:', error);

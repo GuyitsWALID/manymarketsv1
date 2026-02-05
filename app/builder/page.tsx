@@ -58,9 +58,10 @@ import {
   Pencil,
   Wrench,
   Download,
-  BookOpen
+  BookOpen,
+  Gift
 } from 'lucide-react';
-import { ENABLE_PRICING } from '@/lib/config';
+import { ENABLE_PRICING, FREE_BUILDER_PRODUCTS, FREE_WATERMARKED_EXPORTS, WATERMARK_TEXT } from '@/lib/config';
 import Link from 'next/link';
 
 interface ContentOutline {
@@ -313,6 +314,7 @@ function BuilderContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; email?: string | null } | null>(null);
   const [isPro, setIsPro] = useState<boolean | null>(null);
+  const [freeExportsUsed, setFreeExportsUsed] = useState(0); // Track watermarked exports used
   const [products, setProducts] = useState<Product[]>([]);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -460,21 +462,13 @@ function BuilderContent() {
           const plan = billingData.currentPlan || 'free';
           const hasPro = plan === 'pro' || plan === 'enterprise';
           setIsPro(hasPro);
-          
-          if (!hasPro) {
-            // Not Pro, redirect to upgrade
-            router.push('/upgrade');
-            return;
-          }
+          // Store free exports used from billing data
+          setFreeExportsUsed(billingData.freeExportsUsed || 0);
         } else {
           setIsPro(false);
-          router.push('/upgrade');
-          return;
         }
       } catch {
         setIsPro(false);
-        router.push('/upgrade');
-        return;
       }
     }
 
@@ -1294,11 +1288,44 @@ function BuilderContent() {
   };
 
   // Generate HTML content for the ebook/product
-  const generateProductHTML = () => {
+  const generateProductHTML = (addWatermark: boolean = false) => {
     if (!currentProduct) return '';
     
     const outline = currentProduct.raw_analysis?.outline;
     const productAssets = assets.filter(a => a.category === 'cover' || a.category === 'illustration' || a.category === 'chapter');
+    
+    // Watermark styles for free users
+    const watermarkStyles = addWatermark ? `
+    .watermark { 
+      position: fixed; 
+      bottom: 20px; 
+      right: 20px; 
+      background: linear-gradient(135deg, #ff6b35 0%, #f7c331 100%);
+      color: white;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-family: sans-serif;
+      border-radius: 20px;
+      opacity: 0.9;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .page-watermark {
+      position: relative;
+    }
+    .page-watermark::after {
+      content: '${WATERMARK_TEXT}';
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 10px;
+      color: #999;
+      font-family: sans-serif;
+    }
+    @media print {
+      .watermark { display: block !important; }
+      .page-watermark::after { content: '${WATERMARK_TEXT}'; }
+    }` : '';
     
     let html = `
 <!DOCTYPE html>
@@ -1337,6 +1364,7 @@ function BuilderContent() {
     .bonus-section h3 { color: #7c3aed; margin-bottom: 20px; }
     .asset-image { max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .footer { text-align: center; padding: 40px 0; margin-top: 60px; border-top: 2px solid #eee; color: #666; }
+    ${watermarkStyles}
     @media print {
       .chapter { page-break-before: always; }
       .cover { page-break-after: always; }
@@ -1344,8 +1372,9 @@ function BuilderContent() {
   </style>
 </head>
 <body>
+  ${addWatermark ? '<div class="watermark">📚 ' + WATERMARK_TEXT + '</div>' : ''}
   <!-- Cover Page -->
-  <div class="cover">
+  <div class="cover${addWatermark ? ' page-watermark' : ''}">
     <h1>${currentProduct.name}</h1>
     <p class="tagline">${currentProduct.tagline || ''}</p>
     <p class="author">Created with ManyMarkets</p>
@@ -1472,6 +1501,15 @@ function BuilderContent() {
   const handleDownloadProduct = async (confirmed: boolean = false) => {
     if (!currentProduct) return;
     
+    // Check if free user can export
+    if (!isPro) {
+      if (freeExportsUsed >= FREE_WATERMARKED_EXPORTS) {
+        showNotification('warning', 'Export Limit Reached', 'You\'ve used your free watermarked export. Upgrade to Pro for unlimited exports without watermarks!');
+        setIsExporting(false);
+        return;
+      }
+    }
+    
     setIsExporting(true);
     
     // If not explicitly confirmed (from modal or quick-download), open the format modal instead
@@ -1480,13 +1518,17 @@ function BuilderContent() {
       setIsExporting(false);
       return;
     }
+    
+    // Add watermark for free users
+    const addWatermark = !isPro;
+    
     // Track whether the download step succeeded so catch block can adjust messaging
     let downloadSucceeded = false;
     try {
 
       if (exportFormat === 'html') {
         // Generate the HTML content
-        const htmlContent = generateProductHTML();
+        const htmlContent = generateProductHTML(addWatermark);
 
         // Create blob and download
         const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -1501,7 +1543,7 @@ function BuilderContent() {
         downloadSucceeded = true;
       } else if (exportFormat === 'md') {
         // Generate simple Markdown version
-        const md = generateProductMarkdown();
+        const md = generateProductMarkdown(addWatermark);
         const blob = new Blob([md], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1531,7 +1573,7 @@ function BuilderContent() {
         }
       } else if (exportFormat === 'pdf') {
         // Open a print dialog for PDF creation
-        const htmlContent = generateProductHTML();
+        const htmlContent = generateProductHTML(addWatermark);
         const url = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
         const w = window.open(url, '_blank');
         if (w) {
@@ -1547,6 +1589,16 @@ function BuilderContent() {
           downloadSucceeded = true;
         } else {
           throw new Error('Popup blocked');
+        }
+      }
+      
+      // Track free export usage
+      if (!isPro && downloadSucceeded) {
+        try {
+          await fetch('/api/billing/track-free-export', { method: 'POST' });
+          setFreeExportsUsed(prev => prev + 1);
+        } catch (e) {
+          console.warn('Failed to track free export:', e);
         }
       }
       
@@ -1606,9 +1658,15 @@ function BuilderContent() {
   };
 
   // Generate a simple Markdown version of the product
-  const generateProductMarkdown = () => {
+  const generateProductMarkdown = (addWatermark: boolean = false) => {
     if (!currentProduct) return '';
     let md = `# ${currentProduct.name}\n\n`;
+    
+    // Add watermark at top for free users
+    if (addWatermark) {
+      md = `> *${WATERMARK_TEXT} - Get unlimited exports at manymarkets.co*\n\n` + md;
+    }
+    
     if (currentProduct.raw_analysis?.overview) {
       md += `## Overview\n\n${currentProduct.raw_analysis.overview}\n\n`;
     }
@@ -1623,6 +1681,12 @@ function BuilderContent() {
         });
       }
     });
+    
+    // Add watermark at end for free users
+    if (addWatermark) {
+      md += `\n---\n*${WATERMARK_TEXT} - [manymarkets.co](https://manymarkets.co)*\n`;
+    }
+    
     return md;
   };
 
@@ -1740,29 +1804,9 @@ function BuilderContent() {
     );
   }
 
-  // Not Pro - this shouldn't show due to redirect, but just in case
-  if (!isPro) {
-    return (
-      <div className="min-h-screen bg-uvz-cream flex items-center justify-center">
-        <div className="text-center bg-white border-4 border-black rounded-2xl p-8 shadow-brutal max-w-md">
-          <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-black mb-2">Pro Feature</h1>
-          <p className="text-gray-600 mb-6">
-            The Product Builder is a Pro feature. Upgrade to start building and selling your products.
-          </p>
-          <Link
-            href="/upgrade"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold border-2 border-black rounded-xl shadow-brutal hover:-translate-y-0.5 transition-all"
-          >
-            <Crown className="w-5 h-5" />
-            Upgrade to Pro
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  // Check if free user has exceeded product limit
+  const freeProductLimitReached = !isPro && products.length >= FREE_BUILDER_PRODUCTS;
+  const canExportFree = !isPro && freeExportsUsed < FREE_WATERMARKED_EXPORTS;
 
   const isMobile = !isDesktop;
   const ProductIcon = getProductIcon(currentProduct?.product_type);
@@ -4701,42 +4745,74 @@ function BuilderContent() {
             
             {/* Header */}
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Rocket className="w-8 h-8 text-white" />
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${
+                isPro ? 'bg-gradient-to-br from-green-400 to-emerald-600' : 'bg-gradient-to-br from-uvz-orange to-yellow-500'
+              }`}>
+                {isPro ? <Rocket className="w-8 h-8 text-white" /> : <Gift className="w-8 h-8 text-white" />}
               </div>
-              <h3 className="text-2xl font-black mb-2">Finalize Your Product</h3>
+              <h3 className="text-2xl font-black mb-2">
+                {isPro ? 'Finalize Your Product' : 'Download Your Product'}
+              </h3>
               <p className="text-gray-600">
-                Mark <strong className="text-black">{currentProduct.name}</strong> as complete and ready to sell.
+                {isPro ? (
+                  <>Mark <strong className="text-black">{currentProduct.name}</strong> as complete and ready to sell.</>
+                ) : (
+                  <>Get a free watermarked copy of <strong className="text-black">{currentProduct.name}</strong>!</>
+                )}
               </p>
             </div>
+
+            {/* Free User Notice */}
+            {!isPro && (
+              <div className="bg-gradient-to-br from-uvz-orange/10 to-yellow-100 rounded-xl p-4 mb-6 border border-uvz-orange/30">
+                <div className="flex items-start gap-3">
+                  <Gift className="w-5 h-5 text-uvz-orange flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-gray-800 mb-1">Free Export Available!</h4>
+                    <p className="text-sm text-gray-600">
+                      {freeExportsUsed < FREE_WATERMARKED_EXPORTS ? (
+                        <>You have <strong>{FREE_WATERMARKED_EXPORTS - freeExportsUsed}</strong> free watermarked export remaining. The export will include "{WATERMARK_TEXT}" branding.</>
+                      ) : (
+                        <>You've used your free export. Upgrade to Pro for unlimited watermark-free exports!</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
-            {/* What's Next */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
-              <h4 className="font-bold text-blue-800 mb-2">Next Steps After Export:</h4>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
-                  Download your content and assets
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
-                  Upload to your preferred selling platform (Gumroad, Payhip, etc.)
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
-                  Set up your payment processing
-                </li>
-              </ul>
-            </div>
+            {/* What's Next - Pro only */}
+            {isPro && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-200">
+                <h4 className="font-bold text-blue-800 mb-2">Next Steps After Export:</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                    Download your content and assets
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                    Upload to your preferred selling platform (Gumroad, Payhip, etc.)
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                    Set up your payment processing
+                  </li>
+                </ul>
+              </div>
+            )}
 
             {/* Quick Download */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Download now</label>
+              <label className="block text-sm font-medium mb-2">
+                {isPro ? 'Download now' : 'Download with watermark'}
+              </label>
               <div className="flex gap-3">
                 <select
                   value={exportFormat}
                   onChange={(e) => setExportFormat(e.target.value as any)}
                   className="px-3 py-2 rounded-lg border flex-1"
+                  disabled={!isPro && freeExportsUsed >= FREE_WATERMARKED_EXPORTS}
                 >
                   <option value="html">HTML</option>
                   <option value="pdf">PDF (Print)</option>
@@ -4745,13 +4821,30 @@ function BuilderContent() {
                 </select>
                 <button
                   onClick={() => handleDownloadProduct(true)}
-                  disabled={isExporting}
-                  className="px-4 py-2 rounded-lg bg-green-600 text-white font-bold"
+                  disabled={isExporting || (!isPro && freeExportsUsed >= FREE_WATERMARKED_EXPORTS)}
+                  className={`px-4 py-2 rounded-lg font-bold ${
+                    !isPro && freeExportsUsed >= FREE_WATERMARKED_EXPORTS
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
                 >
                   {isExporting ? 'Preparing...' : 'Download'}
                 </button>
               </div>
             </div>
+
+            {/* Upgrade CTA for free users */}
+            {!isPro && (
+              <div className="mb-4">
+                <Link
+                  href="/upgrade"
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all"
+                >
+                  <Crown className="w-5 h-5" />
+                  Upgrade for Unlimited Exports
+                </Link>
+              </div>
+            )}
 
             {/* Price Display */}
             {productPrice && (
