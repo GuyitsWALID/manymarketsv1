@@ -339,13 +339,10 @@ function DailyIdeasContent() {
   };
 
   // Compute total score as average of opportunity, problem, and feasibility scores
+  // Always calculate from component scores for accuracy (ignore pre-set total_score)
   const computeTotalScore = (idea?: DailyIdea | null) => {
     const target = idea || selectedIdea;
     if (!target) return 0;
-    // If total_score is already set in the database, use it
-    if (target.total_score !== null && target.total_score !== undefined) {
-      return Math.round(Number(target.total_score) * 10) / 10;
-    }
     // Calculate average from component scores
     const parts = [
       target.opportunity_score, 
@@ -356,7 +353,7 @@ function DailyIdeasContent() {
       const avg = parts.reduce((a, b) => a + b, 0) / parts.length;
       return Math.round(avg * 10) / 10;
     }
-    // Last resort fallback
+    // Fallback to opportunity_score if no component scores available
     return target.opportunity_score ?? 0;
   };
 
