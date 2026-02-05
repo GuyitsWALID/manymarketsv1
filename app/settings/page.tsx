@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { User, CreditCard, Trash2, Check, Crown, Zap, Building2, AlertTriangle, Settings, ChevronDown, Loader2, Camera } from 'lucide-react';
+import { User, CreditCard, Trash2, Check, Crown, Zap, AlertTriangle, Settings, ChevronDown, Loader2, Camera, Gift, Star, Infinity, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -15,66 +15,13 @@ interface Session {
   last_message_at: string;
 }
 
-const pricingPlans = [
-  {
-    id: "free",
-    name: "FREE",
-    price: "$0",
-    period: "forever",
-    description: "Perfect for exploring and validating your first niche idea",
-    features: [
-      "1 AI Research Session",
-      "Basic Market Insights",
-      "Niche Comparison Tools",
-      "Community Access",
-      "UVZ Report (Limited)"
-    ],
-    cta: "Current Plan",
-    popular: false,
-    icon: Zap,
-  },
-  {
-    id: "pro",
-    name: "PRO",
-    price: "$29",
-    period: "per month",
-    description: "Everything you need to build and launch profitable digital products",
-    features: [
-      "Unlimited AI Research Sessions",
-      "Full Builder Studio Access",
-      "Advanced Market Analytics",
-      "Unlimited Products",
-      "Marketplace Listing",
-      "85% Revenue (15% platform fee)",
-      "Priority Support",
-      "Marketing Asset Generator",
-      "Analytics Dashboard"
-    ],
-    cta: "Upgrade to Pro",
-    popular: true,
-    icon: Crown,
-  },
-  {
-    id: "enterprise",
-    name: "ENTERPRISE",
-    price: "Custom",
-    period: "contact us",
-    description: "For agencies, consultants, and teams scaling digital product businesses",
-    features: [
-      "Everything in Pro",
-      "White-Label Options",
-      "API Access",
-      "Custom Integrations",
-      "90% Revenue (10% platform fee)",
-      "Dedicated Account Manager",
-      "Custom Training",
-      "Advanced Analytics",
-      "Multi-user Teams"
-    ],
-    cta: "Contact Sales",
-    popular: false,
-    icon: Building2,
-  }
+const PRO_FEATURES = [
+  'Product Builder Studio',
+  'Marketplace Listing',
+  'Unlimited AI Sessions',
+  'Advanced Analytics',
+  'Priority Support',
+  'Early Access Features'
 ];
 
 import { ENABLE_PRICING } from '@/lib/config';
@@ -154,15 +101,10 @@ function SettingsContent() {
       alert('Billing is currently disabled. Upgrades are unavailable at this time.');
       return;
     }
-
-    if (planId === 'enterprise') {
-      // Open contact form or email for enterprise
-      window.location.href = 'mailto:contact@manymarkets.com?subject=Enterprise Plan Inquiry';
-      return;
-    }
     
-    // Redirect to upgrade page with Whop checkout
-    router.push('/upgrade');
+    setUpgrading(planId);
+    // Redirect to upgrade page with the selected plan
+    router.push(`/upgrade?plan=${planId}`);
   };
 
   const handleSaveProfile = async () => {
@@ -429,78 +371,126 @@ function SettingsContent() {
                         <p className="font-bold mb-2">Billing Temporarily Disabled</p>
                         <p className="text-sm text-gray-600">All accounts are currently on the free plan. Paid plans and upgrades are disabled for now.</p>
                       </div>
+                    ) : currentPlan === 'pro' || currentPlan === 'lifetime' ? (
+                      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-uvz-orange to-pink-500 rounded-full flex items-center justify-center">
+                            <Crown className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-black text-lg">You're on Pro!</h3>
+                            <p className="text-sm text-gray-600">Enjoy unlimited access to all features</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {PRO_FEATURES.map((feature, i) => (
+                            <div key={i} className="flex items-center gap-2 text-sm">
+                              <Check className="w-4 h-4 text-green-600" />
+                              <span>{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
-                      <>
-                        <div className="grid md:grid-cols-3 gap-4">
-                          {pricingPlans.map((plan) => {
-                        const Icon = plan.icon;
-                        const isCurrentPlan = plan.id === currentPlan;
-                        const isUpgrading = upgrading === plan.id;
-                        
-                        return (
-                          <div
-                            key={plan.id}
-                            className={`border-2 border-black rounded p-4 flex flex-col relative ${
-                              plan.popular ? 'ring-2 ring-uvz-orange ring-offset-1' : ''
-                            } ${isCurrentPlan ? 'bg-orange-50' : 'bg-white'}`}
-                          >
-                            {plan.popular && (
-                              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-uvz-orange text-white px-3 py-0.5 text-xs font-black uppercase border-2 border-black rounded">
-                                Popular
-                              </div>
-                            )}
-                            
+                      <div className="space-y-4">
+                        {/* Plan Toggle Cards */}
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {/* Monthly Plan */}
+                          <div className="border-2 border-black rounded-xl p-5 bg-white hover:shadow-brutal transition-all">
                             <div className="flex items-center gap-2 mb-3">
-                              <Icon className={`w-5 h-5 ${plan.popular ? 'text-uvz-orange' : 'text-gray-600'}`} />
-                              <h3 className="text-lg font-black">{plan.name}</h3>
+                              <Star className="w-5 h-5 text-uvz-orange" />
+                              <span className="font-bold text-sm uppercase tracking-wide text-gray-600">Pro Monthly</span>
                             </div>
-                            
-                            <div className="mb-3">
-                              <span className="text-2xl font-black">{plan.price}</span>
-                              <span className="text-gray-600 text-xs font-bold ml-1">/{plan.period}</span>
+                            <div className="flex items-baseline gap-2 mb-2">
+                              <span className="text-xl font-bold text-red-500 line-through">$10</span>
+                              <span className="text-3xl font-black">$8</span>
+                              <span className="text-gray-500 font-bold">/month</span>
                             </div>
-                            
-                            <p className="text-gray-600 text-xs mb-4">{plan.description}</p>
-                            
-                            <ul className="space-y-1.5 mb-4 flex-1">
-                              {plan.features.slice(0, 4).map((feature, fi) => (
-                                <li key={fi} className="flex items-start gap-1.5 text-xs">
-                                  <Check className="w-3 h-3 text-green-600 shrink-0 mt-0.5" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                              {plan.features.length > 4 && (
-                                <li className="text-xs text-gray-500">+{plan.features.length - 4} more</li>
-                              )}
-                            </ul>
-                            
+                            <div className="text-sm text-gray-500 mb-4">
+                              <p>✓ Cancel anytime</p>
+                              <p>✓ No hidden fees</p>
+                            </div>
                             <button
-                              onClick={() => !isCurrentPlan && handleUpgrade(plan.id)}
-                              disabled={isCurrentPlan || isUpgrading}
-                              className={`w-full py-2 px-3 font-bold border-2 border-black rounded text-sm transition-all flex items-center justify-center gap-2 ${
-                                isCurrentPlan
-                                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                  : plan.popular
-                                  ? 'bg-uvz-orange text-white hover:-translate-y-0.5 shadow-brutal'
-                                  : 'bg-white text-black hover:bg-gray-50 shadow-brutal hover:-translate-y-0.5'
-                              }`}
+                              onClick={() => handleUpgrade('monthly')}
+                              disabled={upgrading === 'monthly'}
+                              className="w-full py-2 px-4 bg-white text-black font-bold border-2 border-black rounded-lg hover:bg-gray-50 hover:-translate-y-0.5 shadow-brutal transition-all flex items-center justify-center gap-2"
                             >
-                              {isUpgrading ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Processing...
-                                </>
-                              ) : isCurrentPlan ? (
-                                'Current'
+                              {upgrading === 'monthly' ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
                               ) : (
-                                plan.cta
+                                'Subscribe Monthly'
                               )}
                             </button>
                           </div>
-                        );
-                      })}
+
+                          {/* Lifetime Plan */}
+                          <div className="border-2 border-black rounded-xl p-5 bg-gradient-to-br from-orange-50 to-pink-50 relative ring-2 ring-uvz-orange ring-offset-2 hover:shadow-brutal transition-all">
+                            <div className="absolute -top-2.5 right-4 bg-green-500 text-white px-3 py-0.5 text-xs font-black uppercase rounded-full">
+                              BEST VALUE
+                            </div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Gift className="w-5 h-5 text-uvz-orange" />
+                              <span className="font-bold text-sm uppercase tracking-wide text-gray-600">Lifetime Deal</span>
+                            </div>
+                            <div className="flex items-baseline gap-2 mb-2">
+                              <span className="text-xl font-bold text-red-500 line-through">$97</span>
+                              <span className="text-3xl font-black">$12</span>
+                              <span className="text-gray-500 font-bold">one-time</span>
+                            </div>
+                            <p className="text-sm text-green-600 font-bold mb-2">🎉 Save $85 - Pay once, own forever!</p>
+                            <div className="text-sm text-gray-500 mb-4">
+                              <p>✓ Never pay again</p>
+                              <p>✓ All future updates</p>
+                            </div>
+                            <button
+                              onClick={() => handleUpgrade('lifetime')}
+                              disabled={upgrading === 'lifetime'}
+                              className="w-full py-2 px-4 bg-gradient-to-r from-uvz-orange to-pink-500 text-white font-bold border-2 border-black rounded-lg hover:-translate-y-0.5 shadow-brutal transition-all flex items-center justify-center gap-2"
+                            >
+                              {upgrading === 'lifetime' ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                              ) : (
+                                <>Get Lifetime Access<Gift className="w-4 h-4" /></>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      </>
+
+                        {/* Features List */}
+                        <div className="bg-white border-2 border-black rounded-xl p-5">
+                          <h4 className="font-black mb-3">Everything included in Pro:</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {PRO_FEATURES.map((feature, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm">
+                                <Check className="w-4 h-4 text-green-600" />
+                                <span>{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Lifetime Bonuses */}
+                        <div className="bg-gradient-to-r from-orange-50 to-pink-50 border-2 border-orange-200 rounded-xl p-5">
+                          <h4 className="font-black mb-3 flex items-center gap-2">
+                            <Gift className="w-5 h-5 text-uvz-orange" />
+                            Exclusive Lifetime Bonuses:
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Infinity className="w-4 h-4 text-uvz-orange" />
+                              <span><strong>Lifetime Updates</strong> - Get all future features forever</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Crown className="w-4 h-4 text-uvz-orange" />
+                              <span><strong>Founding Member Badge</strong> - Exclusive profile badge</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <MessageCircle className="w-4 h-4 text-uvz-orange" />
+                              <span><strong>1-on-1 Onboarding Call</strong> - 30-min strategy session</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

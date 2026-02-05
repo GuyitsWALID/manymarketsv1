@@ -192,7 +192,14 @@ Return ONLY valid JSON:
   "description": "2-3 paragraph detailed description of the niche opportunity",
   "target_audience": "Super specific target customer with demographics, psychographics, and behaviors",
   "core_problem": "The exact painful problem this audience faces that isn't being solved well",
-  "opportunity_score": 8.5,
+  "opportunity_score": 8.2,
+  "problem_score": 7.8,
+  "feasibility_score": 7.5,
+  "scores_explanation": {
+    "opportunity": "Brief explanation of why this opportunity score (market size, growth potential, timing)",
+    "problem": "Brief explanation of why this problem score (pain severity, urgency, willingness to pay)",
+    "feasibility": "Brief explanation of why this feasibility score (technical complexity, competition, resources needed)"
+  },
   "demand_level": "high",
   "competition_level": "low",
   "trending_score": 7.5,

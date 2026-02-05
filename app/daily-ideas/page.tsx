@@ -331,23 +331,33 @@ function DailyIdeasContent() {
     return 'text-red-500 bg-red-100';
   };
 
-  // Format score for display (fallbacks to opportunity score or 0 if not provided)
-  const formatScore = (value?: number | null, fallback?: number | null) => {
-    const raw = value ?? fallback ?? (selectedIdea ? (selectedIdea.opportunity_score ?? 0) : 0);
-    if (raw === null || raw === undefined || Number.isNaN(Number(raw))) return '0';
-    const num = Math.round(Number(raw) * 10) / 10;
+  // Format score for display - no fallback to avoid showing same scores
+  const formatScore = (value?: number | null) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return 'N/A';
+    const num = Math.round(Number(value) * 10) / 10;
     return num % 1 === 0 ? String(Math.round(num)) : num.toFixed(1);
   };
 
-  const computeTotalScore = () => {
-    if (!selectedIdea) return 0;
-    if (selectedIdea.total_score !== null && selectedIdea.total_score !== undefined) return Math.round(Number(selectedIdea.total_score) * 10) / 10;
-    const parts = [selectedIdea.opportunity_score, selectedIdea.problem_score, selectedIdea.feasibility_score].filter(v => typeof v === 'number') as number[];
+  // Compute total score as average of opportunity, problem, and feasibility scores
+  const computeTotalScore = (idea?: DailyIdea | null) => {
+    const target = idea || selectedIdea;
+    if (!target) return 0;
+    // If total_score is already set in the database, use it
+    if (target.total_score !== null && target.total_score !== undefined) {
+      return Math.round(Number(target.total_score) * 10) / 10;
+    }
+    // Calculate average from component scores
+    const parts = [
+      target.opportunity_score, 
+      target.problem_score, 
+      target.feasibility_score
+    ].filter(v => typeof v === 'number' && !Number.isNaN(v)) as number[];
     if (parts.length > 0) {
       const avg = parts.reduce((a, b) => a + b, 0) / parts.length;
       return Math.round(avg * 10) / 10;
     }
-    return selectedIdea.opportunity_score ?? 0;
+    // Last resort fallback
+    return target.opportunity_score ?? 0;
   };
 
   const getDemandBadge = (level: string) => {
@@ -550,8 +560,8 @@ function DailyIdeasContent() {
                       </span>
                     </div>
                   </div>
-                  <div className={`text-3xl font-black px-4 py-2 rounded-lg ${getScoreColor(todaysIdea.total_score ?? todaysIdea.opportunity_score)}`}>
-                    {(todaysIdea.total_score ?? todaysIdea.opportunity_score)}/10
+                  <div className={`text-3xl font-black px-4 py-2 rounded-lg ${getScoreColor(computeTotalScore(todaysIdea))}`}>
+                    {computeTotalScore(todaysIdea)}/10
                   </div>
                 </div>
               </motion.button>
@@ -731,8 +741,8 @@ function DailyIdeasContent() {
                               </span>
                             )}
                           </div>
-                          <div className={`text-xl font-black px-2 py-1 rounded-lg ${getScoreColor(idea.total_score ?? idea.opportunity_score)}`}>
-                            {(idea.total_score ?? idea.opportunity_score)}/10
+                          <div className={`text-xl font-black px-2 py-1 rounded-lg ${getScoreColor(computeTotalScore(idea))}`}>
+                            {computeTotalScore(idea)}/10
                           </div>
                         </div>
 
@@ -890,8 +900,8 @@ function DailyIdeasContent() {
                         <span className="text-xs font-bold text-white bg-uvz-orange px-2 py-1 rounded-full">
                           {selectedIdea.industry}
                         </span>
-                        <div className={`text-lg font-black px-2 py-1 rounded-lg ${getScoreColor(selectedIdea.total_score ?? selectedIdea.opportunity_score)}`}>
-                          {(selectedIdea.total_score ?? selectedIdea.opportunity_score)}/10
+                        <div className={`text-lg font-black px-2 py-1 rounded-lg ${getScoreColor(computeTotalScore(selectedIdea))}`}>
+                          {computeTotalScore(selectedIdea)}/10
                         </div>
                       </div>
                       <button
@@ -1029,19 +1039,19 @@ function DailyIdeasContent() {
                                   <span className="font-black text-lg">Trending Score</span>
                                 </div>
                                 <span className="font-black text-2xl text-uvz-orange">
-                                  {formatScore(selectedIdea.trending_score, computeTotalScore())}/10
+                                  {formatScore(selectedIdea.trending_score)}/10
                                 </span>
                               </div>
                               <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
                                 <div 
                                   className="h-full bg-gradient-to-r from-uvz-orange to-pink-500 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min((Number(selectedIdea.trending_score ?? computeTotalScore()) / 10) * 100, 100)}%` }}
+                                  style={{ width: `${Math.min((Number(selectedIdea.trending_score ?? 0) / 10) * 100, 100)}%` }}
                                 />
                               </div>
                               <p className="text-sm text-gray-600 mt-2">
-                                {Number(selectedIdea.trending_score ?? computeTotalScore()) >= 8 ? '🔥 Hot opportunity - Act fast!' :
-                                 Number(selectedIdea.trending_score ?? computeTotalScore()) >= 6 ? '📈 Growing trend - Good timing' :
-                                 Number(selectedIdea.trending_score ?? computeTotalScore()) >= 4 ? '⏳ Emerging - Early mover advantage' :
+                                {Number(selectedIdea.trending_score ?? 0) >= 8 ? '🔥 Hot opportunity - Act fast!' :
+                                 Number(selectedIdea.trending_score ?? 0) >= 6 ? '📈 Growing trend - Good timing' :
+                                 Number(selectedIdea.trending_score ?? 0) >= 4 ? '⏳ Emerging - Early mover advantage' :
                                  '🌱 Nascent market - Long-term play'}
                               </p>
                             </div>
@@ -1051,18 +1061,40 @@ function DailyIdeasContent() {
                               <div className="p-4 rounded-xl border-2 bg-green-50 border-green-200 text-center">
                                 <p className="text-xs font-bold text-gray-600 mb-1">Opportunity</p>
                                 <p className="font-black text-2xl text-green-900">{formatScore(selectedIdea.opportunity_score)}/10</p>
-                                <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.opportunity || ''}</p>
+                                {selectedIdea.scores_explanation?.opportunity && (
+                                  <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation.opportunity}</p>
+                                )}
                               </div>
-                              <div className="p-4 rounded-xl border-2 bg-red-50 border-red-200 text-center">
+                              <div className="p-4 rounded-xl border-2 bg-purple-50 border-purple-200 text-center">
                                 <p className="text-xs font-bold text-gray-600 mb-1">Problem</p>
-                                <p className="font-black text-2xl text-red-900">{formatScore(selectedIdea.problem_score, selectedIdea.opportunity_score)}/10</p>
-                                <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.problem || ''}</p>
+                                <p className="font-black text-2xl text-purple-900">{formatScore(selectedIdea.problem_score)}/10</p>
+                                {selectedIdea.scores_explanation?.problem && (
+                                  <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation.problem}</p>
+                                )}
                               </div>
                               <div className="p-4 rounded-xl border-2 bg-blue-50 border-blue-200 text-center">
                                 <p className="text-xs font-bold text-gray-600 mb-1">Feasibility</p>
-                                <p className="font-black text-2xl text-blue-900">{formatScore(selectedIdea.feasibility_score, selectedIdea.opportunity_score)}/10</p>
-                                <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation?.feasibility || ''}</p>
+                                <p className="font-black text-2xl text-blue-900">{formatScore(selectedIdea.feasibility_score)}/10</p>
+                                {selectedIdea.scores_explanation?.feasibility && (
+                                  <p className="text-sm text-gray-600 mt-2">{selectedIdea.scores_explanation.feasibility}</p>
+                                )}
                               </div>
+                            </div>
+
+                            {/* Overall Idea Score */}
+                            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-5 rounded-xl border-2 border-yellow-200 mt-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Target className="w-5 h-5 text-yellow-600" />
+                                  <span className="font-black text-lg">Overall Idea Score</span>
+                                </div>
+                                <span className={`font-black text-2xl px-3 py-1 rounded-lg ${getScoreColor(computeTotalScore())}`}>
+                                  {computeTotalScore()}/10
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 mt-2">
+                                Average of Opportunity, Problem, and Feasibility scores
+                              </p>
                             </div>
 
                             {/* Market Analysis from Full Report */}
@@ -1106,7 +1138,7 @@ function DailyIdeasContent() {
                                     <div className="w-28 h-28 flex items-center justify-center">
                                       {/* SVG circular gauge */}
                                       {(() => {
-                                        const score = clamp(Math.round((selectedIdea.total_score ?? selectedIdea.opportunity_score ?? 5)), 0, 10);
+                                        const score = clamp(Math.round(computeTotalScore(selectedIdea)), 0, 10);
                                         const pct = score * 10; // 0-100
                                         const radius = 44;
                                         const circumference = 2 * Math.PI * radius;
@@ -1135,7 +1167,7 @@ function DailyIdeasContent() {
                                     <div className="flex-1">
                                       <h4 className="font-black">Value Equation</h4>
                                       <p className="text-sm text-gray-600 mb-2">Scores how much value this idea creates relative to effort, risk or cost.</p>
-                                      <p className="text-sm font-bold">Score: {clamp(Math.round((selectedIdea.total_score ?? selectedIdea.opportunity_score ?? 5)), 0, 10)}/10</p>
+                                      <p className="text-sm font-bold">Score: {clamp(Math.round(computeTotalScore(selectedIdea)), 0, 10)}/10</p>
                                     </div>
                                   </div>
 
