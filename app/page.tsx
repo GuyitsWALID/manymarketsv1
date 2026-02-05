@@ -501,7 +501,7 @@ export default function Home() {
               {/* Trust indicators */}
               <div className="flex flex-wrap justify-center gap-4 mt-8 text-sm text-gray-600">
                 <span className="flex items-center gap-1">✓ No credit card required</span>
-                <span className="flex items-center gap-1">✓ 2 free research sessions</span>
+                <span className="flex items-center gap-1">✓ 5 free research sessions</span>
                 <span className="flex items-center gap-1">✓ Your progress is saved</span>
               </div>
             </motion.div>

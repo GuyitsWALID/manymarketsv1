@@ -6,6 +6,7 @@ import { DefaultChatTransport } from 'ai';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Send, Loader2, Lock, ArrowRight, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { FREE_SESSION_LIMIT } from '@/lib/config';
 
 interface GuestMessage {
   id: string;
@@ -21,7 +22,7 @@ interface GuestSession {
 }
 
 const GUEST_STORAGE_KEY = 'manymarkets_guest_sessions';
-const MAX_GUEST_SESSIONS = 2;
+const MAX_GUEST_SESSIONS = FREE_SESSION_LIMIT; // Use centralized config
 const BLUR_AFTER_MESSAGES = 4; // After 4 messages (2 exchanges), blur and prompt signup
 
 export default function GuestDemoChat() {

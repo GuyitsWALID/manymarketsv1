@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { Plus, User, Menu, X, Settings, LogOut, Zap, Crown } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-
-const FREE_SESSION_LIMIT = 2;
+import { FREE_SESSION_LIMIT } from '@/lib/config';
 
 interface ChatHeaderProps {
   isSidebarOpen: boolean;

@@ -23,11 +23,15 @@ import {
   X,
   ExternalLink,
   Crown,
-  Rocket
+  Rocket,
+  Bookmark,
+  BookmarkCheck,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import ChatHeader from '@/components/chat/ChatHeader';
+import { FREE_DAILY_IDEAS_DAYS, FREE_SAVED_IDEAS_LIMIT, PRO_SAVED_IDEAS_LIMIT } from '@/lib/config';
 import ChatSidebar from '@/components/chat/ChatSidebar';
 
 interface DailyIdea {
@@ -105,6 +109,10 @@ function DailyIdeasContent() {
   const [isPro, setIsPro] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   
+  // Saved ideas state
+  const [savedIdeaIds, setSavedIdeaIds] = useState<Set<string>>(new Set());
+  const [savingIdeaId, setSavingIdeaId] = useState<string | null>(null);
+  
   // Ideas state
   const [ideas, setIdeas] = useState<DailyIdea[]>([]);
   const [todaysIdea, setTodaysIdea] = useState<DailyIdea | null>(null);
@@ -160,6 +168,27 @@ function DailyIdeasContent() {
           } catch {
             setIsPro(false);
           }
+          
+          // Load saved ideas
+          try {
+            const savedRes = await fetch('/api/daily-ideas/saved');
+            if (savedRes.ok) {
+              const savedData = await savedRes.json();
+              setSavedIdeaIds(new Set(savedData.savedIdeaIds || []));
+            }
+          } catch {
+            // Use localStorage fallback for non-logged-in state
+            const localSaved = localStorage.getItem('manymarkets_saved_ideas');
+            if (localSaved) {
+              setSavedIdeaIds(new Set(JSON.parse(localSaved)));
+            }
+          }
+        } else {
+          // For non-logged-in users, use localStorage
+          const localSaved = localStorage.getItem('manymarkets_saved_ideas');
+          if (localSaved) {
+            setSavedIdeaIds(new Set(JSON.parse(localSaved)));
+          }
         }
       } catch (error) {
         console.error('Error loading user:', error);
@@ -167,6 +196,90 @@ function DailyIdeasContent() {
     }
     loadUser();
   }, [supabase]);
+
+  // Helper function to check if idea is within free access period
+  const isIdeaAccessibleForFree = (idea: DailyIdea) => {
+    const ideaDate = new Date(idea.featured_date);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - FREE_DAILY_IDEAS_DAYS);
+    return ideaDate >= cutoffDate;
+  };
+
+  // Save/unsave idea handler
+  const handleToggleSaveIdea = async (ideaId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    const isCurrentlySaved = savedIdeaIds.has(ideaId);
+    const savedCount = savedIdeaIds.size;
+    const maxSaved = isPro ? PRO_SAVED_IDEAS_LIMIT : FREE_SAVED_IDEAS_LIMIT;
+    
+    // Check limit for saving (not unsaving)
+    if (!isCurrentlySaved && savedCount >= maxSaved) {
+      if (!isPro) {
+        setIsUpgradeModalOpen(true);
+      } else {
+        alert(`You've reached the maximum of ${maxSaved} saved ideas.`);
+      }
+      return;
+    }
+    
+    setSavingIdeaId(ideaId);
+    
+    try {
+      if (currentUser) {
+        // Use API for logged-in users
+        let res: Response;
+        if (isCurrentlySaved) {
+          // DELETE uses query param
+          res = await fetch(`/api/daily-ideas/saved?ideaId=${ideaId}`, {
+            method: 'DELETE',
+          });
+        } else {
+          // POST uses body
+          res = await fetch('/api/daily-ideas/saved', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ideaId }),
+          });
+        }
+        
+        if (res.ok) {
+          setSavedIdeaIds(prev => {
+            const newSet = new Set(prev);
+            if (isCurrentlySaved) {
+              newSet.delete(ideaId);
+            } else {
+              newSet.add(ideaId);
+            }
+            return newSet;
+          });
+        } else {
+          const errData = await res.json();
+          if (errData.limitReached && !isPro) {
+            setIsUpgradeModalOpen(true);
+          }
+        }
+      } else {
+        // Use localStorage for non-logged-in users
+        setSavedIdeaIds(prev => {
+          const newSet = new Set(prev);
+          if (isCurrentlySaved) {
+            newSet.delete(ideaId);
+          } else {
+            newSet.add(ideaId);
+          }
+          localStorage.setItem('manymarkets_saved_ideas', JSON.stringify([...newSet]));
+          return newSet;
+        });
+      }
+    } catch (error) {
+      console.error('Error saving idea:', error);
+    } finally {
+      setSavingIdeaId(null);
+    }
+  };
 
   // Fetch ideas list
   useEffect(() => {
@@ -716,102 +829,147 @@ function DailyIdeasContent() {
               </div>
             ) : (
               <>
-                {/* For Pro: show all ideas */}
-                {isPro ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    {ideas.map((idea) => (
-                      <motion.button
-                        key={idea.id}
-                        onClick={() => handleIdeaClick(idea)}
-                        className="bg-white border-4 border-black rounded-xl p-4 md:p-6 text-left hover:shadow-brutal transition-all hover:-translate-y-1 group"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs font-bold text-white bg-uvz-orange px-2 py-1 rounded-full">
+                {/* Ideas Grid - Pro users see all, Free users see 7 days */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  {ideas.map((idea) => {
+                    const isAccessible = isPro || isIdeaAccessibleForFree(idea);
+                    const isSaved = savedIdeaIds.has(idea.id);
+                    const isSaving = savingIdeaId === idea.id;
+                    
+                    if (!isAccessible) {
+                      // Locked idea (older than 7 days for free users)
+                      return (
+                        <div
+                          key={idea.id}
+                          className="relative bg-white border-4 border-gray-300 rounded-xl p-4 md:p-6 opacity-60"
+                        >
+                          {/* Locked overlay */}
+                          <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+                            <button
+                              onClick={() => setIsUpgradeModalOpen(true)}
+                              className="flex flex-col items-center gap-2 p-4"
+                            >
+                              <div className="w-12 h-12 bg-gray-100 border-2 border-gray-300 rounded-full flex items-center justify-center">
+                                <Lock className="w-6 h-6 text-gray-400" />
+                              </div>
+                              <span className="font-bold text-gray-600 text-sm">Upgrade to Access</span>
+                            </button>
+                          </div>
+
+                          {/* Blurred content */}
+                          <div className="flex items-start justify-between mb-3">
+                            <span className="text-xs font-bold text-white bg-gray-400 px-2 py-1 rounded-full">
                               {idea.industry}
                             </span>
-                            {idea.featured_date === today && (
-                              <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full flex items-center gap-1">
-                                <Flame className="w-3 h-3" />
-                                Today
-                              </span>
-                            )}
-                          </div>
-                          <div className={`text-xl font-black px-2 py-1 rounded-lg ${getScoreColor(computeTotalScore(idea))}`}>
-                            {computeTotalScore(idea)}/10
-                          </div>
-                        </div>
-
-                        <h3 className="text-lg md:text-xl font-black mb-2 group-hover:text-uvz-orange transition-colors">
-                          {idea.name}
-                        </h3>
-
-                        <p className="text-gray-600 text-sm md:text-base mb-3 line-clamp-2">
-                          {idea.one_liner}
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          <span className={`text-xs text-white px-2 py-1 rounded-full ${getDemandBadge(idea.demand_level)}`}>
-                            {idea.demand_level} demand
-                          </span>
-                          <span className={`text-xs text-white px-2 py-1 rounded-full ${getCompetitionBadge(idea.competition_level)}`}>
-                            {idea.competition_level} competition
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs text-gray-400 pt-3 border-t border-gray-100">
-                          <Calendar className="w-3 h-3" />
-                          <span>{new Date(idea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                ) : (
-                  /* For Free: show locked previous ideas */
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    {ideas.filter(idea => idea.featured_date !== today).slice(0, 4).map((idea) => (
-                      <div
-                        key={idea.id}
-                        className="relative bg-white border-4 border-gray-300 rounded-xl p-4 md:p-6 opacity-60"
-                      >
-                        {/* Locked overlay */}
-                        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-                          <button
-                            onClick={() => setIsUpgradeModalOpen(true)}
-                            className="flex flex-col items-center gap-2 p-4"
-                          >
-                            <div className="w-12 h-12 bg-gray-100 border-2 border-gray-300 rounded-full flex items-center justify-center">
-                              <Lock className="w-6 h-6 text-gray-400" />
+                            <div className="text-xl font-black px-2 py-1 rounded-lg bg-gray-100 text-gray-400">
+                              ?/10
                             </div>
-                            <span className="font-bold text-gray-600 text-sm">Upgrade to Access</span>
-                          </button>
-                        </div>
+                          </div>
 
-                        {/* Blurred content */}
-                        <div className="flex items-start justify-between mb-3">
-                          <span className="text-xs font-bold text-white bg-gray-400 px-2 py-1 rounded-full">
-                            {idea.industry}
-                          </span>
-                          <div className="text-xl font-black px-2 py-1 rounded-lg bg-gray-100 text-gray-400">
-                            ?/10
+                          <h3 className="text-lg font-black mb-2 text-gray-400">
+                            {idea.name}
+                          </h3>
+
+                          <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+                            {idea.one_liner}
+                          </p>
+
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <Calendar className="w-3 h-3" />
+                            <span>{new Date(idea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                           </div>
                         </div>
+                      );
+                    }
+                    
+                    // Accessible idea
+                    return (
+                      <motion.div
+                        key={idea.id}
+                        className="bg-white border-4 border-black rounded-xl p-4 md:p-6 text-left hover:shadow-brutal transition-all hover:-translate-y-1 group relative"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        {/* Save Button */}
+                        <button
+                          onClick={(e) => handleToggleSaveIdea(idea.id, e)}
+                          disabled={isSaving}
+                          className={`absolute top-3 right-3 p-2 rounded-full transition-all z-10 ${
+                            isSaved 
+                              ? 'bg-uvz-orange text-white' 
+                              : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                          }`}
+                          title={isSaved ? 'Remove from saved' : 'Save idea'}
+                        >
+                          {isSaving ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : isSaved ? (
+                            <BookmarkCheck className="w-4 h-4" />
+                          ) : (
+                            <Bookmark className="w-4 h-4" />
+                          )}
+                        </button>
+                        
+                        <button
+                          onClick={() => handleIdeaClick(idea)}
+                          className="w-full text-left"
+                        >
+                          <div className="flex items-start justify-between mb-3 pr-10">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-bold text-white bg-uvz-orange px-2 py-1 rounded-full">
+                                {idea.industry}
+                              </span>
+                              {idea.featured_date === today && (
+                                <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full flex items-center gap-1">
+                                  <Flame className="w-3 h-3" />
+                                  Today
+                                </span>
+                              )}
+                              {!isPro && isIdeaAccessibleForFree(idea) && idea.featured_date !== today && (
+                                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                                  Free Access
+                                </span>
+                              )}
+                            </div>
+                            <div className={`text-xl font-black px-2 py-1 rounded-lg ${getScoreColor(computeTotalScore(idea))}`}>
+                              {computeTotalScore(idea)}/10
+                            </div>
+                          </div>
 
-                        <h3 className="text-lg font-black mb-2 text-gray-400">
-                          {idea.name}
-                        </h3>
+                          <h3 className="text-lg md:text-xl font-black mb-2 group-hover:text-uvz-orange transition-colors">
+                            {idea.name}
+                          </h3>
 
-                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                          {idea.one_liner}
-                        </p>
+                          <p className="text-gray-600 text-sm md:text-base mb-3 line-clamp-2">
+                            {idea.one_liner}
+                          </p>
 
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <Calendar className="w-3 h-3" />
-                          <span>{new Date(idea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        </div>
-                      </div>
-                    ))}
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <span className={`text-xs text-white px-2 py-1 rounded-full ${getDemandBadge(idea.demand_level)}`}>
+                              {idea.demand_level} demand
+                            </span>
+                            <span className={`text-xs text-white px-2 py-1 rounded-full ${getCompetitionBadge(idea.competition_level)}`}>
+                              {idea.competition_level} competition
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs text-gray-400 pt-3 border-t border-gray-100">
+                            <Calendar className="w-3 h-3" />
+                            <span>{new Date(idea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                          </div>
+                        </button>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Saved Ideas Counter for Free users */}
+                {!isPro && savedIdeaIds.size > 0 && (
+                  <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-600">
+                    <BookmarkCheck className="w-4 h-4 text-uvz-orange" />
+                    <span>{savedIdeaIds.size}/{FREE_SAVED_IDEAS_LIMIT} ideas saved</span>
+                    {savedIdeaIds.size >= FREE_SAVED_IDEAS_LIMIT && (
+                      <span className="text-uvz-orange font-bold">(limit reached)</span>
+                    )}
                   </div>
                 )}
 
@@ -820,9 +978,9 @@ function DailyIdeasContent() {
                   <div className="mt-8 text-center">
                     <div className="bg-gradient-to-br from-uvz-orange/10 to-pink-500/10 border-4 border-dashed border-uvz-orange/30 rounded-xl p-6 md:p-8">
                       <Crown className="w-12 h-12 text-uvz-orange mx-auto mb-4" />
-                      <h3 className="text-xl md:text-2xl font-black mb-2">Want Access to All Ideas?</h3>
+                      <h3 className="text-xl md:text-2xl font-black mb-2">Want Unlimited Access?</h3>
                       <p className="text-gray-600 mb-4 max-w-md mx-auto">
-                        Upgrade to Pro to unlock the full archive of pre-researched niche ideas and start building today.
+                        Upgrade to Pro for the full archive, unlimited saved ideas, and access to the product builder.
                       </p>
                       <Link
                         href="/upgrade"
@@ -835,8 +993,8 @@ function DailyIdeasContent() {
                   </div>
                 )}
 
-                {/* Pagination (Pro only) */}
-                {isPro && pagination.totalPages > 1 && (
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
                   <div className="flex items-center justify-center gap-4 mt-8">
                     <button
                       onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}

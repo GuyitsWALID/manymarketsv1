@@ -306,7 +306,7 @@ function UpgradeContent() {
                     <span className="transform group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <p className="mt-3 text-gray-600 text-sm">
-                    We offer a free tier with 2 research sessions so you can try the platform. When you&apos;re ready to build products, upgrade to Pro!
+                    We offer a free tier with 5 research sessions so you can try the platform. When you&apos;re ready to build products, upgrade to Pro!
                   </p>
                 </details>
               </div>

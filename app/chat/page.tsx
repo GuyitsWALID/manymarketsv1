@@ -13,6 +13,7 @@ import ChatSidebar from '@/components/chat/ChatSidebar';
 import NewSessionModal from '@/components/chat/NewSessionModal';
 import SkillsAssessmentModal, { type SkillsData } from '@/components/chat/SkillsAssessmentModal';
 import ProductSuggestionPanel, { type ProductSuggestion } from '@/components/chat/ProductSuggestionPanel';
+import { FREE_SESSION_LIMIT } from '@/lib/config';
 
 interface Session {
   id: string;
@@ -84,7 +85,6 @@ export default function ChatPage() {
   // Pro/Free tier state
   const [isPro, setIsPro] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const FREE_SESSION_LIMIT = 2;
 
   // Daily quick prompts
   const [dailyPrompts, setDailyPrompts] = useState<string[]>([]);
