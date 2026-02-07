@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { RoughNotation, RoughNotationGroup } from "react-rough-notation";
-import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Check, Linkedin, Github, Mail, ArrowRight, Flame, Target, Lock, Calendar } from "lucide-react";
+import { Sparkles, TrendingUp, Rocket, Zap, Users, DollarSign, Linkedin, Github, Mail, ArrowRight, Flame, Target, Lock, Calendar, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
@@ -165,31 +165,37 @@ export default function Home() {
   }
 
   const features = [
-    { 
-      icon: Sparkles, 
-      title: "AI Prompt Pack Builder", 
-      desc: "Create professional prompt packs that sell. Our AI helps you structure, categorize, and optimize prompts for ChatGPT, Midjourney, and more.",
-      detail: "Turn your prompt expertise into a sellable product in minutes."
+    {
+      icon: MessageSquare,
+      title: "AI Research Chat",
+      desc: "Have a guided conversation with our AI to explore industries, discover underserved niches, and find your unique market position.",
+      detail: "Your personal market research analyst, available 24/7."
     },
-    { 
-      icon: Rocket, 
-      title: "Ebook Creation Studio", 
-      desc: "Build complete ebooks with AI assistance. Generate outlines, chapters, and even images—then export as beautifully formatted PDFs.",
-      detail: "From idea to published ebook in hours, not weeks."
+    {
+      icon: Flame,
+      title: "Daily Niche Ideas",
+      desc: "Every day, our AI researches and validates a fresh niche opportunity—complete with demand data, competition analysis, and product suggestions.",
+      detail: "Never run out of profitable ideas to explore."
     },
-    { 
-      icon: TrendingUp, 
-      title: "Niche Finder & Validator", 
-      desc: "Discover untapped markets for your prompts and ebooks. Our AI analyzes demand, competition, and profitability before you build.",
-      detail: "Know exactly what will sell before you create it."
+    {
+      icon: Target,
+      title: "Idea Scorer",
+      desc: "Paste any business idea and get an instant AI-powered score. See demand, competition, feasibility, and profitability breakdowns at a glance.",
+      detail: "Know if your idea is worth pursuing before you start."
+    },
+    {
+      icon: Rocket,
+      title: "Product Builder",
+      desc: "Build ebooks, prompt packs, courses, Notion templates, and more with AI assistance. Export as polished, ready-to-sell digital products.",
+      detail: "From validated idea to finished product in one platform."
     }
   ];
 
   const stats = [
-    { number: "10K+", label: "Products Created", icon: Sparkles },
-    { number: "$2M+", label: "Creator Earnings", icon: DollarSign },
-    { number: "5K+", label: "Active Creators", icon: Users },
-    { number: "95%", label: "Success Rate", icon: TrendingUp }
+    { number: "4-in-1", label: "AI-Powered Tools", icon: Sparkles },
+    { number: "10+", label: "Product Types", icon: Rocket },
+    { number: "5 min", label: "Idea to Validation", icon: Zap },
+    { number: "Free", label: "To Get Started", icon: TrendingUp }
   ];
 
   // Pricing plans removed — pricing is promoted via the banner and `/upgrade` page.
@@ -198,17 +204,17 @@ export default function Home() {
     {
       step: "01",
       title: "Discover Your Niche",
-      description: "Chat with our AI to identify profitable market opportunities aligned with your skills and passions. Get validated niche ideas backed by real data."
+      description: "Chat with our AI to explore industries and uncover profitable, underserved niches aligned with your skills. Get ideas backed by real market signals."
     },
     {
       step: "02",
-      title: "Build Your Product",
-      description: "Use our integrated creation studio to build professional digital products. Templates, AI writing assistance, and design tools—all in one place."
+      title: "Validate Your Idea",
+      description: "Score your concepts with AI-powered validation. See demand levels, competition analysis, and profitability projections before you invest your time."
     },
     {
       step: "03",
-      title: "Validate & Build",
-      description: "Score your ideas with AI validation, then build professional digital products with our creation studio. Export and sell anywhere you want."
+      title: "Build & Launch",
+      description: "Use our Product Builder to create professional digital products—ebooks, prompt packs, courses, and more. Export, price, and sell anywhere."
     }
   ];
 
@@ -421,18 +427,26 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black leading-tight mb-4 sm:mb-6">
-          Market Research{" "}
-          <span className="text-uvz-orange">At Your Fingertips</span>
+          Find Profitable Niches &{" "}
+          <span className="text-uvz-orange">Build Digital Products</span>
               </h2>
             </motion.div>
             
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.6 }}
               className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium max-w-3xl mx-auto text-left sm:text-center px-2"
             >
               Validate your ideas in minutes, not months. Our AI finds <strong>profitable niches</strong>, scores your concepts, and helps you <strong>build digital products</strong>—all in one place.
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.45, duration: 0.6 }}
+              className="text-sm sm:text-base md:text-lg font-bold text-gray-500 max-w-2xl mx-auto px-2"
+            >
+              For entrepreneurs, creators, and side-hustlers ready to launch.
             </motion.p>
             
             <motion.div 
@@ -698,7 +712,7 @@ export default function Home() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-center mb-8 sm:mb-12 md:mb-16 uppercase">
             Everything You Need to <span className="text-uvz-orange"><HandDrawnUnderline delay={100}>Succeed</HandDrawnUnderline></span>
           </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
             {features.map((feature, i) => (
               <motion.div
                 key={i}
@@ -733,77 +747,6 @@ export default function Home() {
             ))}
           </div>
         </section>
-
-        {/* Pricing section removed */}
-          <div className="container mx-auto px-4 sm:px-6">
-
-
-            
-            {false && (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
-              {([] as any).map((plan: any, i: number) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className={`border-2 sm:border-3 md:border-4 border-black p-4 sm:p-6 md:p-8 bg-white shadow-brutal relative ${
-                    plan.popular ? "sm:col-span-2 lg:col-span-1 lg:-translate-y-4 lg:scale-105" : ""
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-uvz-orange text-white px-3 sm:px-6 py-1 sm:py-2 border-2 sm:border-4 border-black font-black uppercase text-xs sm:text-sm shadow-brutal">
-                      Most Popular
-                    </div>
-                  )}
-                  <div className="text-center mb-4 sm:mb-6 md:mb-8">
-                    <h3 className="text-xl sm:text-2xl font-black uppercase mb-1 sm:mb-2">{plan.name}</h3>
-                    <div className="text-3xl sm:text-4xl md:text-5xl font-black mb-1 sm:mb-2 flex items-center justify-center gap-2">
-                      {plan.originalPrice && (
-                        <span className="text-xl sm:text-2xl text-red-500 line-through">{plan.originalPrice}</span>
-                      )}
-                      <HandDrawnCircle delay={300 + i * 100}>{plan.price}</HandDrawnCircle>
-                    </div>
-                    <div className="text-xs sm:text-sm font-bold text-gray-600 uppercase">{plan.period}</div>
-                  </div>
-                  <p className="text-center font-medium mb-4 sm:mb-6 min-h-10 sm:min-h-12 text-sm sm:text-base">{plan.description}</p>
-                  <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
-                    {plan.features.map((feature: any, fi: number) => (
-                      <li key={fi} className="flex items-start gap-2">
-                        <Check className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 shrink-0 text-uvz-orange" strokeWidth={3} />
-                        <span className="font-medium text-xs sm:text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {plan.name === 'FREE' ? (
-                    <Link 
-                      href="/login" 
-                      className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${
-                        plan.popular ? "bg-uvz-orange text-white" : "bg-white text-black"
-                      }`}
-                    >
-                      {plan.cta}
-                    </Link>
-                  ) : (
-                    <Link
-                      href={`/login?returnTo=${encodeURIComponent(`/upgrade?plan=${plan.isLifetime ? 'lifetime' : 'monthly'}`)}`}
-                      className={`block text-center font-bold px-4 sm:px-6 py-2 sm:py-3 border-2 sm:border-4 border-black shadow-brutal hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000000] transition-all text-sm sm:text-base ${plan.popular ? 'bg-uvz-orange text-white' : 'bg-white text-black'}`}
-                    >
-                      {plan.cta}
-                    </Link>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-            )}
-
-            <div className="text-center mt-8 sm:mt-12 max-w-3xl mx-auto px-2">
-              <p className="text-xs sm:text-sm font-medium border-2 sm:border-4 border-black p-4 sm:p-6 bg-white shadow-brutal">
-                <strong>💡 How It Works:</strong> Free users get basic research capabilities. Pro users get unlimited AI research sessions, full builder access, advanced idea scoring, and everything you need to build profitable digital products.
-              </p>
-            </div>
-          </div>
 
         {/* CTA Section */}
         <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20 lg:py-32">
@@ -840,27 +783,26 @@ export default function Home() {
                 AI-powered platform for discovering profitable niches and launching digital product businesses.
               </p>
             </div>
-            
+
             <div>
               <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Product</h4>
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
-                <li><Link href="/features" className="hover:text-uvz-orange transition-colors">Features</Link></li>
+                <li><Link href="#features" className="hover:text-uvz-orange transition-colors">Features</Link></li>
                 <li><Link href="/upgrade" className="hover:text-uvz-orange transition-colors">Upgrade</Link></li>
                 <li><Link href="/login" className="hover:text-uvz-orange transition-colors">Idea Scorer</Link></li>
                 <li><Link href="/builder" className="hover:text-uvz-orange transition-colors">Product Builder</Link></li>
               </ul>
             </div>
-            
+
             <div>
-              <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Company</h4>
+              <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Get Started</h4>
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
-                <li><Link href="/about" className="hover:text-uvz-orange transition-colors">About Us</Link></li>
-                <li><Link href="/blog" className="hover:text-uvz-orange transition-colors">Blog</Link></li>
-                <li><Link href="/careers" className="hover:text-uvz-orange transition-colors">Careers</Link></li>
-                <li><Link href="/contact" className="hover:text-uvz-orange transition-colors">Contact</Link></li>
+                <li><Link href="/login" className="hover:text-uvz-orange transition-colors">Sign Up Free</Link></li>
+                <li><Link href="#daily-ideas" className="hover:text-uvz-orange transition-colors">Daily Ideas</Link></li>
+                <li><Link href="mailto:hello@manymarkets.com" className="hover:text-uvz-orange transition-colors">Contact Us</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h4 className="text-base sm:text-lg font-black mb-2 sm:mb-4 uppercase border-b-2 border-white pb-1 sm:pb-2">Legal</h4>
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
@@ -873,7 +815,7 @@ export default function Home() {
 
           <div className="border-t-2 border-white pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 sm:gap-6">
             <p className="font-medium text-gray-300 text-sm sm:text-base text-center md:text-left">
-              © 2025 ManyMarkets. All rights reserved.
+              © 2026 ManyMarkets. All rights reserved.
             </p>
             
             <div className="flex gap-3 sm:gap-4">
