@@ -1556,9 +1556,6 @@ function DailyIdeasContent() {
 
                         {activeTab === 'validation' && (
                           <div>
-                            {gatedSections.includes('validation_signals') ? (
-                              <GatedContent onUpgrade={() => setIsUpgradeModalOpen(true)} />
-                            ) : (
                               <div className="space-y-6">
                                 {/* Validation & Strategy Frameworks */}
                                 <h3 className="font-black text-lg flex items-center gap-2">
@@ -1771,15 +1768,11 @@ function DailyIdeasContent() {
                                   </div>
                                 )}
                               </div>
-                            )}
                           </div>
                         )}
 
                         {activeTab === 'products' && (
                           <div>
-                            {gatedSections.includes('product_ideas') ? (
-                              <GatedContent onUpgrade={() => setIsUpgradeModalOpen(true)} />
-                            ) : (
                               <div className="space-y-8">
                                 {/* Product Ideas Carousel */}
                                 {selectedIdea.product_ideas && selectedIdea.product_ideas.length > 0 && (
@@ -1902,7 +1895,6 @@ function DailyIdeasContent() {
                                   </div>
                                 )}
                               </div>
-                            )}
                           </div>
                         )}
                       </div>

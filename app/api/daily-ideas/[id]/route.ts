@@ -65,8 +65,8 @@ export async function GET(
         // Gated sections - show teaser only
         pain_points: (idea.pain_points as any[] || []).slice(0, 2), // Show first 2 only
         monetization_ideas: null, // Hidden
-        product_ideas: null, // Hidden
-        validation_signals: null, // Hidden
+        product_ideas: idea.product_ideas, // Shown to all users
+        validation_signals: idea.validation_signals, // Shown to all users
         full_research_report: null, // Hidden
         sources: null, // Hidden
         market_size: idea.market_size, // Shown blurred for free users
@@ -74,7 +74,7 @@ export async function GET(
       }, 
       isPro: false,
       gated: true,
-      gatedSections: ['monetization_ideas', 'product_ideas', 'validation_signals', 'full_research_report', 'market_size', 'growth_rate', 'sources', 'full_pain_points'],
+      gatedSections: ['monetization_ideas', 'full_research_report', 'market_size', 'growth_rate', 'sources', 'full_pain_points'],
     });
   }
   
