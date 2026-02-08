@@ -21,6 +21,23 @@ function LoginContent() {
   const returnTo = searchParams.get('returnTo') || '/chat';
   const restoreGuest = searchParams.get('restoreGuest') === 'true';
 
+  // Show URL-based errors (e.g. from OAuth redirect failures)
+  useEffect(() => {
+    const urlError = searchParams.get('error_description') || searchParams.get('error');
+    if (urlError) {
+      const friendlyMessages: Record<string, string> = {
+        'Database error saving new user': 'Something went wrong creating your account. Please try again.',
+        'server_error': 'A server error occurred. Please try again later.',
+        'unexpected_failure': 'An unexpected error occurred. Please try again.',
+      };
+      const message = friendlyMessages[urlError] || decodeURIComponent(urlError).replace(/\+/g, ' ');
+      setError(message);
+      // Clean up the URL
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, [searchParams]);
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -65,7 +82,15 @@ function LoginContent() {
       router.push(returnTo);
       router.refresh();
     } catch (error: any) {
-      setError(error.message || 'An error occurred');
+      const msg = error.message || 'An error occurred';
+      const friendlyErrors: Record<string, string> = {
+        'Invalid login credentials': 'Incorrect email or password. Please try again.',
+        'Email not confirmed': 'Please check your email and confirm your account first.',
+        'User already registered': 'This email is already registered. Try signing in instead.',
+        'Signup requires a valid password': 'Please enter a password with at least 6 characters.',
+        'Database error saving new user': 'Something went wrong creating your account. Please try again.',
+      };
+      setError(friendlyErrors[msg] || msg);
     } finally {
       setLoading(false);
     }

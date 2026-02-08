@@ -31,6 +31,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // If there's an auth error in URL params (e.g. failed signup), redirect to login with the error
+  const errorDescription = request.nextUrl.searchParams.get('error_description');
+  const errorCode = request.nextUrl.searchParams.get('error_code');
+  if (errorDescription && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    url.searchParams.set('error_description', errorDescription);
+    if (errorCode) url.searchParams.set('error_code', errorCode);
+    return NextResponse.redirect(url);
+  }
+
   // Protected routes
   const protectedPaths = ['/chat', '/builder', '/dashboard', '/settings'];
   const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path));
@@ -43,7 +54,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && request.nextUrl.pathname === '/login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/chat';
     return NextResponse.redirect(url);
   }
 
