@@ -1035,9 +1035,9 @@ function DailyIdeasContent() {
                           )}
                         </button>
                         
-                        <button
+                        <div
                           onClick={() => handleIdeaClick(idea)}
-                          className="w-full text-left"
+                          className="w-full text-left cursor-pointer"
                         >
                           <div className="flex items-start justify-between mb-3 pr-10">
                             <div className="flex flex-wrap items-center gap-2">
@@ -1107,7 +1107,7 @@ function DailyIdeasContent() {
                               </button>
                             </div>
                           </div>
-                        </button>
+                        </div>
                       </motion.div>
                     );
                   })}
