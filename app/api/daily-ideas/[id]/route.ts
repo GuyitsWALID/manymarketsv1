@@ -61,15 +61,16 @@ export async function GET(
         competition_level: idea.competition_level,
         trending_score: idea.trending_score,
         featured_date: idea.featured_date,
+        
         // Gated sections - show teaser only
         pain_points: (idea.pain_points as any[] || []).slice(0, 2), // Show first 2 only
         monetization_ideas: null, // Hidden
         product_ideas: null, // Hidden
         validation_signals: null, // Hidden
         full_research_report: null, // Hidden
-        market_size: null, // Hidden
-        growth_rate: null, // Hidden
         sources: null, // Hidden
+        market_size: idea.market_size, // Shown blurred for free users
+        growth_rate: idea.growth_rate, // Shown blurred for free users
       }, 
       isPro: false,
       gated: true,

@@ -1298,6 +1298,29 @@ function DailyIdeasContent() {
                                     </div>
                                   ))}
                                 </div>
+                                {gatedSections.includes('full_pain_points') && (
+                                  <div className="relative mt-3 min-h-[80px]">
+                                    <div className="blur-sm pointer-events-none opacity-50 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <div className="flex items-start gap-2 bg-red-50 p-3 rounded-xl">
+                                        <span className="text-red-500 mt-0.5">•</span>
+                                        <div className="h-4 bg-gray-300 rounded w-full"></div>
+                                      </div>
+                                      <div className="flex items-start gap-2 bg-red-50 p-3 rounded-xl">
+                                        <span className="text-red-500 mt-0.5">•</span>
+                                        <div className="h-4 bg-gray-300 rounded w-5/6"></div>
+                                      </div>
+                                    </div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <button
+                                        onClick={() => setIsUpgradeModalOpen(true)}
+                                        className="flex items-center gap-2 bg-white border-2 border-black rounded-lg px-4 py-2 font-bold text-sm shadow-brutal-sm hover:-translate-y-0.5 transition-all"
+                                      >
+                                        <Lock className="w-4 h-4 text-uvz-orange" />
+                                        Unlock All Pain Points
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -1305,6 +1328,29 @@ function DailyIdeasContent() {
                               <h3 className="font-black text-lg mb-2">Description</h3>
                               <p className="text-gray-700 whitespace-pre-wrap">{selectedIdea.description}</p>
                             </div>
+
+                            {/* Monetization Ideas - gated */}
+                            {gatedSections.includes('monetization_ideas') && (
+                              <div className="relative min-h-[120px]">
+                                <div className="blur-sm pointer-events-none opacity-50">
+                                  <h3 className="font-black text-lg mb-3">💰 Monetization Ideas</h3>
+                                  <div className="space-y-2">
+                                    <div className="bg-green-50 p-3 rounded-xl"><div className="h-4 bg-gray-300 rounded w-5/6"></div></div>
+                                    <div className="bg-green-50 p-3 rounded-xl"><div className="h-4 bg-gray-300 rounded w-3/4"></div></div>
+                                    <div className="bg-green-50 p-3 rounded-xl"><div className="h-4 bg-gray-300 rounded w-4/5"></div></div>
+                                  </div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <button
+                                    onClick={() => setIsUpgradeModalOpen(true)}
+                                    className="flex items-center gap-2 bg-white border-2 border-black rounded-lg px-4 py-2 font-bold text-sm shadow-brutal-sm hover:-translate-y-0.5 transition-all"
+                                  >
+                                    <Lock className="w-4 h-4 text-uvz-orange" />
+                                    Unlock Monetization Ideas
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1312,19 +1358,43 @@ function DailyIdeasContent() {
                           <div className="space-y-6">
                             {/* Key Metrics Grid */}
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200">
+                              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200 relative overflow-hidden">
                                 <div className="flex items-center gap-2 mb-2">
                                   <BarChart3 className="w-5 h-5 text-blue-600" />
                                   <p className="text-sm font-bold text-blue-800">Market Size</p>
                                 </div>
-                                <p className="font-black text-2xl text-blue-900">{selectedIdea.market_size || 'N/A'}</p>
+                                {gatedSections.includes('market_size') ? (
+                                  <div className="relative">
+                                    <p className="font-black text-2xl text-blue-900 blur-md select-none">{selectedIdea.market_size || '$—'}</p>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <span className="bg-uvz-orange text-white text-xs font-black px-2 py-1 rounded-full flex items-center gap-1">
+                                        <Crown className="w-3 h-3" />
+                                        PRO
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="font-black text-2xl text-blue-900">{selectedIdea.market_size || 'N/A'}</p>
+                                )}
                               </div>
-                              <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border-2 border-green-200">
+                              <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border-2 border-green-200 relative overflow-hidden">
                                 <div className="flex items-center gap-2 mb-2">
                                   <TrendingUp className="w-5 h-5 text-green-600" />
                                   <p className="text-sm font-bold text-green-800">Growth Rate</p>
                                 </div>
-                                <p className="font-black text-2xl text-green-900">{selectedIdea.growth_rate || 'N/A'}</p>
+                                {gatedSections.includes('growth_rate') ? (
+                                  <div className="relative">
+                                    <p className="font-black text-2xl text-green-900 blur-md select-none">{selectedIdea.growth_rate || '—%'}</p>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <span className="bg-uvz-orange text-white text-xs font-black px-2 py-1 rounded-full flex items-center gap-1">
+                                        <Crown className="w-3 h-3" />
+                                        PRO
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="font-black text-2xl text-green-900">{selectedIdea.growth_rate || 'N/A'}</p>
+                                )}
                               </div>
                             </div>
 
@@ -1431,7 +1501,7 @@ function DailyIdeasContent() {
                             </div>
 
                             {/* Market Analysis from Full Report */}
-                            {selectedIdea.full_research_report?.market_analysis && (
+                            {selectedIdea.full_research_report?.market_analysis ? (
                               <div className="bg-gray-50 p-5 rounded-xl border-2 border-gray-200">
                                 <h4 className="font-black text-lg mb-3">Market Analysis</h4>
                                 <p className="text-gray-700 mb-4">{selectedIdea.full_research_report.market_analysis.overview}</p>
@@ -1448,6 +1518,37 @@ function DailyIdeasContent() {
                                     </div>
                                   </div>
                                 )}
+                              </div>
+                            ) : gatedSections.includes('full_research_report') && (
+                              <div className="relative min-h-[160px]">
+                                <div className="blur-sm pointer-events-none opacity-50">
+                                  <div className="bg-gray-50 p-5 rounded-xl border-2 border-gray-200">
+                                    <h4 className="font-black text-lg mb-3">Market Analysis</h4>
+                                    <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
+                                    <div className="h-4 bg-gray-300 rounded w-5/6 mb-2"></div>
+                                    <div className="h-4 bg-gray-300 rounded w-3/4 mb-4"></div>
+                                    <p className="font-bold text-sm text-gray-600 mb-2">Key Trends:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      <span className="bg-white px-3 py-1 rounded-full text-sm border border-gray-300">AI Integration</span>
+                                      <span className="bg-white px-3 py-1 rounded-full text-sm border border-gray-300">Market Growth</span>
+                                      <span className="bg-white px-3 py-1 rounded-full text-sm border border-gray-300">Emerging Trends</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white border-4 border-black rounded-xl p-4 text-center shadow-brutal max-w-xs">
+                                    <Lock className="w-8 h-8 text-uvz-orange mx-auto mb-2" />
+                                    <h3 className="font-black text-base mb-1">Full Market Analysis</h3>
+                                    <p className="text-gray-600 text-xs mb-3">Unlock detailed market insights, trends & competitive analysis</p>
+                                    <button
+                                      onClick={() => setIsUpgradeModalOpen(true)}
+                                      className="w-full flex items-center justify-center gap-2 bg-uvz-orange text-white font-bold px-3 py-2 border-2 border-black rounded-lg shadow-brutal-sm hover:-translate-y-0.5 transition-all text-sm"
+                                    >
+                                      Upgrade to Pro
+                                      <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>
