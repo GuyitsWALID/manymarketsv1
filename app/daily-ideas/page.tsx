@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Sparkles, 
-  TrendingUp, 
-  Target, 
-  Users, 
+import {
+  Sparkles,
+  TrendingUp,
+  Target,
+  Users,
   Flame,
   Calendar,
   ChevronLeft,
@@ -26,7 +26,11 @@ import {
   Rocket,
   Bookmark,
   BookmarkCheck,
-  Loader2
+  Loader2,
+  Share2,
+  Copy,
+  Check,
+  Linkedin
 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -130,6 +134,46 @@ function DailyIdeasContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'market' | 'validation' | 'products'>('overview');
+  const [copiedIdeaId, setCopiedIdeaId] = useState<string | null>(null);
+
+  const getShareUrl = (ideaId: string) => `https://manymarkets.com/daily-ideas?id=${ideaId}`;
+
+  const getShareText = (idea: DailyIdea) => {
+    const score = computeTotalScore(idea);
+    return `${idea.name} — Opportunity Score: ${score}/10\n\n"${idea.one_liner}"\n\nFound this niche idea on ManyMarkets`;
+  };
+
+  const handleShareTwitter = (e: React.MouseEvent, idea: DailyIdea) => {
+    e.stopPropagation();
+    const text = encodeURIComponent(getShareText(idea));
+    const url = encodeURIComponent(getShareUrl(idea.id));
+    window.open(`https://x.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener');
+  };
+
+  const handleShareLinkedIn = (e: React.MouseEvent, idea: DailyIdea) => {
+    e.stopPropagation();
+    const url = encodeURIComponent(getShareUrl(idea.id));
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank', 'noopener');
+  };
+
+  const handleCopyLink = async (e: React.MouseEvent, idea: DailyIdea) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(getShareUrl(idea.id));
+      setCopiedIdeaId(idea.id);
+      setTimeout(() => setCopiedIdeaId(null), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = getShareUrl(idea.id);
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopiedIdeaId(idea.id);
+      setTimeout(() => setCopiedIdeaId(null), 2000);
+    }
+  };
 
   // Handle responsive - only run after hydration to prevent mismatch
   useEffect(() => {
@@ -1034,9 +1078,34 @@ function DailyIdeasContent() {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 text-xs text-gray-400 pt-3 border-t border-gray-100">
-                            <Calendar className="w-3 h-3" />
-                            <span>{new Date(idea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                          <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3 h-3" />
+                              <span>{new Date(idea.featured_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => handleShareTwitter(e, idea)}
+                                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                                title="Share on X"
+                              >
+                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                              </button>
+                              <button
+                                onClick={(e) => handleShareLinkedIn(e, idea)}
+                                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                                title="Share on LinkedIn"
+                              >
+                                <Linkedin className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => handleCopyLink(e, idea)}
+                                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                                title="Copy link"
+                              >
+                                {copiedIdeaId === idea.id ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                              </button>
+                            </div>
                           </div>
                         </button>
                       </motion.div>
@@ -1154,7 +1223,32 @@ function DailyIdeasContent() {
                     {/* Content */}
                     <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
                       <h2 className="text-2xl md:text-3xl font-black mb-2">{selectedIdea.name}</h2>
-                      <p className="text-lg text-gray-600 mb-6">{selectedIdea.one_liner}</p>
+                      <div className="flex items-center justify-between mb-6">
+                        <p className="text-lg text-gray-600">{selectedIdea.one_liner}</p>
+                        <div className="flex items-center gap-1 ml-4 shrink-0">
+                          <button
+                            onClick={(e) => handleShareTwitter(e, selectedIdea)}
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-black"
+                            title="Share on X"
+                          >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                          </button>
+                          <button
+                            onClick={(e) => handleShareLinkedIn(e, selectedIdea)}
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-blue-600"
+                            title="Share on LinkedIn"
+                          >
+                            <Linkedin className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => handleCopyLink(e, selectedIdea)}
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-black"
+                            title="Copy link"
+                          >
+                            {copiedIdeaId === selectedIdea.id ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
 
                       {/* Tabs */}
                       <div className="flex gap-1 md:gap-2 mb-6 overflow-x-auto pb-2">

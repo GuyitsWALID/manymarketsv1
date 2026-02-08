@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/manymarketsicon.jpg',
-    shortcut: '/manymarketsicon.jpg',
-    apple: '/manymarketsicon.jpg',
+    icon: '/favicon-96x96.png',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
   }
 };
 
@@ -59,9 +59,6 @@ export default function RootLayout({
         {process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_VERIFY ? (
           <meta name="payment-provider-verify" content={process.env.NEXT_PUBLIC_PAYMENT_PROVIDER_VERIFY} />
         ) : null}
-
-        {/* Canonical link */}
-        <link rel="canonical" href={baseUrl} />
 
         {/* Theme color */}
         <meta name="theme-color" content="#ffffff" />

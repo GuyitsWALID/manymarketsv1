@@ -220,6 +220,50 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans overflow-hidden">
+      {/* FAQ Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is ManyMarkets?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "ManyMarkets is an AI-powered platform that helps entrepreneurs discover profitable niches, validate business ideas, and build digital products like ebooks, prompt packs, courses, and more — all in one place."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does ManyMarkets find profitable niches?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "ManyMarkets uses a guided AI research chat that walks you through a 5-phase process: industry discovery, niche identification, unique value zone drilling, demand validation, and product ideation. It analyzes market signals to find underserved niches with real demand."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What digital products can I build with ManyMarkets?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "You can build over 10 types of digital products including ebooks, AI prompt packs, Notion templates, digital courses, design assets, printables, SaaS apps, software tools, and mobile apps — with AI-assisted content generation and professional export."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is ManyMarkets free to use?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes, ManyMarkets offers a free tier that includes research sessions, daily niche ideas, idea scoring, and a product builder trial. Pro plans unlock unlimited access to all tools and features."
+                }
+              }
+            ]
+          })
+        }}
+      />
       <PromoBanner />
       {/* Header */}
       <header style={{ top: 'var(--promo-banner-height, 3rem)' }} className="fixed left-0 w-full z-50 bg-white/80 backdrop-blur-sm ">
@@ -799,6 +843,7 @@ export default function Home() {
               <ul className="space-y-1 sm:space-y-2 font-medium text-sm sm:text-base">
                 <li><Link href="/login" className="hover:text-uvz-orange transition-colors">Sign Up Free</Link></li>
                 <li><Link href="#daily-ideas" className="hover:text-uvz-orange transition-colors">Daily Ideas</Link></li>
+                <li><Link href="/blog" className="hover:text-uvz-orange transition-colors">Blog</Link></li>
                 <li><Link href="mailto:hello@manymarkets.com" className="hover:text-uvz-orange transition-colors">Contact Us</Link></li>
               </ul>
             </div>
