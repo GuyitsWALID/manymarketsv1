@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Loader2, Bot, User, Rocket, Download, FileText, ChevronDown } from 'lucide-react';
+import { Sparkles, Send, Loader2, Bot, User, Rocket, Download, FileText, ChevronDown, TrendingUp, Lightbulb, Target, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -76,6 +76,23 @@ export default function ChatPage() {
   const [sourceIdeaId, setSourceIdeaId] = useState<string | null>(null);
   const [sourceProductIndex, setSourceProductIndex] = useState<number | null>(null);
   const [sourceIdeaResearch, setSourceIdeaResearch] = useState<string | null>(null);
+
+  // Pre-loaded research context card (from Daily Ideas deep-link)
+  const [researchContext, setResearchContext] = useState<{
+    ideaName: string;
+    oneLiner: string;
+    industry: string;
+    demandLevel: string;
+    competitionLevel: string;
+    trendingScore: string;
+    marketSize: string | null;
+    growthRate: string | null;
+    painPoints: string[];
+    validationSignals: string[];
+    productIdeas: string[];
+    selectedProduct: { name: string; type: string; description: string } | null;
+    contextText: string; // full text to prepend when user sends first message
+  } | null>(null);
 
   // Query params for deep-linking from Daily Ideas (read on client to avoid SSR prerender issues)
   const [searchParamsState, setSearchParamsState] = useState<URLSearchParams | null>(null);
@@ -372,14 +389,21 @@ export default function ChatPage() {
       sessionId = await createDbSession(text);
     }
 
-    // Send message via AI SDK
-    sendMessage({ text });
+    // If there's pre-loaded research context, prepend it to the first message so the AI has full context
+    let messageForAI = text;
+    if (researchContext && messages.length === 0) {
+      messageForAI = researchContext.contextText + text;
+      setResearchContext(null); // Clear context card after sending
+    }
 
-    // Save user message to database
+    // Send message via AI SDK (with hidden context prepended)
+    sendMessage({ text: messageForAI });
+
+    // Save user message to database (save the visible text only, not the hidden context)
     if (sessionId) {
       await saveMessageToDb(sessionId, 'user', text);
     }
-  }, [dbSessionId, currentUser, createDbSession, sendMessage, saveMessageToDb]);
+  }, [dbSessionId, currentUser, createDbSession, sendMessage, saveMessageToDb, researchContext, messages.length]);
 
   // Save assistant response when streaming completes
   useEffect(() => {
@@ -630,6 +654,101 @@ export default function ChatPage() {
     }
   }, [loadSession]);
 
+  // Build research context card data + hidden context text for the AI
+  const buildResearchContext = useCallback((idea: any, gated: string[], product: any | null) => {
+    // Build the full context text that will be prepended to the user's first message
+    const lines: string[] = [];
+    const sections: string[] = [];
+    const addLine = (label: string, value: any) => {
+      if (value === undefined || value === null || value === '') return;
+      lines.push(`${label}: ${value}`);
+    };
+
+    addLine('Idea', idea.name);
+    addLine('One-liner', idea.one_liner);
+    addLine('Industry', idea.industry);
+    addLine('Demand level', idea.demand_level);
+    addLine('Competition level', idea.competition_level);
+    addLine('Trending score', idea.trending_score);
+    if (!gated.includes('market_size')) addLine('Market size', idea.market_size);
+    if (!gated.includes('growth_rate')) addLine('Growth rate', idea.growth_rate);
+
+    if (idea.pain_points && idea.pain_points.length > 0) {
+      const points = idea.pain_points.map((p: any) => {
+        const title = p.title || p.point || p;
+        const desc = p.description ? ` — ${p.description}` : '';
+        return `- ${title}${desc}`;
+      }).join('\n');
+      const truncated = gated.includes('full_pain_points') ? ' (showing first few)' : '';
+      sections.push(`Pain points${truncated}:\n${points}`);
+    }
+
+    if (idea.validation_signals && idea.validation_signals.length > 0) {
+      const signals = idea.validation_signals.map((s: any) => {
+        const label = s.type || s.signal || s;
+        const detail = s.description || s.evidence || '';
+        return detail ? `- ${label}: ${detail}` : `- ${label}`;
+      }).join('\n');
+      sections.push(`Validation signals:\n${signals}`);
+    }
+
+    if (idea.product_ideas && idea.product_ideas.length > 0 && !product) {
+      const names = idea.product_ideas.slice(0, 5).map((p: any) => `- ${p.name || p}`).join('\n');
+      sections.push(`Product ideas (sample):\n${names}`);
+    }
+
+    if (!gated.includes('full_research_report') && idea.full_research_report) {
+      const report = typeof idea.full_research_report === 'string'
+        ? idea.full_research_report
+        : JSON.stringify(idea.full_research_report, null, 2);
+      sections.push(`Full research report:\n${report}`);
+    }
+
+    if (product) {
+      const productLines: string[] = [];
+      const addProduct = (label: string, value: any) => {
+        if (value === undefined || value === null || value === '') return;
+        productLines.push(`${label}: ${value}`);
+      };
+      addProduct('Selected product', product.name);
+      addProduct('Tagline', product.tagline);
+      addProduct('Type', product.type);
+      addProduct('Description', product.description);
+      if (product.core_features && product.core_features.length > 0) {
+        const features = product.core_features.slice(0, 6).map((f: string) => `- ${f}`).join('\n');
+        productLines.push(`Core features:\n${features}`);
+      }
+      addProduct('Price point', product.price_point);
+      addProduct('Build time', product.build_time);
+      sections.push(`Selected product context:\n${productLines.join('\n')}`);
+    }
+
+    const contextBlock = [lines.join('\n'), sections.join('\n\n')].filter(Boolean).join('\n\n');
+
+    const contextText = `IMPORTANT: This chat starts with pre-loaded research from a Daily AI Idea. Skip discovery/niche phases — the idea and data are already provided below. Jump straight to analysis.\n\n--- RESEARCH CONTEXT ---\n${contextBlock}\n--- END CONTEXT ---\n\n`;
+
+    // Build card data for display
+    const painPointLabels = (idea.pain_points || []).map((p: any) => String(p.title || p.point || p));
+    const signalLabels = (idea.validation_signals || []).map((s: any) => String(s.type || s.signal || s));
+    const productNames = (idea.product_ideas || []).slice(0, 5).map((p: any) => String(p.name || p));
+
+    return {
+      ideaName: idea.name || '',
+      oneLiner: idea.one_liner || '',
+      industry: idea.industry || '',
+      demandLevel: idea.demand_level || '',
+      competitionLevel: idea.competition_level || '',
+      trendingScore: idea.trending_score || '',
+      marketSize: !gated.includes('market_size') ? (idea.market_size || null) : null,
+      growthRate: !gated.includes('growth_rate') ? (idea.growth_rate || null) : null,
+      painPoints: painPointLabels,
+      validationSignals: signalLabels,
+      productIdeas: product ? [] : productNames,
+      selectedProduct: product ? { name: product.name, type: product.type || '', description: product.description || '' } : null,
+      contextText,
+    };
+  }, []);
+
   // Deep-linking: start a research chat from Daily Ideas (idea + optional productIndex or product JSON)
   useEffect(() => {
     // Only run once per idea param
@@ -645,7 +764,7 @@ export default function ChatPage() {
           console.error('Failed to fetch idea for deep-linking');
           return;
         }
-        const { idea } = await res.json();
+        const { idea, gatedSections: gated = [] } = await res.json();
 
         // Determine selected product
         let product = null;
@@ -667,20 +786,18 @@ export default function ChatPage() {
           }
         }
 
-        // Compose initial message with full research + product context
-        const research = typeof idea.full_research_report === 'string' ? idea.full_research_report : JSON.stringify(idea.full_research_report, null, 2);
-        let initialMessage = `Research Request: ${idea.name}\n\nOne-liner: ${idea.one_liner}\n\nFull Research:\n${research}`;
+        // Build research context for display card + AI context
+        const ctx = buildResearchContext(idea, gated, product);
+        const research = !gated.includes('full_research_report') && idea.full_research_report
+          ? (typeof idea.full_research_report === 'string'
+            ? idea.full_research_report
+            : JSON.stringify(idea.full_research_report, null, 2))
+          : null;
 
         // Save source idea context to allow converting research -> builder later
         setSourceIdeaId(idea.id || null);
         setSourceProductIndex(idxUsed);
-        setSourceIdeaResearch(research);
-
-        if (product) {
-          initialMessage += `\n\nSelected Product: ${product.name} - ${product.tagline || ''}\n${product.description || ''}\n\nPlease analyze this product opportunity: market, competitors, pricing, monetization, go-to-market strategies, validation experiments, and provide a prioritized 30/60/90 day plan with actionable next steps.`;
-        } else {
-          initialMessage += `\n\nPlease analyze this idea and suggest product concepts, market strategies, and validation steps with actionable next steps.`;
-        }
+        setSourceIdeaResearch(research || null);
 
         // Create a new session in the DB
         const title = `Research: ${idea.name}`;
@@ -700,17 +817,17 @@ export default function ChatPage() {
         // Reset UI state and start a fresh chat transport
         const newChatId = `uvz-chat-${Date.now()}`;
         setMessages([]);
-        setInput('');
         setDbSessionId(session.id);
         if (typeof window !== 'undefined') localStorage.setItem('uvz_active_session', session.id);
         setChatSessionId(newChatId);
         setSessions(prev => [session, ...prev]);
 
-        // Send the initial message and save it
-        requestAnimationFrame(() => {
-          sendMessage({ text: initialMessage });
-          saveMessageToDb(session.id, 'user', initialMessage).catch(err => console.error('Error saving initial research message:', err));
-        });
+        // Set the research context card + prefill the input with a starter prompt
+        setResearchContext(ctx);
+        const starterPrompt = product
+          ? `Analyze the "${product.name}" product opportunity for the "${idea.name}" niche — cover market fit, competitors, pricing, and a 30/60/90-day launch plan.`
+          : `Analyze the "${idea.name}" opportunity — cover market potential, competitors, monetization strategies, and give me a 30/60/90-day action plan.`;
+        setInput(starterPrompt);
 
         // Clean up URL (remove query params)
         router.replace('/chat');
@@ -718,7 +835,7 @@ export default function ChatPage() {
         console.error('Error starting research chat from link:', err);
       }
     })();
-  }, [ideaParam, productIndexParam, productParam, router, saveMessageToDb, sendMessage, setMessages]);
+  }, [ideaParam, productIndexParam, productParam, router, saveMessageToDb, sendMessage, setMessages, buildResearchContext]);
 
   // Delete session
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -978,8 +1095,127 @@ export default function ChatPage() {
               </div>
             )}
 
+            {/* Research Context Card (from Daily Ideas deep-link) */}
+            {researchContext && messages.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-3xl mx-auto mb-6"
+              >
+                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 border-2 border-black rounded-2xl shadow-brutal overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-uvz-orange px-5 py-3 flex items-center gap-3">
+                    <Lightbulb className="w-6 h-6 text-white" />
+                    <div>
+                      <p className="text-white font-black text-lg">{researchContext.ideaName}</p>
+                      <p className="text-white/80 text-sm">{researchContext.oneLiner}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-4">
+                    {/* Key Stats */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+                        <p className="text-xs text-gray-500 font-bold mb-1">Industry</p>
+                        <p className="font-black text-sm">{researchContext.industry}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+                        <p className="text-xs text-gray-500 font-bold mb-1">Demand</p>
+                        <p className="font-black text-sm">{researchContext.demandLevel || 'N/A'}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+                        <p className="text-xs text-gray-500 font-bold mb-1">Competition</p>
+                        <p className="font-black text-sm">{researchContext.competitionLevel || 'N/A'}</p>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+                        <p className="text-xs text-gray-500 font-bold mb-1">Trending</p>
+                        <p className="font-black text-sm">{researchContext.trendingScore || 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    {/* Market Size & Growth */}
+                    {(researchContext.marketSize || researchContext.growthRate) && (
+                      <div className="flex gap-3">
+                        {researchContext.marketSize && (
+                          <div className="flex-1 bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-green-600 shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 font-bold">Market Size</p>
+                              <p className="font-black text-sm text-green-700">{researchContext.marketSize}</p>
+                            </div>
+                          </div>
+                        )}
+                        {researchContext.growthRate && (
+                          <div className="flex-1 bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-blue-600 shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 font-bold">Growth Rate</p>
+                              <p className="font-black text-sm text-blue-700">{researchContext.growthRate}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Pain Points */}
+                    {researchContext.painPoints.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1">
+                          <Target className="w-3 h-3" /> Pain Points
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {researchContext.painPoints.slice(0, 4).map((p, i) => (
+                            <span key={i} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded-full font-bold">
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Validation Signals */}
+                    {researchContext.validationSignals.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Validation Signals
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {researchContext.validationSignals.slice(0, 4).map((s, i) => (
+                            <span key={i} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded-full font-bold">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selected Product */}
+                    {researchContext.selectedProduct && (
+                      <div className="bg-white border border-blue-200 rounded-xl p-3">
+                        <p className="text-xs font-bold text-gray-500 mb-1">Selected Product</p>
+                        <p className="font-black">{researchContext.selectedProduct.name}</p>
+                        {researchContext.selectedProduct.type && (
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">
+                            {researchContext.selectedProduct.type}
+                          </span>
+                        )}
+                        {researchContext.selectedProduct.description && (
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{researchContext.selectedProduct.description}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Hint */}
+                    <p className="text-xs text-gray-400 text-center">
+                      Research context loaded \u2022 Edit the prompt below and press Send to start
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Empty state */}
-            {messages.length === 0 && (
+            {messages.length === 0 && !researchContext && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
