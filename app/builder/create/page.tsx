@@ -66,6 +66,35 @@ function CreateProductContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Read research context from sessionStorage (set by chat page when navigating to builder)
+  useEffect(() => {
+    if (isLoading) return;
+    try {
+      const stored = typeof window !== 'undefined' && sessionStorage.getItem('builder_research_context');
+      if (stored) {
+        sessionStorage.removeItem('builder_research_context');
+        const ctx = JSON.parse(stored);
+        setProductData(prev => {
+          const updates: Record<string, string> = { ...prev };
+          if (ctx.uvzSummary && !updates['uvz-summary']) updates['uvz-summary'] = ctx.uvzSummary;
+          if (ctx.competitorGaps && !updates['competitor-gaps']) updates['competitor-gaps'] = ctx.competitorGaps;
+          if (ctx.targetAudience && !updates['target-audience'] && !updates['target_audience']) {
+            updates['target-audience'] = ctx.targetAudience;
+            updates['target_audience'] = ctx.targetAudience;
+          }
+          if (ctx.coreProblem && !updates['problem_statement'] && !updates['problem']) {
+            updates['problem_statement'] = ctx.coreProblem;
+            updates['problem'] = ctx.coreProblem;
+            updates['core_problem'] = ctx.coreProblem;
+          }
+          return updates;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to read builder research context:', e);
+    }
+  }, [isLoading]);
+
   // Prefill builder when deep-linked from Daily Ideas: ?idea=<id>&productIndex=<i>
   useEffect(() => {
     const ideaParam = searchParams.get('idea');
@@ -109,6 +138,40 @@ function CreateProductContent() {
         const solutionText = product.description || (idea.full_research_report && (idea.full_research_report.solution_overview || idea.full_research_report.solution)) || '';
         const targetText = product.target_users || idea.target_audience || (idea.full_research_report && (idea.full_research_report.target_audience || idea.full_research_report.targetUsers)) || '';
 
+        // Build UVZ summary from idea research
+        const uvzParts: string[] = [];
+        if (idea.one_liner) uvzParts.push(`Idea: ${idea.one_liner}`);
+        if (idea.industry) uvzParts.push(`Industry: ${idea.industry}`);
+        if (idea.market_size) uvzParts.push(`Market Size: ${idea.market_size}`);
+        if (idea.growth_rate) uvzParts.push(`Growth Rate: ${idea.growth_rate}`);
+        if (idea.demand_level) uvzParts.push(`Demand Level: ${idea.demand_level}`);
+        if (idea.competition_level) uvzParts.push(`Competition Level: ${idea.competition_level}`);
+        if (idea.pain_points && idea.pain_points.length > 0) {
+          const painLabels = idea.pain_points.map((p: any) => p.title || p.point || p);
+          uvzParts.push(`Key Pain Points: ${painLabels.join(', ')}`);
+        }
+        if (idea.validation_signals && idea.validation_signals.length > 0) {
+          const sigLabels = idea.validation_signals.map((s: any) => s.type || s.signal || s);
+          uvzParts.push(`Validation Signals: ${sigLabels.join(', ')}`);
+        }
+        // Include core problem as part of UVZ context
+        if (idea.core_problem) uvzParts.push(`Core Problem: ${idea.core_problem}`);
+        const uvzSummary = uvzParts.join('\n');
+
+        // Build competitor weaknesses from research
+        const gapParts: string[] = [];
+        if (idea.full_research_report) {
+          const report = idea.full_research_report;
+          if (report.competitor_gaps) gapParts.push(typeof report.competitor_gaps === 'string' ? report.competitor_gaps : JSON.stringify(report.competitor_gaps));
+          if (report.competitor_weaknesses) gapParts.push(typeof report.competitor_weaknesses === 'string' ? report.competitor_weaknesses : JSON.stringify(report.competitor_weaknesses));
+          if (report.competitive_landscape) gapParts.push(typeof report.competitive_landscape === 'string' ? report.competitive_landscape : JSON.stringify(report.competitive_landscape));
+          if (report.competition_analysis) gapParts.push(typeof report.competition_analysis === 'string' ? report.competition_analysis : JSON.stringify(report.competition_analysis));
+        }
+        if (gapParts.length === 0 && idea.competition_level) {
+          gapParts.push(`Competition Level: ${idea.competition_level} — Look for gaps in existing solutions that are too expensive, complex, or missing key integrations.`);
+        }
+        const competitorGaps = gapParts.join('\n\n');
+
         setProductData({
           // Primary fields
           name: product.name || idea.name || `${idea.name} Product`,
@@ -135,6 +198,10 @@ function CreateProductContent() {
           core_features: (product.core_features && product.core_features.slice(0, 6).join(', ')) || '',
           sourceIdeaName: idea.name || '',
           sourceIdeaId: idea.id || '',
+
+          // UVZ and Competitor fields (pre-filled from research)
+          'uvz-summary': uvzSummary,
+          'competitor-gaps': competitorGaps,
         });
 
         // Set a helpful default build prompt so the builder has direction immediately

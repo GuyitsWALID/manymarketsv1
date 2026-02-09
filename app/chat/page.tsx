@@ -1353,6 +1353,36 @@ export default function ChatPage() {
                 </div>
                 <button
                   onClick={() => {
+                    // Store research context for the builder to pick up
+                    try {
+                      // Build UVZ summary from chat messages
+                      const allAssistantText = messages
+                        .filter(m => m.role === 'assistant')
+                        .map(m => (m.parts || []).filter((p: any) => p.type === 'text').map((p: any) => p.text).join(''))
+                        .join('\n');
+                      const researchCtx: Record<string, string> = {};
+
+                      // If we have source idea research, use it as UVZ base
+                      if (sourceIdeaResearch) {
+                        researchCtx.uvzSummary = sourceIdeaResearch.slice(0, 3000);
+                      } else if (allAssistantText) {
+                        // Extract key insights from chat conversation
+                        researchCtx.uvzSummary = allAssistantText.slice(0, 3000);
+                      }
+
+                      // Try to find competitor info from assistant messages
+                      const competitorMatch = allAssistantText.match(/(?:competitor|competition|competing|alternative|rival)[\s\S]{0,2000}/i);
+                      if (competitorMatch) {
+                        researchCtx.competitorGaps = competitorMatch[0].slice(0, 2000);
+                      }
+
+                      if (Object.keys(researchCtx).length > 0) {
+                        sessionStorage.setItem('builder_research_context', JSON.stringify(researchCtx));
+                      }
+                    } catch (e) {
+                      console.error('Failed to store research context for builder:', e);
+                    }
+
                     // If this session originated from a Daily Idea, route to builder with that idea + productIndex
                     if (sourceIdeaId) {
                       const q = `/builder/create?idea=${sourceIdeaId}${sourceProductIndex !== null ? `&productIndex=${sourceProductIndex}` : ''}`;
