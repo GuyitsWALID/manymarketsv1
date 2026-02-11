@@ -109,18 +109,35 @@ export async function POST(request: NextRequest) {
       return 'other';
     };
 
-    // Map product type to valid enum values
+    // Map product type to valid values - use ProductTypeId directly when possible
     const mapProductType = (type: string | undefined): string | null => {
       if (!type) return null;
-      const lower = type.toLowerCase();
-      if (lower === 'saas' || lower === 'software') return 'saas';
-      if (lower === 'course' || lower === 'online course') return 'course';
-      if (lower === 'ebook' || lower === 'e-book' || lower === 'book' || lower === 'guide') return 'ebook';
-      if (lower === 'template' || lower === 'templates') return 'template';
-      if (lower === 'community' || lower === 'membership') return 'community';
-      if (lower === 'marketplace') return 'marketplace';
-      if (lower === 'tool') return 'tool';
-      if (lower === 'mobile_app' || lower === 'app') return 'mobile_app';
+      const lower = type.toLowerCase().trim();
+      
+      // Direct matches for all known ProductTypeId values
+      const knownTypes = [
+        'ebook', 'mini-guide', 'notion-template', 'ai-prompts',
+        'digital-course', 'design-assets', 'software-tool', 'printables',
+        'mobile-app', 'saas', 'spreadsheet-template', 'automation-workflow',
+        'chrome-extension'
+      ];
+      if (knownTypes.includes(lower)) return lower;
+      
+      // Fuzzy matches for legacy/alternate forms
+      if (lower === 'e-book' || lower === 'book' || lower === 'guide') return 'ebook';
+      if (lower === 'software' || lower === 'web app' || lower === 'webapp') return 'saas';
+      if (lower === 'course' || lower === 'online course') return 'digital-course';
+      if (lower === 'template' || lower === 'templates') return 'notion-template';
+      if (lower === 'tool' || lower === 'extension') return 'software-tool';
+      if (lower === 'mobile_app' || lower === 'app') return 'mobile-app';
+      if (lower === 'community' || lower === 'membership') return 'saas';
+      if (lower === 'marketplace') return 'saas';
+      if (lower === 'prompts' || lower === 'prompt pack') return 'ai-prompts';
+      if (lower === 'spreadsheet' || lower === 'excel' || lower === 'google sheets') return 'spreadsheet-template';
+      if (lower === 'automation' || lower === 'workflow' || lower === 'zapier') return 'automation-workflow';
+      if (lower === 'chrome' || lower === 'browser extension') return 'chrome-extension';
+      if (lower === 'printable' || lower === 'planner') return 'printables';
+      if (lower === 'design' || lower === 'icons' || lower === 'ui kit') return 'design-assets';
       return 'other';
     };
 

@@ -9,7 +9,23 @@ export type ProductTypeId =
   | 'software-tool'
   | 'printables'
   | 'mobile-app'
-  | 'saas';
+  | 'saas'
+  | 'spreadsheet-template'
+  | 'automation-workflow'
+  | 'chrome-extension';
+
+// Product type categories for routing builder workflows
+export type ProductCategory = 'content' | 'software' | 'template' | 'tools-pack';
+
+export function getProductCategory(productTypeId: string): ProductCategory {
+  const softwareTypes = ['saas', 'software-tool', 'mobile-app', 'chrome-extension'];
+  const templateTypes = ['notion-template', 'spreadsheet-template'];
+  const toolsPackTypes = ['ai-prompts', 'automation-workflow'];
+  if (softwareTypes.includes(productTypeId)) return 'software';
+  if (templateTypes.includes(productTypeId)) return 'template';
+  if (toolsPackTypes.includes(productTypeId)) return 'tools-pack';
+  return 'content';
+}
 
 export interface ProductTypeConfig {
   id: ProductTypeId;
@@ -174,6 +190,42 @@ export const AI_TOOLS: AITool[] = [
     url: 'https://figma.com',
     bestFor: ['UI/UX', 'Prototypes', 'Design Systems'],
     category: 'design',
+  },
+  {
+    id: 'google-sheets',
+    name: 'Google Sheets',
+    icon: '/tools/google-sheets.svg',
+    description: 'Spreadsheet creation and automation',
+    url: 'https://sheets.google.com',
+    bestFor: ['Spreadsheets', 'Data Analysis', 'Templates'],
+    category: 'all-in-one',
+  },
+  {
+    id: 'make',
+    name: 'Make (Integromat)',
+    icon: '/tools/make.svg',
+    description: 'Visual automation platform',
+    url: 'https://make.com',
+    bestFor: ['Workflow Automation', 'Integrations', 'No-Code'],
+    category: 'all-in-one',
+  },
+  {
+    id: 'n8n',
+    name: 'n8n',
+    icon: '/tools/n8n.svg',
+    description: 'Open-source workflow automation',
+    url: 'https://n8n.io',
+    bestFor: ['Self-hosted Automation', 'Workflows', 'APIs'],
+    category: 'all-in-one',
+  },
+  {
+    id: 'zapier',
+    name: 'Zapier',
+    icon: '/tools/zapier.svg',
+    description: 'Connect apps and automate workflows',
+    url: 'https://zapier.com',
+    bestFor: ['App Integrations', 'Automation', 'No-Code'],
+    category: 'all-in-one',
   },
 ];
 
@@ -1123,18 +1175,431 @@ Target Users: {{audience}}
 
 Build this complete mobile app with all features.`,
   },
+  // Mini Guide - slimmed-down ebook
+  {
+    id: 'mini-guide',
+    name: 'Mini Guide',
+    icon: '📖',
+    description: 'Short, focused guides and PDF resources (5-20 pages)',
+    difficulty: 'beginner',
+    estimatedTime: '1-5 days',
+    requiredSkills: ['writing'],
+    deliverables: ['PDF Guide', 'Cover design', 'Sales page copy'],
+    monetization: ['One-time purchase', 'Lead magnet', 'Bundle with other guides'],
+    aiTools: ['claude', 'chatgpt', 'canva'],
+    steps: [
+      {
+        id: 'concept',
+        name: 'Concept & Outline',
+        description: 'Define your guide\'s focus and structure',
+        aiAssisted: true,
+        estimatedMinutes: 15,
+        tasks: [
+          { id: 'title', title: 'Guide Title', description: 'A clear, benefit-driven title', type: 'input', required: true, placeholder: 'e.g., "5 Steps to Better Sleep Tonight"' },
+          { id: 'target-audience', title: 'Target Reader', description: 'Who is this guide for?', type: 'textarea', required: true, placeholder: 'Describe your ideal reader...' },
+          { id: 'problem', title: 'Core Problem', description: 'What problem does this guide solve?', type: 'textarea', required: true, placeholder: 'The specific pain point your readers face...' },
+          { id: 'outline', title: 'Section Outline', description: 'AI will generate a concise outline', type: 'ai-generate', required: true, aiPrompt: 'Generate a focused outline for a short mini-guide (5-20 pages). Keep it concise and actionable.' },
+        ],
+      },
+      {
+        id: 'content',
+        name: 'Content Creation',
+        description: 'Write your guide content',
+        aiAssisted: true,
+        estimatedMinutes: 120,
+        tasks: [
+          { id: 'intro', title: 'Introduction', description: 'Quick hook and promise', type: 'ai-generate', required: true, aiPrompt: 'Write a short, punchy introduction for this mini-guide (1-2 pages max)' },
+          { id: 'chapters', title: 'Section Content', description: 'Generate content for each section', type: 'ai-generate', required: true, aiPrompt: 'Write concise, actionable content for each section of this mini-guide' },
+          { id: 'conclusion', title: 'Conclusion & CTA', description: 'Wrap up with clear next steps', type: 'ai-generate', required: true, aiPrompt: 'Write a brief conclusion with a strong call-to-action' },
+        ],
+      },
+      {
+        id: 'launch',
+        name: 'Design & Launch',
+        description: 'Format and publish your guide',
+        aiAssisted: true,
+        estimatedMinutes: 30,
+        tasks: [
+          { id: 'cover', title: 'Cover Design', description: 'Create an attractive cover', type: 'ai-generate', required: true, aiPrompt: 'Generate cover design concepts for this mini-guide' },
+          { id: 'description', title: 'Sales Description', description: 'Product listing copy', type: 'ai-generate', required: true, aiPrompt: 'Write a compelling sales description for this mini-guide' },
+          { id: 'pricing', title: 'Price', description: 'Set your price', type: 'select', required: true, options: ['Free (Lead Magnet)', '$5', '$9', '$15', '$19', 'Custom'] },
+        ],
+      },
+    ],
+    promptTemplate: `Create a focused mini-guide: {{title}}
+
+## TARGET AUDIENCE
+{{target-audience}}
+
+## CORE PROBLEM SOLVED
+{{problem}}
+
+## GUIDE SPECIFICATIONS
+- Length: 5-20 pages
+- Format: PDF
+- Style: Concise, actionable, scannable
+
+## CONTENT STRUCTURE
+{{outline}}
+
+## REQUIREMENTS
+- Keep each section focused and practical
+- Include actionable takeaways
+- Use bullet points and numbered lists
+- Add tips and pro-tips callouts
+
+Generate the complete mini-guide content.`,
+  },
+  // Spreadsheet Template
+  {
+    id: 'spreadsheet-template',
+    name: 'Spreadsheet Template',
+    icon: '📊',
+    description: 'Google Sheets or Excel templates with formulas, dashboards, and automation',
+    difficulty: 'beginner',
+    estimatedTime: '3-10 days',
+    requiredSkills: ['research', 'teaching'],
+    deliverables: ['Google Sheet / Excel template', 'Setup guide', 'Video walkthrough'],
+    monetization: ['One-time purchase', 'Template bundles', 'Premium support'],
+    aiTools: ['google-sheets', 'claude', 'chatgpt', 'canva'],
+    steps: [
+      {
+        id: 'concept',
+        name: 'Template Concept',
+        description: 'Define what your spreadsheet will help users achieve',
+        aiAssisted: true,
+        estimatedMinutes: 20,
+        tasks: [
+          { id: 'name', title: 'Template Name', description: 'Clear, benefit-focused name', type: 'input', required: true, placeholder: 'e.g., "Freelancer Income & Expense Tracker"' },
+          { id: 'category', title: 'Category', description: 'What type of template?', type: 'select', required: true, options: ['Budget & Finance', 'Project Management', 'CRM & Sales', 'Inventory Tracking', 'Data Analytics', 'HR & Hiring', 'Marketing Dashboard', 'Content Calendar', 'Habit Tracker', 'Business Metrics', 'Other'] },
+          { id: 'platform', title: 'Platform', description: 'Where will users use this?', type: 'select', required: true, options: ['Google Sheets only', 'Excel only', 'Google Sheets + Excel', 'Airtable'] },
+          { id: 'problem', title: 'Problem Solved', description: 'What pain point does this solve?', type: 'textarea', required: true, placeholder: 'The specific problem users face without this template...' },
+          { id: 'features', title: 'Key Features', description: 'Main features and capabilities', type: 'ai-generate', required: true, aiPrompt: 'Generate key features for this spreadsheet template, including automation features and formula-driven insights' },
+        ],
+      },
+      {
+        id: 'structure',
+        name: 'Sheet Structure',
+        description: 'Plan the sheets, columns, and formulas',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'sheets', title: 'Sheet Layout', description: 'Define all sheets and their purpose', type: 'ai-generate', required: true, aiPrompt: 'Create a detailed sheet layout with sheet names, columns, and data types. Include a Dashboard sheet with summary metrics.' },
+          { id: 'formulas', title: 'Key Formulas & Functions', description: 'Essential formulas to include', type: 'ai-generate', required: true, aiPrompt: 'Generate the key formulas needed (SUMIFS, VLOOKUP, ArrayFormulas, conditional formatting rules). Include the actual formula syntax.' },
+          { id: 'validation', title: 'Data Validation Rules', description: 'Dropdowns and validation', type: 'ai-generate', required: true, aiPrompt: 'Define data validation rules, dropdown options, and input constraints to prevent user errors' },
+          { id: 'charts', title: 'Charts & Visualizations', description: 'Dashboard charts to include', type: 'ai-generate', required: false, aiPrompt: 'Suggest charts and visual elements for the dashboard (chart types, data ranges, formatting)' },
+        ],
+      },
+      {
+        id: 'build',
+        name: 'Build Template',
+        description: 'Create the actual spreadsheet',
+        aiAssisted: false,
+        estimatedMinutes: 180,
+        tasks: [
+          { id: 'create-sheets', title: 'Create Sheets', description: 'Build out all sheets with headers', type: 'checklist', required: true },
+          { id: 'add-formulas', title: 'Add Formulas', description: 'Implement all formulas and automations', type: 'checklist', required: true },
+          { id: 'formatting', title: 'Conditional Formatting', description: 'Add color coding and visual cues', type: 'checklist', required: true },
+          { id: 'sample-data', title: 'Add Sample Data', description: 'Pre-fill with realistic example data', type: 'checklist', required: true },
+          { id: 'protect', title: 'Protect Sheets', description: 'Lock formula cells, protect structure', type: 'checklist', required: true },
+        ],
+      },
+      {
+        id: 'package',
+        name: 'Package & Launch',
+        description: 'Prepare documentation and launch',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'guide', title: 'Setup Guide', description: 'Step-by-step setup instructions', type: 'ai-generate', required: true, aiPrompt: 'Write a comprehensive setup guide explaining how to duplicate/download the template, customize it, and start entering data' },
+          { id: 'video', title: 'Video Walkthrough', description: 'Record a template demo', type: 'checklist', required: false },
+          { id: 'description', title: 'Sales Description', description: 'Product listing copy', type: 'ai-generate', required: true, aiPrompt: 'Write a compelling product description highlighting the automation features, formula-driven insights, and time saved. Optimize for Gumroad/Etsy.' },
+          { id: 'pricing', title: 'Pricing', description: 'Set your price', type: 'select', required: true, options: ['$9', '$15', '$19', '$29', '$39', 'Custom'] },
+        ],
+      },
+    ],
+    promptTemplate: `Create a spreadsheet template: {{name}}
+
+## TEMPLATE PURPOSE
+Category: {{category}}
+Platform: {{platform}}
+Problem Solved: {{problem}}
+
+## KEY FEATURES
+{{features}}
+
+## SHEET STRUCTURE
+{{sheets}}
+
+## FORMULAS & FUNCTIONS
+{{formulas}}
+
+## DATA VALIDATION
+{{validation}}
+
+## REQUIREMENTS
+- Dashboard with key metrics at a glance
+- Conditional formatting for visual clarity
+- Data validation to prevent errors
+- Sample data pre-filled
+- Formula cells protected from editing
+- Clean, professional formatting
+- Mobile-friendly layout
+
+Generate the complete template specification with exact formulas and sheet structures.`,
+  },
+  // Automation Workflow
+  {
+    id: 'automation-workflow',
+    name: 'Automation Workflow',
+    icon: '⚡',
+    description: 'Zapier, Make, or n8n automation templates that save users hours of manual work',
+    difficulty: 'intermediate',
+    estimatedTime: '3-10 days',
+    requiredSkills: ['coding', 'research'],
+    deliverables: ['Workflow template', 'Setup guide', 'Troubleshooting doc', 'Video walkthrough'],
+    monetization: ['One-time purchase', 'Bundle packs', 'Setup-as-a-service'],
+    aiTools: ['zapier', 'make', 'n8n', 'claude', 'chatgpt'],
+    steps: [
+      {
+        id: 'concept',
+        name: 'Workflow Concept',
+        description: 'Define the automation use case',
+        aiAssisted: true,
+        estimatedMinutes: 20,
+        tasks: [
+          { id: 'name', title: 'Workflow Name', description: 'Clear, descriptive name', type: 'input', required: true, placeholder: 'e.g., "Auto-Post Blog to Social Media Pipeline"' },
+          { id: 'platform', title: 'Automation Platform', description: 'Which platform to build on?', type: 'select', required: true, options: ['Zapier', 'Make (Integromat)', 'n8n', 'Power Automate', 'Multiple Platforms'] },
+          { id: 'use-case', title: 'Use Case', description: 'What does this automate?', type: 'textarea', required: true, placeholder: 'Describe the manual process this replaces (e.g., "Every time a new blog post is published, manually create social posts for Twitter, LinkedIn, and schedule them")' },
+          { id: 'audience', title: 'Target User', description: 'Who needs this automation?', type: 'textarea', required: true, placeholder: 'e.g., "Solo content creators who publish 2-4 blog posts per week and waste 2+ hours on social media distribution"' },
+          { id: 'triggers', title: 'Triggers & Actions', description: 'Key triggers and automated actions', type: 'ai-generate', required: true, aiPrompt: 'Identify the triggers (events that start the workflow) and actions (what happens automatically). List the apps/services involved.' },
+        ],
+      },
+      {
+        id: 'design',
+        name: 'Workflow Design',
+        description: 'Map out the complete automation flow',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'steps', title: 'Workflow Steps', description: 'Detailed step-by-step workflow', type: 'ai-generate', required: true, aiPrompt: 'Design the complete workflow with numbered steps. For each step specify: trigger/action type, app/service used, data mapping, and conditional logic (if any).' },
+          { id: 'integrations', title: 'Integration Requirements', description: 'Apps and API connections needed', type: 'ai-generate', required: true, aiPrompt: 'List all required app integrations, API credentials, and permissions needed. Include setup instructions for each connection.' },
+          { id: 'error-handling', title: 'Error Handling', description: 'How to handle failures', type: 'ai-generate', required: true, aiPrompt: 'Design error handling for each step: retry logic, fallback actions, error notifications, and common failure scenarios with solutions.' },
+          { id: 'data-mapping', title: 'Data Transformations', description: 'How data flows between steps', type: 'ai-generate', required: false, aiPrompt: 'Define data transformations between steps: field mapping, data formatting, filtering rules, and any text/data manipulation needed.' },
+        ],
+      },
+      {
+        id: 'build',
+        name: 'Build & Test',
+        description: 'Implement and test the workflow',
+        aiAssisted: true,
+        estimatedMinutes: 120,
+        tasks: [
+          { id: 'implement', title: 'Build Workflow', description: 'Create the workflow on chosen platform', type: 'checklist', required: true },
+          { id: 'test-scenarios', title: 'Test Scenarios', description: 'Test cases to validate', type: 'ai-generate', required: true, aiPrompt: 'Generate test scenarios: happy path, edge cases, error conditions, and rate limit testing. Include expected inputs and outputs for each.' },
+          { id: 'test-run', title: 'Run Tests', description: 'Execute test scenarios', type: 'checklist', required: true },
+          { id: 'optimize', title: 'Optimize', description: 'Reduce steps and improve speed', type: 'checklist', required: false },
+        ],
+      },
+      {
+        id: 'package',
+        name: 'Package & Launch',
+        description: 'Document and prepare for sale',
+        aiAssisted: true,
+        estimatedMinutes: 60,
+        tasks: [
+          { id: 'guide', title: 'Setup Guide', description: 'Step-by-step setup instructions', type: 'ai-generate', required: true, aiPrompt: 'Write a detailed setup guide: prerequisites, step-by-step setup, connecting apps, configuring triggers/actions, testing checklist, and going live.' },
+          { id: 'troubleshoot', title: 'Troubleshooting Guide', description: 'Common issues and fixes', type: 'ai-generate', required: true, aiPrompt: 'Create a troubleshooting guide with common issues, error messages, and their solutions. Include FAQ section.' },
+          { id: 'video', title: 'Demo Video', description: 'Record a setup walkthrough', type: 'checklist', required: false },
+          { id: 'description', title: 'Product Description', description: 'Sales copy for listing', type: 'ai-generate', required: true, aiPrompt: 'Write a compelling product description emphasizing time saved, manual steps eliminated, and ROI. Include "before vs after" comparison.' },
+          { id: 'pricing', title: 'Pricing', description: 'Set your price', type: 'select', required: true, options: ['$19', '$29', '$39', '$49', '$79', 'Custom'] },
+        ],
+      },
+    ],
+    promptTemplate: `Create an automation workflow: {{name}}
+
+## PLATFORM
+{{platform}}
+
+## USE CASE
+{{use-case}}
+
+## TARGET USER
+{{audience}}
+
+## TRIGGERS & ACTIONS
+{{triggers}}
+
+## WORKFLOW STEPS
+{{steps}}
+
+## INTEGRATIONS REQUIRED
+{{integrations}}
+
+## ERROR HANDLING
+{{error-handling}}
+
+## REQUIREMENTS
+- Clear trigger conditions
+- Proper error handling at each step
+- Rate limit awareness
+- Data validation between steps
+- Notification on failure
+- Easy to customize for different use cases
+
+Generate the complete workflow specification with exact configuration for each step.`,
+  },
+  // Chrome Extension
+  {
+    id: 'chrome-extension',
+    name: 'Chrome Extension',
+    icon: '🧩',
+    description: 'Browser extensions for Chrome/Edge with popup, sidebar, or content script functionality',
+    difficulty: 'intermediate',
+    estimatedTime: '1-3 weeks',
+    requiredSkills: ['coding'],
+    deliverables: ['Working extension', 'Chrome Web Store listing', 'Privacy policy', 'Documentation'],
+    monetization: ['Freemium', 'One-time purchase', 'Subscription', 'Open source + premium'],
+    aiTools: ['cursor', 'claude', 'bolt', 'v0', 'chatgpt'],
+    steps: [
+      {
+        id: 'research-context',
+        name: 'Research Context',
+        description: 'Import your UVZ research to inform the extension',
+        aiAssisted: true,
+        estimatedMinutes: 15,
+        tasks: [
+          { id: 'uvz-summary', title: 'Your UVZ', description: 'What makes your idea unique?', type: 'textarea', required: false, placeholder: 'Paste your UVZ research summary here (optional but recommended)...' },
+          { id: 'target-audience', title: 'Target Audience', description: 'Who will use this extension?', type: 'textarea', required: true, placeholder: 'Be specific: "Remote workers who use Google Docs daily and need better document organization"' },
+          { id: 'competitor-gaps', title: 'Competitor Weaknesses', description: 'What are existing extensions missing?', type: 'textarea', required: false, placeholder: 'Current extensions are too bloated, have privacy issues, or lack key features...' },
+        ],
+      },
+      {
+        id: 'concept',
+        name: 'Extension Definition',
+        description: 'Define your Chrome extension clearly',
+        aiAssisted: true,
+        estimatedMinutes: 25,
+        tasks: [
+          { id: 'name', title: 'Extension Name', description: 'Clear, memorable name', type: 'input', required: true, placeholder: 'e.g., "TabFlow", "ClipSaver", "PagePulse"' },
+          { id: 'tagline', title: 'One-Line Pitch', description: 'Explain it in one sentence', type: 'input', required: true, placeholder: 'e.g., "Organize your tabs with AI-powered grouping"' },
+          { id: 'type', title: 'Extension Type', description: 'How will users interact?', type: 'select', required: true, options: ['Popup (toolbar button)', 'Sidebar Panel', 'Content Script (page overlay)', 'New Tab Override', 'DevTools Panel', 'Background Service', 'Context Menu Actions', 'Omnibox (address bar)'] },
+          { id: 'problem', title: 'Core Problem', description: 'The specific problem you solve', type: 'textarea', required: true, placeholder: 'Describe the exact pain point in the browser workflow.' },
+        ],
+      },
+      {
+        id: 'features',
+        name: 'Feature Planning',
+        description: 'Define MVP features',
+        aiAssisted: true,
+        estimatedMinutes: 30,
+        tasks: [
+          { id: 'core-features', title: 'MVP Features (Max 5)', description: 'Essential features for v1', type: 'ai-generate', required: true, aiPrompt: 'Generate 3-5 focused MVP features for this Chrome extension. Keep minimal — only what delivers core value.' },
+          { id: 'permissions', title: 'Permissions Needed', description: 'Chrome API permissions', type: 'ai-generate', required: true, aiPrompt: 'List the required Chrome extension permissions (e.g., activeTab, storage, tabs, contextMenus) and justify why each is needed. Minimize permissions for user trust.' },
+          { id: 'differentiators', title: 'Key Differentiators', description: 'What makes yours better?', type: 'ai-generate', required: true, aiPrompt: 'Based on competitor gaps, list 2-3 specific ways this extension will be different/better than alternatives.' },
+        ],
+      },
+      {
+        id: 'technical',
+        name: 'Technical Specification',
+        description: 'Architecture and Chrome APIs',
+        aiAssisted: true,
+        estimatedMinutes: 40,
+        tasks: [
+          { id: 'manifest', title: 'Manifest.json Structure', description: 'Extension manifest configuration', type: 'ai-generate', required: true, aiPrompt: 'Generate the complete manifest.json (v3) including: permissions, content_scripts, background service worker, action/popup, and any web_accessible_resources needed.' },
+          { id: 'architecture', title: 'Architecture', description: 'Component architecture', type: 'ai-generate', required: true, aiPrompt: 'Design the extension architecture: background script responsibilities, content script injection, popup/sidebar UI, message passing between components, and storage strategy (chrome.storage.local vs sync).' },
+          { id: 'tech-stack', title: 'Tech Stack', description: 'Development tools', type: 'ai-generate', required: true, aiPrompt: 'Recommend tech stack: build tool (Vite/Webpack/Plasmo), UI framework (React/Vue/Vanilla), TypeScript usage, and testing approach for Chrome extensions.' },
+        ],
+      },
+      {
+        id: 'build-prompts',
+        name: 'Build Prompts',
+        description: 'Generate prompts for AI coding tools',
+        aiAssisted: true,
+        estimatedMinutes: 25,
+        tasks: [
+          { id: 'master-prompt', title: 'Master Build Prompt', description: 'Complete prompt for AI tools', type: 'ai-generate', required: true, aiPrompt: 'Generate a comprehensive, copy-paste-ready prompt for AI coding tools that builds the complete Chrome extension. Include manifest, all scripts, popup/sidebar UI, message passing, and storage.' },
+          { id: 'cursor-prompt', title: 'Cursor/Claude Prompt', description: 'Optimized for Cursor AI', type: 'ai-generate', required: true, aiPrompt: 'Adapt the prompt for Cursor: file structure for Chrome extension, implementation order (manifest → background → content → popup), and Cursor-specific tips.' },
+        ],
+      },
+      {
+        id: 'launch-prep',
+        name: 'Launch Preparation',
+        description: 'Chrome Web Store submission',
+        aiAssisted: true,
+        estimatedMinutes: 45,
+        tasks: [
+          { id: 'store-listing', title: 'Web Store Listing', description: 'Chrome Web Store description', type: 'ai-generate', required: true, aiPrompt: 'Write a Chrome Web Store listing: short description (132 chars), full description, feature bullet points, and category recommendation.' },
+          { id: 'privacy-policy', title: 'Privacy Policy', description: 'Required for Web Store', type: 'ai-generate', required: true, aiPrompt: 'Generate a privacy policy for this Chrome extension. Cover: data collected, how data is used, third-party sharing, storage location, and user rights. Keep it honest and minimal.' },
+          { id: 'screenshots', title: 'Screenshots & Assets', description: 'Store listing images', type: 'checklist', required: true },
+          { id: 'pricing', title: 'Monetization', description: 'Revenue model', type: 'ai-generate', required: true, aiPrompt: 'Design a monetization strategy: free vs premium features, pricing tiers, and payment integration approach for a Chrome extension.' },
+        ],
+      },
+    ],
+    promptTemplate: `# {{name}} - Chrome Extension Build Specification
+
+## EXTENSION OVERVIEW
+**Name:** {{name}}
+**Tagline:** {{tagline}}
+**Type:** {{type}}
+**Problem:** {{problem}}
+
+## RESEARCH CONTEXT
+**Target Audience:** {{target-audience}}
+**UVZ:** {{uvz-summary}}
+**Competitor Gaps:** {{competitor-gaps}}
+
+## MVP FEATURES
+{{core-features}}
+
+## PERMISSIONS
+{{permissions}}
+
+## TECHNICAL SPECIFICATION
+### Manifest.json
+{{manifest}}
+
+### Architecture
+{{architecture}}
+
+### Tech Stack
+{{tech-stack}}
+
+## BUILD INSTRUCTIONS
+Build this Chrome extension (Manifest V3) with all features working.
+
+### Project Structure
+- manifest.json
+- src/background/service-worker.ts
+- src/content/content-script.ts
+- src/popup/popup.html + popup.ts (or React)
+- src/styles/
+- src/utils/storage.ts
+- src/utils/messaging.ts
+
+### Key Requirements
+- Manifest V3 (service workers, not background pages)
+- Minimal permissions (request only what's needed)
+- Proper message passing between background/content/popup
+- chrome.storage for persistent data
+- Clean, responsive popup UI
+- Error handling and graceful degradation
+- Works on Chrome and Edge
+
+Build the complete extension ready for Chrome Web Store submission.`,
+  },
 ];
 
 // Helper function to get recommended product types based on skills
 export function getRecommendedProductTypes(skills: string[], experience: string): ProductTypeConfig[] {
   const skillMap: Record<string, ProductTypeId[]> = {
     'writing': ['ebook', 'mini-guide', 'ai-prompts', 'digital-course'],
-    'design': ['notion-template', 'design-assets', 'printables', 'digital-course'],
-    'coding': ['saas', 'software-tool', 'mobile-app'],
+    'design': ['notion-template', 'design-assets', 'printables', 'digital-course', 'spreadsheet-template'],
+    'coding': ['saas', 'software-tool', 'mobile-app', 'chrome-extension', 'automation-workflow'],
     'video': ['digital-course'],
-    'teaching': ['digital-course', 'ebook', 'notion-template'],
-    'marketing': ['ai-prompts', 'notion-template', 'ebook'],
-    'research': ['ebook', 'ai-prompts', 'digital-course'],
+    'teaching': ['digital-course', 'ebook', 'notion-template', 'spreadsheet-template'],
+    'marketing': ['ai-prompts', 'notion-template', 'ebook', 'automation-workflow'],
+    'research': ['ebook', 'ai-prompts', 'digital-course', 'spreadsheet-template'],
     'community': ['digital-course', 'saas'],
   };
 

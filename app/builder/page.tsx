@@ -8,7 +8,7 @@ import BuilderHeader from '@/components/builder/BuilderHeader';
 import BuilderSidebar from '@/components/builder/BuilderSidebar';
 import ProductTypeBuilder from '@/components/builder/ProductTypeBuilder';
 import AIToolSelector from '@/components/builder/AIToolSelector';
-import { PRODUCT_TYPES, ProductTypeConfig } from '@/lib/product-types';
+import { PRODUCT_TYPES, ProductTypeConfig, getProductCategory } from '@/lib/product-types';
 import {
   generateComprehensiveSaaSPrompt, 
   createPromptConfigFromProduct,
@@ -258,45 +258,44 @@ interface Product {
   updated_at: string;
 }
 
-// Default steps for content-based products (ebook, course, etc.)
-const CONTENT_PRODUCT_STEPS = [
-  { id: 'overview', name: 'Overview', icon: Target },
-  { id: 'content', name: 'Content Plan', icon: FileText },
-  { id: 'structure', name: 'Structure', icon: Lightbulb },
-  { id: 'assets', name: 'Assets', icon: Zap },
-  { id: 'export', name: 'Export', icon: Rocket },
-];
+// Dashboard navigation steps per product category
+const CATEGORY_STEPS: Record<string, { id: string; name: string; icon: React.ComponentType<{ className?: string }> }[]> = {
+  content: [
+    { id: 'overview', name: 'Overview', icon: Target },
+    { id: 'content', name: 'Content Plan', icon: FileText },
+    { id: 'structure', name: 'Structure', icon: Lightbulb },
+    { id: 'assets', name: 'Assets', icon: Zap },
+    { id: 'export', name: 'Export', icon: Rocket },
+  ],
+  software: [
+    { id: 'overview', name: 'Overview', icon: Target },
+    { id: 'features', name: 'Features & PRD', icon: FileText },
+    { id: 'technical', name: 'Technical Spec', icon: Settings },
+    { id: 'design', name: 'Design System', icon: Sparkles },
+    { id: 'build', name: 'Build Prompts', icon: Wrench },
+    { id: 'export', name: 'Launch', icon: Rocket },
+  ],
+  template: [
+    { id: 'overview', name: 'Overview', icon: Target },
+    { id: 'structure', name: 'Template Structure', icon: FileText },
+    { id: 'databases', name: 'Schema & Views', icon: Lightbulb },
+    { id: 'content', name: 'Sample Content', icon: BookOpen },
+    { id: 'export', name: 'Export', icon: Rocket },
+  ],
+  'tools-pack': [
+    { id: 'overview', name: 'Overview', icon: Target },
+    { id: 'content', name: 'Content Planning', icon: FileText },
+    { id: 'structure', name: 'Structure', icon: Lightbulb },
+    { id: 'assets', name: 'Assets', icon: Zap },
+    { id: 'export', name: 'Export', icon: Rocket },
+  ],
+};
 
-// Enhanced steps for software/SaaS products - comprehensive PRD workflow
-const SOFTWARE_PRODUCT_STEPS = [
-  { id: 'overview', name: 'Overview', icon: Target },
-  { id: 'features', name: 'Features & PRD', icon: FileText },
-  { id: 'technical', name: 'Technical Spec', icon: Settings },
-  { id: 'design', name: 'Design System', icon: Sparkles },
-  { id: 'build', name: 'Build Prompts', icon: Wrench },
-  { id: 'export', name: 'Launch', icon: Rocket },
-];
-
-// Steps for Notion templates (structure focused)
-const NOTION_TEMPLATE_STEPS = [
-  { id: 'overview', name: 'Overview', icon: Target },
-  { id: 'structure', name: 'Template Structure', icon: FileText },
-  { id: 'databases', name: 'Databases & Views', icon: Lightbulb },
-  { id: 'content', name: 'Sample Content', icon: BookOpen },
-  { id: 'export', name: 'Export', icon: Rocket },
-];
-
-// Get steps based on product type
+// Get steps based on product type using the category system
 const getProductSteps = (productType: string | undefined) => {
-  const softwareTypes = ['saas', 'software-tool', 'mobile-app'];
-  const notionTypes = ['notion-template'];
-  if (productType && softwareTypes.includes(productType)) {
-    return SOFTWARE_PRODUCT_STEPS;
-  }
-  if (productType && notionTypes.includes(productType)) {
-    return NOTION_TEMPLATE_STEPS;
-  }
-  return CONTENT_PRODUCT_STEPS;
+  if (!productType) return CATEGORY_STEPS.content;
+  const category = getProductCategory(productType);
+  return CATEGORY_STEPS[category] || CATEGORY_STEPS.content;
 };
 
 // Get product type config
@@ -307,15 +306,21 @@ const getProductTypeConfig = (productType: string | undefined): ProductTypeConfi
 
 const PRODUCT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   ebook: Book,
+  'mini-guide': Book,
   course: Video,
   template: FileText,
   'notion-template': FileText,
+  'spreadsheet-template': BarChart3,
   saas: Code,
   'software-tool': Code,
+  'chrome-extension': Code,
   'mobile-app': Code,
+  'automation-workflow': Zap,
   community: Users,
   'ai-prompts': Sparkles,
   'digital-course': Video,
+  'design-assets': Sparkles,
+  printables: FileText,
   default: Sparkles,
 };
 

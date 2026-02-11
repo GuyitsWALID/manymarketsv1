@@ -174,10 +174,6 @@ Create a comprehensive product structure with:
 - For courses: Modules, lessons, exercises
 - For templates: Categories, template types, variations
 - For SaaS: Features, user flows, screens
-
-Respond ONLY with valid JSON (no markdown, no explanation):
-{
-  "product_structure": {
     "type": "ebook|course|template|saas",
     "parts": [
       {
@@ -544,6 +540,203 @@ Respond ONLY with valid JSON (no markdown):
         return NextResponse.json({ success: true, structure: result.structure });
       } else {
         throw new Error('Failed to parse Notion template structure');
+      }
+    } else if (type === 'spreadsheet-structure') {
+      // Generate spreadsheet template structure
+      prompt = `You are an expert spreadsheet designer and data analyst. Create a comprehensive Google Sheets/Excel template specification for "${product.name}".
+
+PRODUCT DETAILS:
+Name: ${product.name}
+Description: ${product.description || 'Not specified'}
+Target Users: ${product.raw_analysis?.targetAudience || 'General users'}
+Problem Solved: ${product.raw_analysis?.problemSolved || 'Not specified'}
+Core Features: ${product.core_features?.join(', ') || 'Not specified'}
+
+Design a professional spreadsheet template with:
+1. Multiple sheets with clear purposes
+2. Key formulas (SUMIFS, VLOOKUP, ArrayFormulas, etc.)
+3. Data validation rules (dropdowns, input constraints)
+4. A Dashboard sheet with charts and summary metrics
+5. Sample data for each sheet
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "sheets": [
+    {
+      "name": "Sheet name",
+      "purpose": "What this sheet does",
+      "columns": [
+        {"name": "Column name", "type": "text|number|date|currency|dropdown|formula", "description": "What this column stores"}
+      ],
+      "sample_rows": 3
+    }
+  ],
+  "formulas": [
+    {"sheet": "Sheet name", "cell": "D2", "formula": "=SUMIFS(...)", "description": "What it calculates"}
+  ],
+  "validation_rules": [
+    {"sheet": "Sheet name", "column": "Status", "type": "dropdown", "options": ["Active", "Completed", "On Hold"]}
+  ],
+  "dashboard": {
+    "metrics": ["Total Revenue", "Monthly Growth", "Active Items"],
+    "charts": [
+      {"type": "bar|pie|line|area", "title": "Chart title", "data_source": "Which sheet/columns"}
+    ]
+  },
+  "conditional_formatting": [
+    {"sheet": "Sheet name", "rule": "Highlight overdue items in red"}
+  ],
+  "setup_instructions": ["Step 1: Make a copy", "Step 2: Clear sample data", "Step 3: Enter your data"]
+}`;
+
+      const text = await generateWithFallback(prompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result.structure = JSON.parse(jsonMatch[0]);
+        await supabase
+          .from('product_ideas')
+          .update({
+            raw_analysis: { ...product.raw_analysis, structure: result.structure },
+          })
+          .eq('id', id)
+          .eq('user_id', user.id);
+        return NextResponse.json({ success: true, structure: result.structure });
+      } else {
+        throw new Error('Failed to parse spreadsheet template structure');
+      }
+    } else if (type === 'automation-workflow-structure') {
+      // Generate automation workflow structure
+      prompt = `You are an expert workflow automation designer. Create a comprehensive automation workflow specification for "${product.name}".
+
+WORKFLOW DETAILS:
+Name: ${product.name}
+Description: ${product.description || 'Not specified'}
+Target Users: ${product.raw_analysis?.targetAudience || 'General users'}
+Problem Solved: ${product.raw_analysis?.problemSolved || 'Not specified'}
+Core Features: ${product.core_features?.join(', ') || 'Not specified'}
+
+Design a professional automation workflow with:
+1. Step-by-step flow (trigger → actions → output)
+2. Required app integrations and API connections
+3. Error handling at each step
+4. Data mapping between steps
+5. Test scenarios
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "workflow_name": "${product.name}",
+  "trigger": {"app": "App name", "event": "Trigger event", "config": "Configuration details"},
+  "steps": [
+    {
+      "step": 1,
+      "type": "trigger|action|filter|delay|branch",
+      "app": "App/service name",
+      "action": "What this step does",
+      "data_in": "Input fields",
+      "data_out": "Output fields",
+      "error_handling": "What happens on failure"
+    }
+  ],
+  "integrations": [
+    {"app": "App name", "permissions_needed": ["permission1"], "setup_notes": "How to connect"}
+  ],
+  "error_handling": {
+    "retry_policy": "Retry 3 times with exponential backoff",
+    "failure_notification": "Send email/Slack notification",
+    "fallback_actions": ["Log error", "Skip step"]
+  },
+  "test_scenarios": [
+    {"name": "Happy path", "input": "Sample input", "expected_output": "Expected result"},
+    {"name": "Error case", "input": "Bad input", "expected_output": "Error handled gracefully"}
+  ],
+  "setup_instructions": ["Step 1: Connect apps", "Step 2: Configure trigger", "Step 3: Test workflow"]
+}`;
+
+      const text = await generateWithFallback(prompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result.structure = JSON.parse(jsonMatch[0]);
+        await supabase
+          .from('product_ideas')
+          .update({
+            raw_analysis: { ...product.raw_analysis, structure: result.structure },
+          })
+          .eq('id', id)
+          .eq('user_id', user.id);
+        return NextResponse.json({ success: true, structure: result.structure });
+      } else {
+        throw new Error('Failed to parse automation workflow structure');
+      }
+    } else if (type === 'chrome-extension-structure') {
+      // Generate Chrome extension specification
+      prompt = `You are an expert Chrome extension developer. Create a comprehensive extension specification for "${product.name}".
+
+EXTENSION DETAILS:
+Name: ${product.name}
+Tagline: ${product.tagline || 'Not specified'}
+Description: ${product.description || 'Not specified'}
+Target Users: ${product.raw_analysis?.targetAudience || 'General users'}
+Problem Solved: ${product.raw_analysis?.problemSolved || 'Not specified'}
+Core Features: ${product.core_features?.join(', ') || 'Not specified'}
+
+Design a Chrome extension (Manifest V3) with:
+1. Complete manifest.json configuration
+2. Component architecture (background, content scripts, popup/sidebar)
+3. Tech stack recommendation
+4. Key screens and user flows
+5. Chrome Web Store listing copy
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "manifest": {
+    "manifest_version": 3,
+    "permissions": ["activeTab", "storage"],
+    "content_scripts": [{"matches": ["https://*/*"], "js": ["content.js"]}],
+    "background": {"service_worker": "background.js"},
+    "action": {"default_popup": "popup.html", "default_icon": "icon.png"}
+  },
+  "architecture": {
+    "components": [
+      {"name": "Background Service Worker", "purpose": "Handles events and API calls", "file": "src/background.ts"},
+      {"name": "Content Script", "purpose": "Interacts with web pages", "file": "src/content.ts"},
+      {"name": "Popup UI", "purpose": "Main user interface", "file": "src/popup/"}
+    ],
+    "message_passing": "Background ↔ Content via chrome.runtime, Popup ↔ Background via chrome.runtime",
+    "storage": "chrome.storage.local for user data, chrome.storage.sync for settings"
+  },
+  "tech_stack": {
+    "build_tool": "Vite with CRXJS plugin",
+    "ui_framework": "React + TypeScript",
+    "styling": "Tailwind CSS",
+    "testing": "Vitest + Playwright"
+  },
+  "screens": [
+    {"name": "Popup", "purpose": "Main controls", "elements": ["Feature toggle", "Settings link", "Status indicator"]},
+    {"name": "Options Page", "purpose": "User preferences", "elements": ["API key input", "Theme selector"]}
+  ],
+  "web_store_listing": {
+    "short_description": "132-char description",
+    "full_description": "Detailed description with features",
+    "category": "Productivity",
+    "keywords": ["keyword1", "keyword2"]
+  },
+  "setup_instructions": ["Step 1: Clone repo", "Step 2: npm install", "Step 3: npm run dev", "Step 4: Load unpacked in chrome://extensions"]
+}`;
+
+      const text = await generateWithFallback(prompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result.structure = JSON.parse(jsonMatch[0]);
+        await supabase
+          .from('product_ideas')
+          .update({
+            raw_analysis: { ...product.raw_analysis, structure: result.structure },
+          })
+          .eq('id', id)
+          .eq('user_id', user.id);
+        return NextResponse.json({ success: true, structure: result.structure });
+      } else {
+        throw new Error('Failed to parse Chrome extension structure');
       }
     } else {
       return NextResponse.json({ error: 'Invalid generation type' }, { status: 400 });
