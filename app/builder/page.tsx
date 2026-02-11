@@ -451,8 +451,12 @@ function BuilderContent() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
-  // Computed values for product type
-  const isSoftwareProduct = ['software-tool', 'mobile-app', 'saas'].includes(currentProduct?.product_type || '');
+  // Computed values for product type (using category system)
+  const productCategory = getProductCategory(currentProduct?.product_type || '');
+  const isSoftwareProduct = productCategory === 'software';
+  const isTemplateProduct = productCategory === 'template';
+  const isContentProduct = productCategory === 'content';
+  const isToolsPackProduct = productCategory === 'tools-pack';
 
   useEffect(() => {
     function handleResize() {
@@ -2452,8 +2456,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 1: Content Plan (for content products) or Features (for software) */}
-                    {currentStep === 1 && !['saas', 'software-tool', 'mobile-app', 'notion-template'].includes(currentProduct.product_type || '') && (
+                    {/* Step 1: Content Plan (for content & tools-pack products) */}
+                    {currentStep === 1 && (isContentProduct || isToolsPackProduct) && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Content Plan</h2>
                         <p className="text-gray-600 mb-6">
@@ -2837,7 +2841,7 @@ function BuilderContent() {
                     )}
 
                     {/* Step 1: Features & PRD (for software products) */}
-                    {currentStep === 1 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                    {currentStep === 1 && isSoftwareProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Features & PRD</h2>
                         <p className="text-gray-600 mb-6">
@@ -3028,7 +3032,7 @@ function BuilderContent() {
                     )}
 
                     {/* Step 2: Technical Spec (for software products) */}
-                    {currentStep === 2 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                    {currentStep === 2 && isSoftwareProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Technical Specification</h2>
                         <p className="text-gray-600 mb-6">
@@ -3197,7 +3201,7 @@ function BuilderContent() {
                     )}
 
                     {/* Step 3: Design System (for software products) */}
-                    {currentStep === 3 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                    {currentStep === 3 && isSoftwareProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Design System</h2>
                         <p className="text-gray-600 mb-6">
@@ -3322,7 +3326,7 @@ function BuilderContent() {
                     )}
 
                     {/* Step 4: Build Prompts (for software products) */}
-                    {currentStep === 4 && ['saas', 'software-tool', 'mobile-app'].includes(currentProduct.product_type || '') && (
+                    {currentStep === 4 && isSoftwareProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">AI Build Prompts</h2>
                         <p className="text-gray-600 mb-6">
@@ -3395,31 +3399,32 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 1: Template Structure (for Notion templates) */}
-                    {currentStep === 1 && currentProduct.product_type === 'notion-template' && (
+                    {/* Step 1: Template Structure (for template products) */}
+                    {currentStep === 1 && isTemplateProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Template Structure</h2>
                         <p className="text-gray-600 mb-6">
-                          Design the pages, databases, and layout of your Notion template.
+                          Design the structure and layout of your {currentProduct.product_type === 'notion-template' ? 'Notion template' : currentProduct.product_type === 'spreadsheet-template' ? 'spreadsheet template' : 'template'}.
                         </p>
                         
-                        {/* AI Structure Generation for Notion */}
+                        {/* AI Structure Generation for Templates */}
                         <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
                           <div className="flex items-center gap-2 text-purple-800 font-bold mb-2 text-sm sm:text-base">
                             <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                             AI Template Designer
                           </div>
                           <p className="text-xs sm:text-sm text-purple-700 mb-3">
-                            Let AI help you design the perfect Notion template structure with pages, databases, and views.
+                            Let AI help you design the perfect template structure with {currentProduct.product_type === 'notion-template' ? 'pages, databases, and views' : 'sheets, formulas, and layouts'}.
                           </p>
                           <button 
                             onClick={async () => {
                               setIsGeneratingStructure(true);
                               try {
+                                const genType = currentProduct.product_type === 'spreadsheet-template' ? 'spreadsheet-structure' : 'notion-structure';
                                 const response = await fetch(`/api/products/${currentProduct.id}/generate`, {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ type: 'notion-structure' }),
+                                  body: JSON.stringify({ type: genType }),
                                 });
                                 
                                 if (!response.ok) {
@@ -3583,8 +3588,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 2: Structure (for content products - excluding Notion templates) */}
-                    {currentStep === 2 && !['saas', 'software-tool', 'mobile-app', 'notion-template'].includes(currentProduct.product_type || '') && (
+                    {/* Step 2: Structure (for content & tools-pack products) */}
+                    {currentStep === 2 && (isContentProduct || isToolsPackProduct) && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Product Structure</h2>
                         <p className="text-gray-600 mb-6">
@@ -3776,7 +3781,7 @@ function BuilderContent() {
                     )}
 
                     {/* Step 2: Databases & Views (for Notion templates) */}
-                    {currentStep === 2 && currentProduct.product_type === 'notion-template' && (
+                    {currentStep === 2 && isTemplateProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Databases & Views</h2>
                         <p className="text-gray-600 mb-6">
@@ -3919,8 +3924,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 3: Sample Content (for Notion templates) */}
-                    {currentStep === 3 && currentProduct.product_type === 'notion-template' && (
+                    {/* Step 3: Sample Content (for template products) */}
+                    {currentStep === 3 && isTemplateProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">Sample Content</h2>
                         <p className="text-gray-600 mb-6">
@@ -4004,8 +4009,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 3: Assets (for all product types except Notion) */}
-                    {currentStep === 3 && currentProduct.product_type !== 'notion-template' && (
+                    {/* Step 3: Assets (for all product types except templates) */}
+                    {currentStep === 3 && !isTemplateProduct && (
                       <div>
                         <h2 className="text-xl font-black mb-4">
                           {isSoftwareProduct ? 'Product Assets' : 'Assets & Resources'}
@@ -4608,8 +4613,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 4: Export (for Notion templates) */}
-                    {currentStep === 4 && currentProduct.product_type === 'notion-template' && (
+                    {/* Step 4: Export (for template products) */}
+                    {currentStep === 4 && isTemplateProduct && (
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
                           <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
@@ -4807,8 +4812,8 @@ function BuilderContent() {
                       </div>
                     )}
 
-                    {/* Step 4: Export (for content products only - excluding Notion templates) */}
-                    {currentStep === 4 && !isSoftwareProduct && currentProduct.product_type !== 'notion-template' && (
+                    {/* Step 4: Export (for content & tools-pack products) */}
+                    {currentStep === 4 && (isContentProduct || isToolsPackProduct) && (
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
                           <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-uvz-orange" />
