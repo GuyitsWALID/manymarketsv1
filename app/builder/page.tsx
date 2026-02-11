@@ -3478,7 +3478,7 @@ function BuilderContent() {
                                     const response = await fetch(`/api/products/${currentProduct.id}/generate`, {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ type: 'notion-structure' }),
+                                      body: JSON.stringify({ type: currentProduct.product_type === 'spreadsheet-template' ? 'spreadsheet-structure' : 'notion-structure' }),
                                     });
                                     if (response.ok) {
                                       const data = await response.json();
@@ -4618,7 +4618,7 @@ function BuilderContent() {
                       <div>
                         <h2 className="text-lg sm:text-xl font-black mb-3 sm:mb-4 flex items-center gap-2">
                           <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-                          Export Your Notion Template
+                          Export Your {currentProduct.product_type === 'notion-template' ? 'Notion Template' : 'Template'}
                         </h2>
                         <p className="text-gray-600 mb-6">
                           Preview your template and export it for customers.
