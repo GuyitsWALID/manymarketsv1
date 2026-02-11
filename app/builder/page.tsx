@@ -1116,15 +1116,19 @@ function BuilderContent() {
     const prompt = suggestion.prompt;
     const width = 1024;
     const height = 768;
-    const thumbnailUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=400&height=300&nologo=true`;
-    const fullUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true`;
+    // Use the new Pollinations image API endpoint that's faster and more reliable
+    const thumbnailUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=400&height=300&nologo=true`;
+    const fullUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true`;
     
-    // Create a new asset - status is 'uploaded' meaning generated but not saved to storage yet
+    // Create asset ID for tracking
+    const assetId = `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create a new asset - status is 'generating' until image loads
     const newAsset: Asset = {
-      id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: assetId,
       name: suggestion.title,
       type: 'image',
-      status: 'uploaded', // Generated but not saved to storage
+      status: 'generating', // Will change to 'uploaded' when image loads
       prompt: prompt,
       thumbnailUrl: thumbnailUrl,
       fullUrl: fullUrl,
@@ -1149,14 +1153,18 @@ function BuilderContent() {
     const prompt = assetGenerationPrompt.trim();
     const width = 1024;
     const height = 768;
-    const thumbnailUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=400&height=300&nologo=true`;
-    const fullUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true`;
+    // Use the new Pollinations image API endpoint that's faster and more reliable
+    const thumbnailUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=400&height=300&nologo=true`;
+    const fullUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true`;
+    
+    // Create asset ID for tracking
+    const assetId = `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     const newAsset: Asset = {
-      id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: assetId,
       name: `Custom: ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`,
       type: 'image',
-      status: 'uploaded', // Generated but not saved to storage
+      status: 'generating', // Will change to 'uploaded' when image loads
       prompt: prompt,
       thumbnailUrl: thumbnailUrl,
       fullUrl: fullUrl,
@@ -4052,7 +4060,19 @@ function BuilderContent() {
                                       src={asset.thumbnailUrl || asset.url} 
                                       alt={asset.name}
                                       className="w-full h-24 object-cover"
+                                      onLoad={() => {
+                                        if (asset.status === 'generating') {
+                                          setAssets(prev => prev.map(a => 
+                                            a.id === asset.id ? { ...a, status: 'uploaded' as const } : a
+                                          ));
+                                        }
+                                      }}
                                     />
+                                    {asset.status === 'generating' && (
+                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                        <Loader2 className="w-6 h-6 animate-spin text-white" />
+                                      </div>
+                                    )}
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                       <button
                                         onClick={(e) => {
@@ -4282,8 +4302,22 @@ function BuilderContent() {
                                           src={asset.thumbnailUrl || asset.url} 
                                           alt={asset.name}
                                           className="w-full h-32 sm:h-40 object-cover"
+                                          onLoad={() => {
+                                            // Update status from 'generating' to 'uploaded' when image loads
+                                            if (asset.status === 'generating') {
+                                              setAssets(prev => prev.map(a => 
+                                                a.id === asset.id ? { ...a, status: 'uploaded' as const } : a
+                                              ));
+                                            }
+                                          }}
                                           onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23f3f4f6" width="100" height="100"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%239ca3af" font-size="12">Loading...</text></svg>';
+                                            // Mark as error if image fails to load
+                                            if (asset.status === 'generating') {
+                                              setAssets(prev => prev.map(a => 
+                                                a.id === asset.id ? { ...a, status: 'error' as const } : a
+                                              ));
+                                            }
+                                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23fef2f2" width="100" height="100"/><text x="50%" y="45%" text-anchor="middle" fill="%23ef4444" font-size="10" font-weight="bold">Failed</text><text x="50%" y="60%" text-anchor="middle" fill="%239ca3af" font-size="8">Click to retry</text></svg>';
                                           }}
                                         />
                                         {asset.status === 'generating' && (
