@@ -10,11 +10,10 @@ The **UVZ (Unique Value Zone) Platform** is a SaaS solution designed to democrat
 - **Backend**: Next.js API Routes
 - **Database**: Supabase
 - **AI**: Gemini API
-- **Payments**: Stripe
- - **Payments**: Paddle (primary), Stripe (legacy)
+- **Payments**: using whop checkout
 
 Pricing/Billing Configuration:
-- The app supports paid plans and Paddle/Stripe integrations.
+- The app supports paid plans and i am using whop checkout.
 - To temporarily disable billing (ManyMarkets free to use), set `NEXT_PUBLIC_ENABLE_PRICING=false` or omit it (default is disabled).
 - To re-enable billing later, set `NEXT_PUBLIC_ENABLE_PRICING=true` and configure Paddle/Stripe environment variables as documented.
 
@@ -49,10 +48,7 @@ curl -X POST -H "x-admin-token: $ADMIN_API_KEY" https://your-app.com/api/admin/d
     ```
     Add the following Paddle environment variables to `.env.local` as needed:
     ```bash
-    PADDLE_VENDOR_ID=your_paddle_vendor_id
-    PADDLE_VENDOR_AUTH=your_paddle_vendor_auth
-    PADDLE_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'
-    PADDLE_PRO_PRODUCT_ID=your_pro_product_id (optional)
+   
     NEXT_PUBLIC_PADDLE_VENDOR_ID=your_paddle_vendor_id
     NEXT_PUBLIC_PADDLE_PRO_PRODUCT_ID=your_pro_product_id (optional)
     NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=your_paddle_client_token
@@ -74,7 +70,7 @@ curl -X POST -H "x-admin-token: $ADMIN_API_KEY" https://your-app.com/api/admin/d
     npm run dev
     ```
 
-4.  Open [http://localhost:3000](http://localhost:3000) with your browser.
+
 
 Cleaning build artifacts:
 If you switched billing providers (e.g., from Lemon Squeezy or Stripe to Paddle) you should clear the build cache and rebuild to remove compiled references:
