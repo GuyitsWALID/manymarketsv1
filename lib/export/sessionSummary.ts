@@ -95,6 +95,51 @@ function extractInsights(messages: SessionData['messages']): {
   };
 }
 
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderConversationHTML(messages: SessionData['messages']): string {
+  if (!messages || messages.length === 0) {
+    return '<p>No messages available.</p>';
+  }
+
+  return `
+  <div class="section">
+    <div class="section-title">💬 Full Conversation Transcript</div>
+    ${messages
+      .map((msg, index) => {
+        const role = msg.role.toLowerCase() === 'assistant' ? 'AI Assistant' : 'User';
+        const content = msg.content ? escapeHtml(msg.content).replace(/\n/g, '<br>') : '';
+        return `
+      <div style="margin-bottom: 16px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
+        <strong>${index + 1}. ${role}</strong>
+        <div style="margin-top: 8px; word-break: break-word;">${content}</div>
+      </div>`;
+      })
+      .join('')}
+  </div>`;
+}
+
+function renderConversationMarkdown(messages: SessionData['messages']): string {
+  if (!messages || messages.length === 0) {
+    return '*No messages available.*\n';
+  }
+
+  return `## 💬 Full Conversation Transcript\n\n${messages
+    .map((msg, index) => {
+      const role = msg.role.toLowerCase() === 'assistant' ? 'AI Assistant' : 'User';
+      const content = msg.content || '';
+      return `### ${index + 1}. ${role}\n\n${content}\n\n`;
+    })
+    .join('')}`;
+}
+
 // Generate HTML for the summary
 export function generateSessionSummaryHTML(session: SessionData, options: SummaryOptions): string {
   const { isPro, includeWatermark = false } = options;
@@ -346,6 +391,9 @@ export function generateSessionSummaryHTML(session: SessionData, options: Summar
 `;
   }
 
+  // Append full conversation for all users (required by request)
+  html += renderConversationHTML(session.messages);
+
   html += `
   <div class="footer">
     <p>Research powered by ManyMarkets AI</p>
@@ -426,6 +474,9 @@ export function generateSessionSummaryMarkdown(session: SessionData, options: Su
   if (!isPro) {
     md += `\n[Upgrade to Pro for full detailed reports →](https://manymarkets.co/upgrade)\n`;
   }
+
+  md += `\n---\n\n`;
+  md += renderConversationMarkdown(session.messages);
 
   return md;
 }
